@@ -27,6 +27,7 @@ export default {
       if (user) {
         token.id = user.id as string;
         token.role = user.role;
+        token.iat = Math.floor(Date.now() / 1000);
       }
       return token;
     },

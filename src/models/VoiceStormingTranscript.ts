@@ -4,33 +4,32 @@ import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 export type VoiceStormingSessionType = 'freeform' | 'guided' | 'idea_specific';
 
 // --- Extracted Insight Sub-document ---
-export type InsightType = 'idea' | 'story' | 'insight' | 'theme';
+export type InsightType = 'idea' | 'story' | 'action_item' | 'theme';
 
 export interface IExtractedInsight {
+  _id?: Types.ObjectId;
   type: InsightType;
   content: string;
   contentPillar: string;
 }
 
-const ExtractedInsightSchema = new Schema<IExtractedInsight>(
-  {
-    type: {
-      type: String,
-      enum: ['idea', 'story', 'insight', 'theme'],
-      required: true,
-    },
-    content: { type: String, required: true },
-    contentPillar: { type: String, default: '' },
+const ExtractedInsightSchema = new Schema<IExtractedInsight>({
+  type: {
+    type: String,
+    enum: ['idea', 'story', 'action_item', 'theme'],
+    required: true,
   },
-  { _id: false }
-);
+  content: { type: String, required: true },
+  contentPillar: { type: String, default: '' },
+});
 
 // --- Voice Storming Transcript Document ---
 export interface IVoiceStormingTranscript extends Document {
   userId: Types.ObjectId;
-  linkedIdeaId?: Types.ObjectId;
+  linkedIdeaIds?: Types.ObjectId[];
   audioUrl?: string;
   transcript: string;
+  title?: string;
   extractedInsights: IExtractedInsight[];
   sessionType: VoiceStormingSessionType;
   promptUsed?: string;
@@ -46,12 +45,10 @@ const VoiceStormingTranscriptSchema = new Schema<IVoiceStormingTranscript>(
       ref: 'User',
       required: true,
     },
-    linkedIdeaId: {
-      type: Schema.Types.ObjectId,
-      ref: 'ContentIdea',
-    },
+    linkedIdeaIds: [{ type: Schema.Types.ObjectId, ref: 'ContentIdea' }],
     audioUrl: { type: String },
     transcript: { type: String, required: true },
+    title: { type: String },
     extractedInsights: [ExtractedInsightSchema],
     sessionType: {
       type: String,
@@ -63,6 +60,8 @@ const VoiceStormingTranscriptSchema = new Schema<IVoiceStormingTranscript>(
   },
   { timestamps: true }
 );
+
+VoiceStormingTranscriptSchema.index({ userId: 1, createdAt: -1 });
 
 const VoiceStormingTranscript: Model<IVoiceStormingTranscript> =
   mongoose.models.VoiceStormingTranscript ||

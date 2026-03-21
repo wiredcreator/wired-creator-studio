@@ -45,9 +45,6 @@ const CONTENT_PILLAR_OPTIONS = [
 // Helpers
 // ---------------------------------------------------------------------------
 
-// Temporary userId — will be replaced with real auth
-const TEMP_USER_ID = '000000000000000000000001';
-
 function getRandomMessage(): string {
   return BRAINSTORM_MESSAGES[Math.floor(Math.random() * BRAINSTORM_MESSAGES.length)];
 }
@@ -60,6 +57,7 @@ export default function IdeasPage() {
   const router = useRouter();
 
   // --- State ---
+  const [userId, setUserId] = useState('');
   const [ideas, setIdeas] = useState<IdeaCardData[]>([]);
   const [suggestedIdeas, setSuggestedIdeas] = useState<IdeaCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,12 +75,34 @@ export default function IdeasPage() {
   // Track IDs that just got an action for animation
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
 
+  // Fetch session to get userId
+  useEffect(() => {
+    async function getSession() {
+      try {
+        const res = await fetch('/api/auth/session');
+        const session = await res.json();
+        if (session?.user?.id) {
+          setUserId(session.user.id);
+        }
+      } catch {
+        // Session fetch failed — userId remains empty
+      }
+    }
+    getSession();
+  }, []);
+
   // --- Fetch existing ideas on mount ---
   const fetchIdeas = useCallback(async () => {
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch(`/api/ideas?userId=${TEMP_USER_ID}`);
+      const res = await fetch(`/api/ideas?userId=${userId}`);
       if (!res.ok) return;
-      const data: IdeaCardData[] = await res.json();
+      const raw = await res.json();
+      const data: IdeaCardData[] = raw.data || raw;
 
       // Split into suggested (new AI ideas) and pipeline (everything else)
       const suggested: IdeaCardData[] = [];
@@ -102,7 +122,7 @@ export default function IdeasPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchIdeas();
@@ -122,7 +142,7 @@ export default function IdeasPage() {
       const res = await fetch('/api/ideas/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: TEMP_USER_ID }),
+        body: JSON.stringify({ userId: userId }),
       });
 
       if (!res.ok) throw new Error('Generation failed');
@@ -139,89 +159,134 @@ export default function IdeasPage() {
     }
   };
 
-  // --- Idea actions ---
-  const updateIdeaStatus = async (id: string, status: ContentIdeaStatus) => {
-    try {
-      const res = await fetch(`/api/ideas/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+  // --- Idea actions (optimistic updates) ---
+  const updateIdeaStatus = (id: string, status: ContentIdeaStatus) => {
+    // 1. Save previous state for rollback
+    const previousIdeas = [...ideas];
+    const previousSuggested = [...suggestedIdeas];
+
+    // 2. Animate the card
+    setAnimatingIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      setAnimatingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
       });
-      if (!res.ok) return;
+    }, 400);
 
-      const updated: IdeaCardData = await res.json();
+    // 3. Optimistically update UI
+    // Find the idea from either list to carry its data forward
+    const ideaFromSuggested = suggestedIdeas.find((i) => i._id === id);
+    const ideaFromPipeline = ideas.find((i) => i._id === id);
+    const targetIdea = ideaFromSuggested || ideaFromPipeline;
 
-      // Animate the card
-      setAnimatingIds((prev) => new Set(prev).add(id));
-      setTimeout(() => {
-        setAnimatingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-      }, 400);
+    // Move from suggested to pipeline if it was suggested
+    setSuggestedIdeas((prev) => prev.filter((i) => i._id !== id));
 
-      // Move from suggested to pipeline if it was suggested
-      setSuggestedIdeas((prev) => prev.filter((i) => i._id !== id));
-
-      if (status === 'rejected') {
-        // Remove from pipeline too
-        setIdeas((prev) => prev.filter((i) => i._id !== id));
-      } else {
-        setIdeas((prev) => {
-          const exists = prev.find((i) => i._id === id);
-          if (exists) {
-            return prev.map((i) => (i._id === id ? { ...i, ...updated } : i));
-          }
-          return [updated, ...prev];
-        });
-      }
-    } catch (err) {
-      console.error('Failed to update idea:', err);
+    if (status === 'rejected') {
+      // Remove from pipeline too
+      setIdeas((prev) => prev.filter((i) => i._id !== id));
+    } else {
+      setIdeas((prev) => {
+        const exists = prev.find((i) => i._id === id);
+        if (exists) {
+          return prev.map((i) => (i._id === id ? { ...i, status } : i));
+        }
+        // Moving from suggested to pipeline
+        if (targetIdea) {
+          return [{ ...targetIdea, status }, ...prev];
+        }
+        return prev;
+      });
     }
+
+    // 4. Fire API in background, revert on failure
+    fetch(`/api/ideas/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          setIdeas(previousIdeas);
+          setSuggestedIdeas(previousSuggested);
+          console.error('Failed to update idea status');
+        }
+      })
+      .catch(() => {
+        setIdeas(previousIdeas);
+        setSuggestedIdeas(previousSuggested);
+        console.error('Failed to update idea status');
+      });
   };
 
   const handleApprove = (id: string) => updateIdeaStatus(id, 'approved');
   const handleSave = (id: string) => updateIdeaStatus(id, 'saved');
   const handleReject = (id: string) => updateIdeaStatus(id, 'rejected');
 
-  const handleUpdateIdea = async (id: string, updates: Partial<IdeaCardData>) => {
-    try {
-      const res = await fetch(`/api/ideas/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-      if (!res.ok) return;
+  const handleUpdateIdea = (id: string, updates: Partial<IdeaCardData>) => {
+    // 1. Save previous state for rollback
+    const previousIdeas = [...ideas];
+    const previousSuggested = [...suggestedIdeas];
+    const previousSelected = selectedIdea;
 
-      const updated: IdeaCardData = await res.json();
-
-      setIdeas((prev) =>
-        prev.map((i) => (i._id === id ? { ...i, ...updated } : i))
-      );
-      setSuggestedIdeas((prev) =>
-        prev.map((i) => (i._id === id ? { ...i, ...updated } : i))
-      );
-
-      // Update selected idea if it's the one being edited
-      if (selectedIdea?._id === id) {
-        setSelectedIdea({ ...selectedIdea, ...updated });
-      }
-    } catch (err) {
-      console.error('Failed to update idea:', err);
+    // 2. Optimistically update UI
+    setIdeas((prev) =>
+      prev.map((i) => (i._id === id ? { ...i, ...updates } : i))
+    );
+    setSuggestedIdeas((prev) =>
+      prev.map((i) => (i._id === id ? { ...i, ...updates } : i))
+    );
+    if (selectedIdea?._id === id) {
+      setSelectedIdea({ ...selectedIdea, ...updates });
     }
+
+    // 3. Fire API in background, revert on failure
+    fetch(`/api/ideas/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          setIdeas(previousIdeas);
+          setSuggestedIdeas(previousSuggested);
+          setSelectedIdea(previousSelected);
+          console.error('Failed to update idea');
+        }
+      })
+      .catch(() => {
+        setIdeas(previousIdeas);
+        setSuggestedIdeas(previousSuggested);
+        setSelectedIdea(previousSelected);
+        console.error('Failed to update idea');
+      });
   };
 
-  const handleDeleteIdea = async (id: string) => {
-    try {
-      const res = await fetch(`/api/ideas/${id}`, { method: 'DELETE' });
-      if (!res.ok) return;
+  const handleDeleteIdea = (id: string) => {
+    // 1. Save previous state for rollback
+    const previousIdeas = [...ideas];
+    const previousSuggested = [...suggestedIdeas];
 
-      setIdeas((prev) => prev.filter((i) => i._id !== id));
-      setSuggestedIdeas((prev) => prev.filter((i) => i._id !== id));
-    } catch (err) {
-      console.error('Failed to delete idea:', err);
-    }
+    // 2. Optimistically remove from UI
+    setIdeas((prev) => prev.filter((i) => i._id !== id));
+    setSuggestedIdeas((prev) => prev.filter((i) => i._id !== id));
+
+    // 3. Fire API in background, revert on failure
+    fetch(`/api/ideas/${id}`, { method: 'DELETE' })
+      .then((res) => {
+        if (!res.ok) {
+          setIdeas(previousIdeas);
+          setSuggestedIdeas(previousSuggested);
+          console.error('Failed to delete idea');
+        }
+      })
+      .catch(() => {
+        setIdeas(previousIdeas);
+        setSuggestedIdeas(previousSuggested);
+        console.error('Failed to delete idea');
+      });
   };
 
   const handleStartScript = (id: string) => {
@@ -239,7 +304,7 @@ export default function IdeasPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: TEMP_USER_ID,
+          userId: userId,
           title: manualTitle.trim(),
           description: manualDescription.trim(),
           source: 'manual',
@@ -366,7 +431,7 @@ export default function IdeasPage() {
               type="button"
               onClick={handleGenerate}
               disabled={isGenerating}
-              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
+              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-all hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
             >
               {isGenerating ? (
                 <span className="flex items-center gap-2">
@@ -401,7 +466,7 @@ export default function IdeasPage() {
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
+                <label className="mb-1 block text-xs font-medium text-[var(--color-text)]">
                   Title *
                 </label>
                 <input
@@ -410,11 +475,11 @@ export default function IdeasPage() {
                   onChange={(e) => setManualTitle(e.target.value)}
                   placeholder="e.g. 5 Things I Wish I Knew Before..."
                   required
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text)] placeholder:opacity-50 focus:border-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
+                <label className="mb-1 block text-xs font-medium text-[var(--color-text)]">
                   Description
                 </label>
                 <textarea
@@ -422,11 +487,11 @@ export default function IdeasPage() {
                   onChange={(e) => setManualDescription(e.target.value)}
                   placeholder="What's the angle? What makes this idea interesting?"
                   rows={3}
-                  className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                  className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text)] placeholder:opacity-50 focus:border-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
+                <label className="mb-1 block text-xs font-medium text-[var(--color-text)]">
                   Content Pillar
                 </label>
                 <select
@@ -447,14 +512,14 @@ export default function IdeasPage() {
               <button
                 type="submit"
                 disabled={isSubmittingManual || !manualTitle.trim()}
-                className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
+                className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
               >
                 {isSubmittingManual ? 'Adding...' : 'Add Idea'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowManualForm(false)}
-                className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-secondary)]"
+                className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-bg-secondary)]"
               >
                 Cancel
               </button>
@@ -465,7 +530,7 @@ export default function IdeasPage() {
         {/* Suggested ideas cards */}
         {suggestedIdeas.length > 0 && !isGenerating && (
           <div className="mt-4">
-            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">
+            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--color-text)]">
               {suggestedIdeas.length} new idea{suggestedIdeas.length !== 1 ? 's' : ''} to review
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -500,7 +565,7 @@ export default function IdeasPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
               </svg>
             </div>
-            <p className="text-sm text-[var(--color-text-muted)]">
+            <p className="text-sm text-[var(--color-text)]">
               Hit &quot;Generate New Ideas&quot; and let AI brainstorm for you.
             </p>
           </div>
@@ -526,8 +591,8 @@ export default function IdeasPage() {
                 onClick={() => setActiveTab(tab.value)}
                 className={`whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors ${
                   activeTab === tab.value
-                    ? 'bg-[var(--color-bg-card)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+                    ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)] shadow-[var(--shadow-sm)]'
+                    : 'text-[var(--color-text)] hover:text-[var(--color-text-primary)]'
                 }`}
               >
                 {tab.label}
@@ -542,7 +607,7 @@ export default function IdeasPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search ideas..."
-              className="w-40 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+              className="w-40 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text)] placeholder:opacity-50 focus:border-[var(--color-accent)]"
             />
             {existingPillars.length > 0 && (
               <select
@@ -579,7 +644,7 @@ export default function IdeasPage() {
           </div>
         ) : (
           <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] p-10 text-center">
-            <p className="text-sm text-[var(--color-text-muted)]">
+            <p className="text-sm text-[var(--color-text)]">
               {ideas.length === 0
                 ? 'No ideas in your bank yet. Generate some above or add one manually.'
                 : 'No ideas match the current filters.'}

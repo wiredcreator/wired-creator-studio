@@ -1,24 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 import dbConnect from '@/lib/db';
 import CallTranscript from '@/models/CallTranscript';
 import ContentIdea from '@/models/ContentIdea';
 import BrandBrain from '@/models/BrandBrain';
 import { processBrainDump } from '@/lib/ai/generate';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { parsePagination, paginationResponse } from '@/lib/pagination';
 
 // POST /api/brain-dump — Submit a brain dump transcript for processing
 export async function POST(request: NextRequest) {
   try {
+    const rl = aiLimiter.check(getRateLimitKey(request, 'brain-dump'));
+    if (!rl.success) return rateLimitResponse(rl.resetIn);
+
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
     const body = await request.json();
-    const { transcript, userId, callType } = body;
+    const { transcript, callType } = body;
 
-    if (!transcript || !userId) {
+    if (!transcript) {
       return NextResponse.json(
-        { error: 'transcript and userId are required' },
+        { error: 'transcript is required' },
         { status: 400 }
       );
     }
+
+    const userId = user.id;
 
     const validCallTypes = ['1on1_coaching', 'brain_dump', 'support', 'other'];
     const resolvedCallType = validCallTypes.includes(callType)
@@ -78,6 +90,17 @@ export async function POST(request: NextRequest) {
     callTranscript.ingestedIntoBrandBrain = true;
     await callTranscript.save();
 
+    // --- Write back to Brand Brain ---
+    try {
+      await BrandBrain.findOneAndUpdate(
+        { userId },
+        { $addToSet: { callTranscripts: callTranscript._id } }
+      );
+    } catch (bbError) {
+      // Non-fatal: brain dump processing succeeded even if Brand Brain link fails
+      console.error('[BrainDump] Brand Brain write-back failed (non-fatal):', bbError);
+    }
+
     return NextResponse.json(
       {
         session: callTranscript,
@@ -98,21 +121,26 @@ export async function POST(request: NextRequest) {
 // GET /api/brain-dump — List brain dump sessions for a user
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
-    const userId = request.nextUrl.searchParams.get('userId');
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId query parameter is required' },
-        { status: 400 }
-      );
-    }
+    const userId = user.id;
+    const filter = { userId };
+    const { page, limit, skip } = parsePagination(request.nextUrl.searchParams);
 
-    const sessions = await CallTranscript.find({ userId })
-      .sort({ createdAt: -1 })
-      .lean();
+    const [sessions, total] = await Promise.all([
+      CallTranscript.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      CallTranscript.countDocuments(filter),
+    ]);
 
-    return NextResponse.json({ sessions });
+    return NextResponse.json(paginationResponse(sessions, total, page, limit));
   } catch (error) {
     console.error('Error fetching brain dump sessions:', error);
     return NextResponse.json(

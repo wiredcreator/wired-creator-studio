@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Types } from 'mongoose';
 import dbConnect from '@/lib/db';
 import Task from '@/models/Task';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { validateObjectId } from '@/lib/validation';
 
 // POST /api/tasks/[id]/comments — Add a comment to a task
 export async function POST(
@@ -8,15 +11,21 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
     const { id } = await params;
+    const invalidId = validateObjectId(id);
+    if (invalidId) return invalidId;
     const body = await request.json();
-    const { userId, text } = body;
+    const { text } = body;
 
-    if (!userId || !text) {
+    if (!text) {
       return NextResponse.json(
-        { error: 'userId and text are required' },
+        { error: 'text is required' },
         { status: 400 }
       );
     }
@@ -30,7 +39,7 @@ export async function POST(
     }
 
     task.comments.push({
-      userId,
+      userId: new Types.ObjectId(user.id),
       text,
       createdAt: new Date(),
     });

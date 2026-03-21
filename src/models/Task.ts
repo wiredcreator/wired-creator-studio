@@ -134,6 +134,10 @@ const TaskSchema = new Schema<ITask>(
 TaskSchema.index({ userId: 1, dueDate: 1, order: 1 });
 TaskSchema.index({ userId: 1, weekNumber: 1 });
 
+// Soft delete support
+import { applySoftDelete } from '@/lib/soft-delete';
+applySoftDelete(TaskSchema);
+
 // Prevent model recompilation in development (Next.js hot reload)
 const Task: Model<ITask> =
   mongoose.models.Task || mongoose.model<ITask>('Task', TaskSchema);

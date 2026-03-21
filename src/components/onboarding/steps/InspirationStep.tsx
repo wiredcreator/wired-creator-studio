@@ -34,13 +34,13 @@ export default function InspirationStep({ data, onChange }: InspirationStepProps
           className="text-3xl font-semibold mb-3"
           style={{ color: 'var(--color-text-primary)' }}
         >
-          Creators you resonate with
+          Which creators inspire you?
         </h2>
         <p
           className="text-lg"
           style={{ color: 'var(--color-text-secondary)' }}
         >
-          Share creators whose style, energy, or approach inspires you.
+          List channels in your niche that you admire. We&apos;ll study their style to help shape yours.
         </p>
       </div>
 
@@ -84,7 +84,7 @@ export default function InspirationStep({ data, onChange }: InspirationStepProps
               type="text"
               value={entry.url}
               onChange={(e) => updateInspiration(index, 'url', e.target.value)}
-              placeholder="YouTube URL or channel name"
+              placeholder="YouTube channel URL or handle (e.g. @MrBeast)"
               className="w-full px-4 py-3 text-base border transition-colors duration-200"
               style={{
                 backgroundColor: 'var(--color-bg-primary)',

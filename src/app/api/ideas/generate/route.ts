@@ -1,21 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 import dbConnect from '@/lib/db';
 import ContentIdea from '@/models/ContentIdea';
+import BrandBrain from '@/models/BrandBrain';
 import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
 import { generateIdeas } from '@/lib/ai/generate';
+import { getIdeaPatterns } from '@/lib/ai/idea-patterns';
+import { getAuthenticatedUser } from '@/lib/api-auth';
 
 // POST /api/ideas/generate — Generate new AI content ideas for a user
 export async function POST(request: NextRequest) {
   try {
+    const rl = aiLimiter.check(getRateLimitKey(request, 'ideas-generate'));
+    if (!rl.success) return rateLimitResponse(rl.resetIn);
+
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
-    const body = await request.json();
-    const { userId } = body;
+    const userId = user.id;
 
-    if (!userId) {
+    // Guard: ensure the user has completed onboarding with a Brand Brain
+    const brandBrain = await BrandBrain.findOne({ userId }).lean();
+
+    if (!brandBrain) {
       return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
+        {
+          error:
+            'Please complete your onboarding questionnaire before generating ideas. Your Brand Brain needs context about you to generate relevant ideas.',
+        },
+        { status: 422 }
+      );
+    }
+
+    if (!brandBrain.contentPillars || brandBrain.contentPillars.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            'Your Brand Brain has no content pillars yet. Please complete the Content DNA questionnaire first.',
+        },
+        { status: 422 }
       );
     }
 
@@ -28,8 +54,11 @@ export async function POST(request: NextRequest) {
       includeTranscripts: false,
     });
 
+    // Fetch approval/rejection patterns to improve idea relevance
+    const patternsContext = await getIdeaPatterns(userId);
+
     // Generate ideas via AI (or mock data)
-    const generatedIdeas = await generateIdeas(brandBrainContext);
+    const generatedIdeas = await generateIdeas(brandBrainContext, undefined, patternsContext);
 
     // Save all generated ideas to MongoDB
     const savedIdeas = await ContentIdea.insertMany(

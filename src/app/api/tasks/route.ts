@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Task from '@/models/Task';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { parsePagination, paginationResponse } from '@/lib/pagination';
 
 // GET /api/tasks — List tasks with filters
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
-    const userId = request.nextUrl.searchParams.get('userId');
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId query parameter is required' },
-        { status: 400 }
-      );
-    }
+    // Coaches/admins can view tasks for any user via query param
+    const queryUserId = request.nextUrl.searchParams.get('userId');
+    const userId = (user.role === 'coach' || user.role === 'admin') && queryUserId
+      ? queryUserId
+      : user.id;
 
     const date = request.nextUrl.searchParams.get('date');
     const status = request.nextUrl.searchParams.get('status');
@@ -35,13 +39,20 @@ export async function GET(request: NextRequest) {
     if (status) filter.status = status;
     if (weekNumber) filter.weekNumber = parseInt(weekNumber, 10);
 
-    const tasks = await Task.find(filter)
-      .populate('assignedBy', 'name email')
-      .populate('comments.userId', 'name email')
-      .sort({ order: 1, dueDate: 1 })
-      .lean();
+    const { page, limit, skip } = parsePagination(request.nextUrl.searchParams);
 
-    return NextResponse.json(tasks);
+    const [tasks, total] = await Promise.all([
+      Task.find(filter)
+        .populate('assignedBy', 'name email')
+        .populate('comments.userId', 'name email')
+        .sort({ order: 1, dueDate: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Task.countDocuments(filter),
+    ]);
+
+    return NextResponse.json(paginationResponse(tasks, total, page, limit));
   } catch (error) {
     console.error('Error fetching tasks:', error);
     return NextResponse.json(
@@ -54,14 +65,26 @@ export async function GET(request: NextRequest) {
 // POST /api/tasks — Create a new task (coach action)
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
+    // Only coaches and admins can create tasks
+    if (user.role !== 'coach' && user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Only coaches and admins can create tasks' },
+        { status: 403 }
+      );
+    }
+
     await dbConnect();
 
     const body = await request.json();
-    const { userId, title, type, dueDate, assignedBy, weekNumber, dayOfWeek } = body;
+    const { userId, title, type, dueDate, weekNumber, dayOfWeek } = body;
 
-    if (!userId || !title || !type || !dueDate || !assignedBy || weekNumber === undefined || dayOfWeek === undefined) {
+    if (!userId || !title || !type || !dueDate || weekNumber === undefined || dayOfWeek === undefined) {
       return NextResponse.json(
-        { error: 'userId, title, type, dueDate, assignedBy, weekNumber, and dayOfWeek are required' },
+        { error: 'userId, title, type, dueDate, weekNumber, and dayOfWeek are required' },
         { status: 400 }
       );
     }
@@ -73,7 +96,7 @@ export async function POST(request: NextRequest) {
       type,
       status: body.status || 'pending',
       dueDate: new Date(dueDate),
-      assignedBy,
+      assignedBy: user.id,
       linkedContentId: body.linkedContentId,
       embeddedVideoUrl: body.embeddedVideoUrl || '',
       weekNumber,

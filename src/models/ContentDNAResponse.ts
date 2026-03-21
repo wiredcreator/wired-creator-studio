@@ -81,6 +81,8 @@ const ContentDNAResponseSchema = new Schema<IContentDNAResponse>(
   { timestamps: true }
 );
 
+ContentDNAResponseSchema.index({ userId: 1 });
+
 const ContentDNAResponse: Model<IContentDNAResponse> =
   mongoose.models.ContentDNAResponse ||
   mongoose.model<IContentDNAResponse>('ContentDNAResponse', ContentDNAResponseSchema);

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import SideQuest from '@/models/SideQuest';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { validateObjectId } from '@/lib/validation';
 
 // PUT /api/side-quests/[id] — Mark complete or add response
 export async function PUT(
@@ -8,9 +10,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
     const { id } = await params;
+    const invalidId = validateObjectId(id);
+    if (invalidId) return invalidId;
     const body = await request.json();
 
     const quest = await SideQuest.findById(id);
@@ -21,8 +29,22 @@ export async function PUT(
       );
     }
 
+    // Ensure user owns this side quest
+    if (quest.userId.toString() !== user.id) {
+      return NextResponse.json(
+        { error: 'Not authorized to update this side quest' },
+        { status: 403 }
+      );
+    }
+
     // Add response text
     if (body.response !== undefined) {
+      if (typeof body.response !== 'string') {
+        return NextResponse.json({ error: 'Response must be a string' }, { status: 400 });
+      }
+      if (body.response.length > 10000) {
+        return NextResponse.json({ error: 'Response too long (max 10,000 characters)' }, { status: 400 });
+      }
       quest.response = body.response;
     }
 

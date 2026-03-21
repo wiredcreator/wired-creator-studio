@@ -199,7 +199,7 @@ export default function BrainDumpResults({
                     {insight.tags.map((tag, j) => (
                       <span
                         key={j}
-                        className="text-[10px] font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] px-2 py-0.5 rounded-[var(--radius-full)]"
+                        className="text-[10px] font-medium text-[var(--color-text)] bg-[var(--color-bg-secondary)] px-2 py-0.5 rounded-[var(--radius-full)]"
                       >
                         {tag}
                       </span>

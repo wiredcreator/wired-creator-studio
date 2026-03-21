@@ -40,6 +40,7 @@ interface IdeaCardProps {
 const SOURCE_LABELS: Record<ContentIdeaSource, string> = {
   ai_generated: 'AI Generated',
   brain_dump: 'Brain Dump',
+  voice_storm: 'Voice Storm',
   trend_scrape: 'Trend',
   manual: 'Manual',
 };
@@ -47,8 +48,9 @@ const SOURCE_LABELS: Record<ContentIdeaSource, string> = {
 const SOURCE_COLORS: Record<ContentIdeaSource, string> = {
   ai_generated: 'bg-[var(--color-accent-light)] text-[var(--color-accent)]',
   brain_dump: 'bg-[var(--color-warning-light)] text-[var(--color-warning)]',
+  voice_storm: 'bg-[var(--color-warning-light)] text-[var(--color-warning)]',
   trend_scrape: 'bg-[var(--color-success-light)] text-[var(--color-success)]',
-  manual: 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]',
+  manual: 'bg-[var(--color-bg-secondary)] text-[var(--color-text)]',
 };
 
 const STATUS_LABELS: Record<ContentIdeaStatus, string> = {
@@ -117,7 +119,7 @@ export default function IdeaCard({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {/* Content pillar */}
           {idea.contentPillar && (
-            <span className="inline-flex items-center rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">
+            <span className="inline-flex items-center rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-text)]">
               {idea.contentPillar}
             </span>
           )}

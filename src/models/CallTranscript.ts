@@ -74,6 +74,8 @@ const CallTranscriptSchema = new Schema<ICallTranscript>(
   { timestamps: true }
 );
 
+CallTranscriptSchema.index({ userId: 1, createdAt: -1 });
+
 const CallTranscript: Model<ICallTranscript> =
   mongoose.models.CallTranscript ||
   mongoose.model<ICallTranscript>('CallTranscript', CallTranscriptSchema);

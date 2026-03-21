@@ -4,6 +4,8 @@ import BrandBrain from '@/models/BrandBrain';
 import ToneOfVoiceGuide from '@/models/ToneOfVoiceGuide';
 import VoiceStormingTranscript from '@/models/VoiceStormingTranscript';
 import CallTranscript from '@/models/CallTranscript';
+import ContentDNAResponse from '@/models/ContentDNAResponse';
+import ContentIdea from '@/models/ContentIdea';
 
 // ---------------------------------------------------------------------------
 // Brand Brain Context Builder
@@ -19,6 +21,9 @@ const DEFAULT_OPTIONS: Required<BrandBrainContextOptions> = {
   includeEquipmentProfile: false,
   includeTranscripts: false,
   maxTranscripts: 3,
+  includeApprovedIdeas: true,
+  includeContentDNA: true,
+  maxApprovedIdeas: 10,
 };
 
 /**
@@ -108,25 +113,94 @@ export async function assembleBrandBrainContext(
     }
   }
 
-  // --- Recent Transcripts ---
+  // --- Approved Content Ideas ---
+  if (options.includeApprovedIdeas && brandBrain.approvedIdeas?.length > 0) {
+    try {
+      const ideas = await ContentIdea.find({
+        _id: { $in: brandBrain.approvedIdeas },
+      })
+        .sort({ approvedAt: -1 })
+        .limit(options.maxApprovedIdeas)
+        .lean();
+
+      if (ideas.length > 0) {
+        sections.push('\n## Approved Content Ideas');
+        for (const idea of ideas) {
+          sections.push(`- **${idea.title}** (${idea.contentPillar || 'uncategorized'}): ${idea.description}`);
+        }
+      }
+    } catch {
+      // Best-effort
+    }
+  }
+
+  // --- Content DNA ---
+  if (options.includeContentDNA && brandBrain.contentDNAResponse) {
+    try {
+      const dna = await ContentDNAResponse.findById(brandBrain.contentDNAResponse).lean();
+
+      if (dna && dna.responses?.length > 0) {
+        sections.push('\n## Content DNA Profile');
+        for (const r of dna.responses) {
+          const answer = Array.isArray(r.answer) ? r.answer.join(', ') : r.answer;
+          sections.push(`- **${r.question}**: ${answer}`);
+        }
+      }
+    } catch {
+      // Best-effort
+    }
+  }
+
+  // --- Recent Transcripts (prefer Brand Brain refs, fall back to direct query) ---
   if (options.includeTranscripts) {
     try {
-      const [voiceStorms, calls] = await Promise.all([
-        VoiceStormingTranscript.find({ userId })
+      let voiceStorms;
+      let calls;
+
+      if (brandBrain.voiceStormSessions?.length > 0) {
+        // Use refs — fetch the most recent linked sessions
+        voiceStorms = await VoiceStormingTranscript.find({
+          _id: { $in: brandBrain.voiceStormSessions },
+        })
           .sort({ createdAt: -1 })
           .limit(options.maxTranscripts)
-          .lean(),
-        CallTranscript.find({ userId, callType: { $in: ['1on1_coaching', 'brain_dump'] } })
+          .lean();
+      } else {
+        // Fall back to direct query (for users who had sessions before this feature)
+        voiceStorms = await VoiceStormingTranscript.find({ userId })
           .sort({ createdAt: -1 })
           .limit(options.maxTranscripts)
-          .lean(),
-      ]);
+          .lean();
+      }
+
+      if (brandBrain.callTranscripts?.length > 0) {
+        calls = await CallTranscript.find({
+          _id: { $in: brandBrain.callTranscripts },
+        })
+          .sort({ createdAt: -1 })
+          .limit(options.maxTranscripts)
+          .lean();
+      } else {
+        calls = await CallTranscript.find({
+          userId,
+          callType: { $in: ['1on1_coaching', 'brain_dump'] },
+        })
+          .sort({ createdAt: -1 })
+          .limit(options.maxTranscripts)
+          .lean();
+      }
 
       if (voiceStorms.length > 0) {
         sections.push('\n## Recent Voice Storming Sessions');
         for (const vs of voiceStorms) {
           const truncated = truncateText(vs.transcript, 1500);
           sections.push(`\n### Voice Storm (${vs.sessionType})`);
+          if (vs.extractedInsights?.length > 0) {
+            sections.push('Key insights:');
+            for (const insight of vs.extractedInsights.slice(0, 5)) {
+              sections.push(`- [${insight.type}] ${insight.content}`);
+            }
+          }
           sections.push(truncated);
         }
       }
@@ -135,7 +209,18 @@ export async function assembleBrandBrainContext(
         sections.push('\n## Recent Coaching Call Notes');
         for (const call of calls) {
           const truncated = truncateText(call.transcript, 1500);
-          sections.push(`\n### ${call.callType} (${call.callDate?.toISOString?.() ?? 'unknown date'})`);
+          sections.push(
+            `\n### ${call.callType} (${call.callDate?.toISOString?.() ?? 'unknown date'})`
+          );
+          if (call.extractedThemes?.length > 0) {
+            sections.push(`Themes: ${call.extractedThemes.join(', ')}`);
+          }
+          if (call.extractedStories?.length > 0) {
+            sections.push('Stories:');
+            for (const story of call.extractedStories.slice(0, 3)) {
+              sections.push(`- ${story.summary}`);
+            }
+          }
           sections.push(truncated);
         }
       }

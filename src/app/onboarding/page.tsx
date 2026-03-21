@@ -4,18 +4,30 @@ import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import ContentDNAQuestionnaire from '@/components/onboarding/ContentDNAQuestionnaire';
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ form?: string }>;
+}) {
   const session = await auth();
 
   if (!session?.user?.id) {
     redirect('/login');
   }
 
-  // Check if the user has already completed onboarding
+  const params = await searchParams;
+  const forceForm = params.form !== undefined;
+
+  // Check if the user exists and has completed onboarding
   await dbConnect();
   const dbUser = await User.findById(session.user.id).lean();
 
-  if (dbUser?.onboardingCompleted) {
+  // User deleted (e.g. after db nuke) — force re-login
+  if (!dbUser) {
+    redirect('/login?signout=1');
+  }
+
+  if (dbUser.onboardingCompleted && !forceForm) {
     redirect('/dashboard');
   }
 

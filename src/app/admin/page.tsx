@@ -34,7 +34,7 @@ export default function AdminDashboardPage() {
         setLoading(true);
 
         // Fetch all students
-        const usersRes = await fetch("/api/auth/signup?list=students");
+        const usersRes = await fetch("/api/users?role=student");
         let studentsList: StudentWithStats[] = [];
 
         if (usersRes.ok) {

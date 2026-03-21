@@ -24,9 +24,12 @@ export default auth((req) => {
   const isAdminRoute = pathname.startsWith('/admin');
   const isAuthRoute = pathname === '/login' || pathname === '/signup';
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages (unless forced by signout param)
   if (isAuthRoute && isLoggedIn) {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    const hasSignout = req.nextUrl.searchParams.has('signout');
+    if (!hasSignout) {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
   }
 
   // Redirect unauthenticated users to login

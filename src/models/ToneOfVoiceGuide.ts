@@ -91,6 +91,9 @@ const ToneOfVoiceGuideSchema = new Schema<IToneOfVoiceGuide>(
   { timestamps: true }
 );
 
+ToneOfVoiceGuideSchema.index({ userId: 1 });
+ToneOfVoiceGuideSchema.index({ brandBrainId: 1 });
+
 const ToneOfVoiceGuide: Model<IToneOfVoiceGuide> =
   mongoose.models.ToneOfVoiceGuide ||
   mongoose.model<IToneOfVoiceGuide>('ToneOfVoiceGuide', ToneOfVoiceGuideSchema);

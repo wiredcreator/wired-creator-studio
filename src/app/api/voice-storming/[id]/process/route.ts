@@ -1,0 +1,128 @@
+import { NextRequest, NextResponse } from 'next/server';
+import dbConnect from '@/lib/db';
+import VoiceStormingTranscript from '@/models/VoiceStormingTranscript';
+import BrandBrain from '@/models/BrandBrain';
+import { processVoiceStorming, generateSessionTitle } from '@/lib/ai/generate';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { validateObjectId } from '@/lib/validation';
+import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
+
+// POST /api/voice-storming/[id]/process — Run AI processing on a voice storm session
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const rl = aiLimiter.check(getRateLimitKey(request, 'voice-storm-process'));
+    if (!rl.success) return rateLimitResponse(rl.resetIn);
+
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
+    await dbConnect();
+
+    const { id } = await params;
+    const invalidId = validateObjectId(id);
+    if (invalidId) return invalidId;
+
+    const session = await VoiceStormingTranscript.findById(id);
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Voice storming session not found' },
+        { status: 404 }
+      );
+    }
+
+    const isOwner = session.userId.toString() === user.id;
+    const isPrivileged = user.role === 'coach' || user.role === 'admin';
+
+    if (!isOwner && !isPrivileged) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
+    if (!session.transcript || session.transcript.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'No transcript text to process. Add a transcript first.' },
+        { status: 422 }
+      );
+    }
+
+    // Concurrent processing guard
+    const thirtySecondsAgo = new Date(Date.now() - 30000);
+    if (session.extractedInsights.length > 0 && session.updatedAt > thirtySecondsAgo) {
+      return NextResponse.json(
+        { error: 'Session was recently processed. Please wait before re-processing.' },
+        { status: 409 }
+      );
+    }
+
+    // Get content pillars from Brand Brain
+    let contentPillars: string[] = [];
+    const brandBrain = await BrandBrain.findOne({ userId: session.userId }).lean();
+    if (brandBrain?.contentPillars) {
+      contentPillars = brandBrain.contentPillars.map((p: { title: string }) => p.title);
+    }
+
+    // Process with AI
+    const result = await processVoiceStorming(session.transcript, contentPillars);
+
+    // Map to extractedInsights schema with contentPillar from AI
+    const insights = [
+      ...result.contentIdeas.map((item) => ({
+        type: 'idea' as const,
+        content: item.content,
+        contentPillar: item.contentPillar,
+      })),
+      ...result.personalStories.map((item) => ({
+        type: 'story' as const,
+        content: item.content,
+        contentPillar: item.contentPillar,
+      })),
+      ...result.keyThemes.map((item) => ({
+        type: 'theme' as const,
+        content: item.content,
+        contentPillar: item.contentPillar,
+      })),
+      ...result.actionItems.map((item) => ({
+        type: 'action_item' as const,
+        content: item.content,
+        contentPillar: item.contentPillar,
+      })),
+    ];
+
+    session.extractedInsights = insights;
+
+    // Generate title (independent — failure doesn't block insights)
+    const title = await generateSessionTitle(session.transcript);
+    session.title = title;
+
+    await session.save();
+
+    // --- Write back to Brand Brain ---
+    try {
+      await BrandBrain.findOneAndUpdate(
+        { userId: session.userId },
+        { $addToSet: { voiceStormSessions: session._id } }
+      );
+    } catch (bbError) {
+      // Non-fatal: processing succeeded even if Brand Brain link fails
+      console.error('[VoiceStorm] Brand Brain write-back failed (non-fatal):', bbError);
+    }
+
+    return NextResponse.json({
+      success: true,
+      session,
+      extracted: result,
+    });
+  } catch (error) {
+    console.error('Error processing voice storm:', error);
+    return NextResponse.json(
+      { error: 'Failed to process voice storming session' },
+      { status: 500 }
+    );
+  }
+}

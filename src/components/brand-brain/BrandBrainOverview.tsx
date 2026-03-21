@@ -60,9 +60,9 @@ interface BrandBrainOverviewProps {
 // ---------------------------------------------------------------------------
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  draft: { bg: 'bg-amber-100', text: 'text-amber-800', label: 'Draft' },
-  review: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'In Review' },
-  active: { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'Active' },
+  draft: { bg: 'bg-[var(--color-warning-light)]', text: 'text-[var(--color-warning)]', label: 'Draft' },
+  review: { bg: 'bg-blue-900', text: 'text-blue-300', label: 'In Review' },
+  active: { bg: 'bg-emerald-900', text: 'text-emerald-300', label: 'Active' },
 };
 
 // ---------------------------------------------------------------------------
@@ -142,14 +142,14 @@ export default function BrandBrainOverview({
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
             {studentName ? `${studentName}'s Brand Brain` : 'Brand Brain'}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Your AI context layer — everything that shapes your content.
           </p>
         </div>
-        <div className="text-right text-sm text-gray-400">
+        <div className="text-right text-sm text-[var(--color-text-muted)]">
           <p>Version {version}</p>
           <p>Updated {lastUpdated}</p>
         </div>
@@ -162,7 +162,7 @@ export default function BrandBrainOverview({
           action={
             <button
               onClick={onEditToneOfVoice}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               Open Editor
             </button>
@@ -176,16 +176,16 @@ export default function BrandBrainOverview({
                 >
                   {STATUS_STYLES[toneOfVoice.status].label}
                 </span>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-[var(--color-text-muted)]">
                   {toneOfVoice.parameterCount} parameters
                 </span>
               </div>
-              <p className="text-sm text-gray-700 leading-relaxed">
+              <p className="text-sm text-[var(--color-text-primary)] leading-relaxed">
                 {toneOfVoice.summary}
               </p>
             </div>
           ) : (
-            <p className="text-sm text-gray-400 italic">
+            <p className="text-sm text-[var(--color-text-muted)] italic">
               No Tone of Voice guide generated yet. Complete the Content DNA
               questionnaire to get started.
             </p>
@@ -200,7 +200,7 @@ export default function BrandBrainOverview({
               onClick={() =>
                 isEditingPillars ? savePillars() : setIsEditingPillars(true)
               }
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               {isEditingPillars ? 'Save' : 'Edit'}
             </button>
@@ -211,7 +211,7 @@ export default function BrandBrainOverview({
               {editedPillars.map((pillar, i) => (
                 <div
                   key={i}
-                  className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-2"
+                  className="p-3 bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] space-y-2"
                 >
                   <div className="flex items-center justify-between">
                     <input
@@ -219,11 +219,11 @@ export default function BrandBrainOverview({
                       value={pillar.title}
                       onChange={(e) => updatePillar(i, 'title', e.target.value)}
                       placeholder="Pillar title"
-                      className="text-sm font-medium text-gray-900 bg-transparent border-b border-gray-300 focus:outline-none focus:border-gray-500 flex-1"
+                      className="text-sm font-medium text-[var(--color-text-primary)] bg-transparent border-b border-[var(--color-border)] focus:outline-none focus:border-[var(--color-text-muted)] flex-1"
                     />
                     <button
                       onClick={() => removePillar(i)}
-                      className="ml-2 p-1 text-gray-400 hover:text-red-500"
+                      className="ml-2 p-1 text-[var(--color-text-muted)] hover:text-red-500"
                     >
                       <svg
                         className="w-4 h-4"
@@ -247,7 +247,7 @@ export default function BrandBrainOverview({
                     }
                     placeholder="Description"
                     rows={2}
-                    className="w-full text-sm text-gray-700 bg-transparent border-b border-gray-200 focus:outline-none focus:border-gray-400 resize-none"
+                    className="w-full text-sm text-[var(--color-text-primary)] bg-transparent border-b border-[var(--color-border)] focus:outline-none focus:border-[var(--color-text-muted)] resize-none"
                   />
                   <input
                     type="text"
@@ -260,13 +260,13 @@ export default function BrandBrainOverview({
                       )
                     }
                     placeholder="Keywords (comma-separated)"
-                    className="w-full text-xs text-gray-500 bg-transparent border-b border-gray-200 focus:outline-none focus:border-gray-400"
+                    className="w-full text-xs text-[var(--color-text-muted)] bg-transparent border-b border-[var(--color-border)] focus:outline-none focus:border-[var(--color-text-muted)]"
                   />
                 </div>
               ))}
               <button
                 onClick={addPillar}
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                className="flex items-center gap-1 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
               >
                 <svg
                   className="w-4 h-4"
@@ -288,7 +288,7 @@ export default function BrandBrainOverview({
                   setEditedPillars(contentPillars);
                   setIsEditingPillars(false);
                 }}
-                className="text-sm text-gray-400 hover:text-gray-600 ml-4"
+                className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] ml-4"
               >
                 Cancel
               </button>
@@ -297,10 +297,10 @@ export default function BrandBrainOverview({
             <div className="space-y-3">
               {contentPillars.map((pillar, i) => (
                 <div key={i}>
-                  <h4 className="text-sm font-medium text-gray-900">
+                  <h4 className="text-sm font-medium text-[var(--color-text-primary)]">
                     {pillar.title}
                   </h4>
-                  <p className="text-sm text-gray-600 mt-0.5">
+                  <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">
                     {pillar.description}
                   </p>
                   {pillar.keywords.length > 0 && (
@@ -308,7 +308,7 @@ export default function BrandBrainOverview({
                       {pillar.keywords.map((kw, j) => (
                         <span
                           key={j}
-                          className="px-2 py-0.5 text-xs text-gray-500 bg-gray-100 rounded"
+                          className="px-2 py-0.5 text-xs text-[var(--color-text)] bg-[var(--color-bg-secondary)] rounded"
                         >
                           {kw}
                         </span>
@@ -319,7 +319,7 @@ export default function BrandBrainOverview({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400 italic">
+            <p className="text-sm text-[var(--color-text-muted)] italic">
               No content pillars defined yet.
             </p>
           )}
@@ -333,7 +333,7 @@ export default function BrandBrainOverview({
               onClick={() =>
                 isEditingIndustry ? saveIndustry() : setIsEditingIndustry(true)
               }
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               {isEditingIndustry ? 'Save' : 'Edit'}
             </button>
@@ -342,7 +342,7 @@ export default function BrandBrainOverview({
           {isEditingIndustry ? (
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">
+                <label className="block text-xs text-[var(--color-text-muted)] mb-1">
                   Field / Industry
                 </label>
                 <input
@@ -354,11 +354,11 @@ export default function BrandBrainOverview({
                       field: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">
+                <label className="block text-xs text-[var(--color-text-muted)] mb-1">
                   Keywords (comma-separated)
                 </label>
                 <input
@@ -372,11 +372,11 @@ export default function BrandBrainOverview({
                         .map((k) => k.trim()),
                     }))
                   }
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">
+                <label className="block text-xs text-[var(--color-text-muted)] mb-1">
                   Competitors (comma-separated)
                 </label>
                 <input
@@ -390,7 +390,7 @@ export default function BrandBrainOverview({
                         .map((c) => c.trim()),
                     }))
                   }
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <button
@@ -398,7 +398,7 @@ export default function BrandBrainOverview({
                   setEditedIndustry(industryData);
                   setIsEditingIndustry(false);
                 }}
-                className="text-sm text-gray-400 hover:text-gray-600"
+                className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
               >
                 Cancel
               </button>
@@ -407,7 +407,7 @@ export default function BrandBrainOverview({
             <div className="space-y-2">
               {industryData.field ? (
                 <>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-[var(--color-text-primary)]">
                     <span className="font-medium">Field:</span>{' '}
                     {industryData.field}
                   </p>
@@ -416,7 +416,7 @@ export default function BrandBrainOverview({
                       {industryData.keywords.map((kw, i) => (
                         <span
                           key={i}
-                          className="px-2 py-0.5 text-xs text-gray-500 bg-gray-100 rounded"
+                          className="px-2 py-0.5 text-xs text-[var(--color-text)] bg-[var(--color-bg-secondary)] rounded"
                         >
                           {kw}
                         </span>
@@ -424,14 +424,14 @@ export default function BrandBrainOverview({
                     </div>
                   )}
                   {industryData.competitors.length > 0 && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-[var(--color-text-secondary)]">
                       <span className="font-medium">Competitors:</span>{' '}
                       {industryData.competitors.join(', ')}
                     </p>
                   )}
                 </>
               ) : (
-                <p className="text-sm text-gray-400 italic">
+                <p className="text-sm text-[var(--color-text-muted)] italic">
                   No industry data defined yet.
                 </p>
               )}
@@ -449,7 +449,7 @@ export default function BrandBrainOverview({
                   ? saveEquipment()
                   : setIsEditingEquipment(true)
               }
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               {isEditingEquipment ? 'Save' : 'Edit'}
             </button>
@@ -458,7 +458,7 @@ export default function BrandBrainOverview({
           {isEditingEquipment ? (
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">
+                <label className="block text-xs text-[var(--color-text-muted)] mb-1">
                   Camera / Recording Setup
                 </label>
                 <input
@@ -471,11 +471,11 @@ export default function BrandBrainOverview({
                     }))
                   }
                   placeholder="e.g. iPhone 15 Pro, Sony A7IV"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">
+                <label className="block text-xs text-[var(--color-text-muted)] mb-1">
                   Filming Location
                 </label>
                 <input
@@ -488,11 +488,11 @@ export default function BrandBrainOverview({
                     }))
                   }
                   placeholder="e.g. Home office, co-working space"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">
+                <label className="block text-xs text-[var(--color-text-muted)] mb-1">
                   Constraints / Notes
                 </label>
                 <textarea
@@ -505,7 +505,7 @@ export default function BrandBrainOverview({
                   }
                   rows={2}
                   placeholder="e.g. Can only film on weekends, noisy environment"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
                 />
               </div>
               <button
@@ -513,7 +513,7 @@ export default function BrandBrainOverview({
                   setEditedEquipment(equipmentProfile);
                   setIsEditingEquipment(false);
                 }}
-                className="text-sm text-gray-400 hover:text-gray-600"
+                className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
               >
                 Cancel
               </button>
@@ -525,26 +525,26 @@ export default function BrandBrainOverview({
               equipmentProfile.constraints ? (
                 <>
                   {equipmentProfile.camera && (
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-[var(--color-text-primary)]">
                       <span className="font-medium">Camera:</span>{' '}
                       {equipmentProfile.camera}
                     </p>
                   )}
                   {equipmentProfile.location && (
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-[var(--color-text-primary)]">
                       <span className="font-medium">Location:</span>{' '}
                       {equipmentProfile.location}
                     </p>
                   )}
                   {equipmentProfile.constraints && (
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-[var(--color-text-primary)]">
                       <span className="font-medium">Constraints:</span>{' '}
                       {equipmentProfile.constraints}
                     </p>
                   )}
                 </>
               ) : (
-                <p className="text-sm text-gray-400 italic">
+                <p className="text-sm text-[var(--color-text-muted)] italic">
                   No equipment profile defined yet.
                 </p>
               )}
@@ -570,9 +570,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="p-5 bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div className="p-5 bg-[var(--color-bg-card)] rounded-xl border border-[var(--color-border)] shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+        <h3 className="text-base font-semibold text-[var(--color-text-primary)]">{title}</h3>
         {action}
       </div>
       {children}

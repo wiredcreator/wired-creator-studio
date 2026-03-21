@@ -30,9 +30,6 @@ const GENERATING_MESSAGES = [
   'Making it sound like you...',
 ];
 
-// Temporary userId — will be replaced with real auth
-const TEMP_USER_ID = '000000000000000000000001';
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -60,6 +57,7 @@ export default function ScriptsPage() {
   const preselectedIdeaId = searchParams.get('ideaId');
 
   // --- State ---
+  const [userId, setUserId] = useState('');
   const [scripts, setScripts] = useState<ScriptCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ScriptStatus | 'all'>('all');
@@ -78,26 +76,49 @@ export default function ScriptsPage() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [generatingMessage, setGeneratingMessage] = useState('');
 
+  // Fetch session to get userId
+  useEffect(() => {
+    async function getSession() {
+      try {
+        const res = await fetch('/api/auth/session');
+        const session = await res.json();
+        if (session?.user?.id) {
+          setUserId(session.user.id);
+        }
+      } catch {
+        // Session fetch failed — userId remains empty
+      }
+    }
+    getSession();
+  }, []);
+
   // --- Fetch scripts ---
   const fetchScripts = useCallback(async () => {
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch(`/api/scripts?userId=${TEMP_USER_ID}`);
+      const res = await fetch(`/api/scripts?userId=${userId}`);
       if (!res.ok) return;
-      const data: ScriptCardData[] = await res.json();
+      const raw = await res.json();
+      const data: ScriptCardData[] = raw.data || raw;
       setScripts(data);
     } catch (err) {
       console.error('Failed to fetch scripts:', err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   // --- Fetch ideas for dropdown ---
   const fetchIdeas = useCallback(async () => {
     try {
-      const res = await fetch(`/api/ideas?userId=${TEMP_USER_ID}`);
+      const res = await fetch(`/api/ideas?userId=${userId}`);
       if (!res.ok) return;
-      const data: IdeaOption[] = await res.json();
+      const raw = await res.json();
+      const data: IdeaOption[] = raw.data || raw;
       // Show approved/saved/scripted ideas
       setIdeas(
         data.filter((i) =>
@@ -107,19 +128,20 @@ export default function ScriptsPage() {
     } catch (err) {
       console.error('Failed to fetch ideas:', err);
     }
-  }, []);
+  }, [userId]);
 
   // --- Fetch transcripts for dropdown ---
   const fetchTranscripts = useCallback(async () => {
     try {
-      const res = await fetch(`/api/voice-storming?userId=${TEMP_USER_ID}`);
+      const res = await fetch(`/api/voice-storming?userId=${userId}`);
       if (!res.ok) return;
-      const data: TranscriptOption[] = await res.json();
+      const rawT = await res.json();
+      const data: TranscriptOption[] = rawT.data || rawT;
       setTranscripts(data);
     } catch {
       // Voice storming API might not exist yet — that's OK
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchScripts();
@@ -145,7 +167,7 @@ export default function ScriptsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: TEMP_USER_ID,
+          userId: userId,
           ideaId: selectedIdeaId,
           voiceStormTranscriptId: selectedTranscriptId || undefined,
         }),
@@ -181,7 +203,7 @@ export default function ScriptsPage() {
     }
   };
 
-  // --- Save script changes ---
+  // --- Save script changes (optimistic) ---
   const handleSave = async (updates: {
     title?: string;
     fullScript?: string;
@@ -190,6 +212,16 @@ export default function ScriptsPage() {
     status?: ScriptStatus;
   }) => {
     if (!editingScript) return;
+
+    // Save previous state for rollback
+    const previousScripts = scripts;
+    const previousEditingScript = editingScript;
+
+    // Optimistic update — apply changes to UI immediately
+    setScripts((prev) =>
+      prev.map((s) => (s._id === editingScript._id ? { ...s, ...updates } : s))
+    );
+    setEditingScript((prev) => (prev ? { ...prev, ...updates } : null));
 
     setIsSaving(true);
     try {
@@ -203,15 +235,16 @@ export default function ScriptsPage() {
 
       const updated = await res.json();
 
-      // Update the script in the list
+      // Reconcile with server response
       setScripts((prev) =>
         prev.map((s) => (s._id === updated._id ? { ...s, ...updated } : s))
       );
-
-      // Update editor state
       setEditingScript((prev) => (prev ? { ...prev, ...updated } : null));
     } catch (err) {
       console.error('Failed to save script:', err);
+      // Revert on failure
+      setScripts(previousScripts);
+      setEditingScript(previousEditingScript);
     } finally {
       setIsSaving(false);
     }
@@ -232,7 +265,7 @@ export default function ScriptsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: TEMP_USER_ID,
+          userId: userId,
           ideaId,
         }),
       });
@@ -259,7 +292,7 @@ export default function ScriptsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           feedback: {
-            userId: TEMP_USER_ID,
+            userId: userId,
             text,
           },
         }),
@@ -325,7 +358,7 @@ export default function ScriptsPage() {
             <button
               type="button"
               onClick={() => setShowGenerateForm(true)}
-              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)]"
             >
               + New Script
             </button>
@@ -338,7 +371,7 @@ export default function ScriptsPage() {
             <div className="space-y-4">
               {/* Idea selector */}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]">
+                <label className="mb-1.5 block text-xs font-medium text-[var(--color-text)]">
                   Select an idea *
                 </label>
                 {ideas.length > 0 ? (
@@ -356,7 +389,7 @@ export default function ScriptsPage() {
                     ))}
                   </select>
                 ) : (
-                  <p className="rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] p-3 text-sm text-[var(--color-text-muted)]">
+                  <p className="rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] p-3 text-sm text-[var(--color-text)]">
                     No approved ideas yet. Head to the Ideas page to approve some first.
                   </p>
                 )}
@@ -365,7 +398,7 @@ export default function ScriptsPage() {
               {/* Transcript selector (optional) */}
               {transcripts.length > 0 && (
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]">
+                  <label className="mb-1.5 block text-xs font-medium text-[var(--color-text)]">
                     Link a voice-storming session (optional)
                   </label>
                   <select
@@ -390,7 +423,7 @@ export default function ScriptsPage() {
                 type="button"
                 onClick={handleGenerate}
                 disabled={!selectedIdeaId}
-                className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999] disabled:cursor-not-allowed"
               >
                 Generate Script
               </button>
@@ -401,7 +434,7 @@ export default function ScriptsPage() {
                   setSelectedIdeaId('');
                   setSelectedTranscriptId('');
                 }}
-                className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-secondary)]"
+                className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-bg-secondary)]"
               >
                 Cancel
               </button>
@@ -427,7 +460,7 @@ export default function ScriptsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
               </svg>
             </div>
-            <p className="text-sm text-[var(--color-text-muted)]">
+            <p className="text-sm text-[var(--color-text)]">
               No scripts yet. Approve an idea and generate your first script.
             </p>
           </div>
@@ -452,8 +485,8 @@ export default function ScriptsPage() {
                 onClick={() => setActiveTab(tab.value)}
                 className={`whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors ${
                   activeTab === tab.value
-                    ? 'bg-[var(--color-bg-card)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+                    ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)] shadow-[var(--shadow-sm)]'
+                    : 'text-[var(--color-text)] hover:text-[var(--color-text-secondary)]'
                 }`}
               >
                 {tab.label}
@@ -474,7 +507,7 @@ export default function ScriptsPage() {
             </div>
           ) : (
             <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] p-8 text-center">
-              <p className="text-sm text-[var(--color-text-muted)]">
+              <p className="text-sm text-[var(--color-text)]">
                 No scripts match this filter.
               </p>
             </div>

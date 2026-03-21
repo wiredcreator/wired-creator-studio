@@ -4,12 +4,28 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import PageWrapper from "@/components/PageWrapper";
 import TaskCard, { TaskData } from "@/components/tasks/TaskCard";
+import ToneOfVoiceEditor from "@/components/brand-brain/ToneOfVoiceEditor";
+import type { ToneOfVoiceParameter } from "@/types/ai";
 
 interface StudentInfo {
   _id: string;
   name: string;
   email: string;
   createdAt: string;
+}
+
+type TovStatus = "draft" | "review" | "active";
+
+interface ToneOfVoiceGuideData {
+  _id: string;
+  parameters: ToneOfVoiceParameter[];
+  status: TovStatus;
+  version: number;
+}
+
+interface BrandBrainData {
+  _id: string;
+  toneOfVoiceGuide?: ToneOfVoiceGuideData | null;
 }
 
 const TASK_TYPES = [
@@ -46,6 +62,11 @@ export default function StudentDetailPage() {
     embeddedVideoUrl: "",
     order: 0,
   });
+
+  // Tone of Voice review state
+  const [tovGuide, setTovGuide] = useState<ToneOfVoiceGuideData | null>(null);
+  const [showTovEditor, setShowTovEditor] = useState(false);
+  const [tovUpdating, setTovUpdating] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [editingTask, setEditingTask] = useState<string | null>(null);
@@ -95,7 +116,7 @@ export default function StudentDetailPage() {
       try {
         setLoading(true);
         // Try to fetch student info (use signup endpoint as user query)
-        const res = await fetch(`/api/auth/signup?userId=${id}`);
+        const res = await fetch(`/api/users?userId=${id}`);
         if (res.ok) {
           const data = await res.json();
           if (data) setStudent(data);
@@ -109,6 +130,68 @@ export default function StudentDetailPage() {
 
     fetchStudent();
   }, [id]);
+
+  // Fetch Brand Brain (includes populated toneOfVoiceGuide)
+  useEffect(() => {
+    async function fetchBrandBrain() {
+      try {
+        const res = await fetch(`/api/brand-brain?userId=${id}`);
+        if (res.ok) {
+          const data: BrandBrainData = await res.json();
+          if (data.toneOfVoiceGuide) {
+            setTovGuide(data.toneOfVoiceGuide);
+          }
+        }
+      } catch {
+        // Brand Brain may not exist yet
+      }
+    }
+    fetchBrandBrain();
+  }, [id]);
+
+  // Tone of Voice review actions
+  const handleTovStatusChange = async (newStatus: TovStatus) => {
+    if (!tovGuide) return;
+    setTovUpdating(true);
+    try {
+      const res = await fetch(`/api/tone-of-voice/${tovGuide._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTovGuide(updated);
+      }
+    } catch {
+      console.error("Error updating Tone of Voice status");
+    } finally {
+      setTovUpdating(false);
+    }
+  };
+
+  const handleTovSave = async (
+    params: ToneOfVoiceParameter[],
+    _summary: string
+  ) => {
+    if (!tovGuide) return;
+    setTovUpdating(true);
+    try {
+      const res = await fetch(`/api/tone-of-voice/${tovGuide._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parameters: params }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTovGuide(updated);
+      }
+    } catch {
+      console.error("Error saving Tone of Voice parameters");
+    } finally {
+      setTovUpdating(false);
+    }
+  };
 
   useEffect(() => {
     fetchTasks();
@@ -312,6 +395,138 @@ export default function StudentDetailPage() {
           </div>
         </div>
 
+        {/* Tone of Voice Review Card */}
+        {tovGuide && (
+          <div
+            className={`rounded-[var(--radius-lg)] border p-5 shadow-[var(--shadow-sm)] ${
+              tovGuide.status === "draft"
+                ? "border-[var(--color-warning)] bg-[var(--color-warning-light)]"
+                : tovGuide.status === "review"
+                  ? "border-blue-300 bg-blue-50"
+                  : "border-emerald-300 bg-emerald-50"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {/* Status icon */}
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                    tovGuide.status === "draft"
+                      ? "bg-[var(--color-warning-light)] text-[var(--color-warning)]"
+                      : tovGuide.status === "review"
+                        ? "bg-blue-200 text-blue-700"
+                        : "bg-emerald-200 text-emerald-700"
+                  }`}
+                >
+                  {tovGuide.status === "active" ? (
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                    </svg>
+                  )}
+                </div>
+
+                <div>
+                  <p
+                    className={`text-sm font-medium ${
+                      tovGuide.status === "draft"
+                        ? "text-[var(--color-warning)]"
+                        : tovGuide.status === "review"
+                          ? "text-blue-800"
+                          : "text-emerald-800"
+                    }`}
+                  >
+                    {tovGuide.status === "draft" &&
+                      "This student's Tone of Voice Guide needs review"}
+                    {tovGuide.status === "review" &&
+                      "Tone of Voice Guide is under review"}
+                    {tovGuide.status === "active" &&
+                      "Tone of Voice Guide is active"}
+                  </p>
+                  <p
+                    className={`mt-0.5 text-xs ${
+                      tovGuide.status === "draft"
+                        ? "text-[var(--color-warning)]"
+                        : tovGuide.status === "review"
+                          ? "text-blue-600"
+                          : "text-emerald-600"
+                    }`}
+                  >
+                    Version {tovGuide.version} &middot;{" "}
+                    {tovGuide.parameters.length} parameters
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Action buttons based on status */}
+                {tovGuide.status !== "active" && (
+                  <button
+                    onClick={() => handleTovStatusChange("active")}
+                    disabled={tovUpdating}
+                    className="rounded-[var(--radius-md)] bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {tovUpdating ? "Updating..." : "Approve & Activate"}
+                  </button>
+                )}
+
+                {tovGuide.status === "draft" && (
+                  <button
+                    onClick={() => handleTovStatusChange("review")}
+                    disabled={tovUpdating}
+                    className="rounded-[var(--radius-md)] bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Mark as Reviewing
+                  </button>
+                )}
+
+                {tovGuide.status === "active" && (
+                  <button
+                    onClick={() => handleTovStatusChange("review")}
+                    disabled={tovUpdating}
+                    className="rounded-[var(--radius-md)] bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Send Back for Review
+                  </button>
+                )}
+
+                {tovGuide.status === "review" && (
+                  <button
+                    onClick={() => handleTovStatusChange("draft")}
+                    disabled={tovUpdating}
+                    className="rounded-[var(--radius-md)] border border-[var(--color-warning)] bg-[var(--color-bg-card)] px-3 py-1.5 text-xs font-medium text-[var(--color-warning)] transition-colors hover:bg-[var(--color-warning-light)] disabled:opacity-50"
+                  >
+                    Send Back to Draft
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setShowTovEditor(!showTovEditor)}
+                  className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)]"
+                >
+                  {showTovEditor ? "Hide Editor" : "Review Tone of Voice"}
+                </button>
+              </div>
+            </div>
+
+            {/* Inline Tone of Voice Editor */}
+            {showTovEditor && (
+              <div className="mt-5 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
+                <ToneOfVoiceEditor
+                  initialParameters={tovGuide.parameters}
+                  initialSummary=""
+                  status={tovGuide.status}
+                  onSave={handleTovSave}
+                  onStatusChange={handleTovStatusChange}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Week selector */}
         <div>
           <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
@@ -324,7 +539,7 @@ export default function StudentDetailPage() {
                 onClick={() => setSelectedWeek(week)}
                 className={`rounded-[var(--radius-md)] px-3 py-1.5 text-sm font-medium transition-colors ${
                   selectedWeek === week
-                    ? "bg-[var(--color-accent)] text-white"
+                    ? "bg-[var(--color-accent)] text-[var(--color-bg-dark)]"
                     : "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-light)] hover:text-[var(--color-accent)]"
                 }`}
               >
@@ -344,7 +559,7 @@ export default function StudentDetailPage() {
               setNewTask((prev) => ({ ...prev, weekNumber: selectedWeek }));
               setShowAddForm(!showAddForm);
             }}
-            className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+            className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)]"
           >
             <svg
               className="h-4 w-4"
@@ -520,7 +735,7 @@ export default function StudentDetailPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
+                className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
               >
                 {submitting ? "Creating..." : "Create Task"}
               </button>
@@ -661,7 +876,7 @@ export default function StudentDetailPage() {
                             </button>
                             <button
                               onClick={() => handleSaveEdit(task._id)}
-                              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-accent-hover)]"
+                              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg-dark)] hover:bg-[var(--color-accent-hover)]"
                             >
                               Save
                             </button>

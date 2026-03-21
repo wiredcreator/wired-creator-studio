@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Task from '@/models/Task';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { validateObjectId } from '@/lib/validation';
 
 // PUT /api/tasks/[id] — Update a task
 export async function PUT(
@@ -8,9 +10,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
     const { id } = await params;
+    const invalidId = validateObjectId(id);
+    if (invalidId) return invalidId;
     const body = await request.json();
 
     const task = await Task.findById(id);
@@ -18,6 +26,14 @@ export async function PUT(
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
+      );
+    }
+
+    // Ensure user owns the task or is a coach/admin
+    if (task.userId.toString() !== user.id && user.role !== 'coach' && user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Not authorized to update this task' },
+        { status: 403 }
       );
     }
 
@@ -67,17 +83,33 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
+    // Only coaches and admins can delete tasks
+    if (user.role !== 'coach' && user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Only coaches and admins can delete tasks' },
+        { status: 403 }
+      );
+    }
+
     await dbConnect();
 
     const { id } = await params;
+    const invalidId = validateObjectId(id);
+    if (invalidId) return invalidId;
 
-    const task = await Task.findByIdAndDelete(id);
+    const task = await Task.findById(id);
     if (!task) {
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
       );
     }
+
+    await (task as any).softDelete(user.id);
 
     return NextResponse.json({ message: 'Task deleted successfully' });
   } catch (error) {

@@ -56,6 +56,10 @@ export interface IBrandBrainSnapshot {
   contentPillars: IContentPillar[];
   industryData: IIndustryData;
   equipmentProfile: IEquipmentProfile;
+  voiceStormSessions?: Types.ObjectId[];
+  callTranscripts?: Types.ObjectId[];
+  approvedIdeas?: Types.ObjectId[];
+  contentDNAResponse?: Types.ObjectId;
 }
 
 const BrandBrainSnapshotSchema = new Schema<IBrandBrainSnapshot>(
@@ -66,6 +70,10 @@ const BrandBrainSnapshotSchema = new Schema<IBrandBrainSnapshot>(
     contentPillars: [ContentPillarSchema],
     industryData: IndustryDataSchema,
     equipmentProfile: EquipmentProfileSchema,
+    voiceStormSessions: [{ type: Schema.Types.ObjectId, ref: 'VoiceStormingTranscript' }],
+    callTranscripts: [{ type: Schema.Types.ObjectId, ref: 'CallTranscript' }],
+    approvedIdeas: [{ type: Schema.Types.ObjectId, ref: 'ContentIdea' }],
+    contentDNAResponse: { type: Schema.Types.ObjectId, ref: 'ContentDNAResponse' },
   },
   { _id: false }
 );
@@ -77,6 +85,10 @@ export interface IBrandBrain extends Document {
   contentPillars: IContentPillar[];
   industryData: IIndustryData;
   equipmentProfile: IEquipmentProfile;
+  voiceStormSessions: Types.ObjectId[];
+  callTranscripts: Types.ObjectId[];
+  approvedIdeas: Types.ObjectId[];
+  contentDNAResponse?: Types.ObjectId;
   version: number;
   previousVersions: IBrandBrainSnapshot[];
   createdAt: Date;
@@ -104,6 +116,19 @@ const BrandBrainSchema = new Schema<IBrandBrain>(
       type: EquipmentProfileSchema,
       default: () => ({}),
     },
+    voiceStormSessions: [
+      { type: Schema.Types.ObjectId, ref: 'VoiceStormingTranscript' },
+    ],
+    callTranscripts: [
+      { type: Schema.Types.ObjectId, ref: 'CallTranscript' },
+    ],
+    approvedIdeas: [
+      { type: Schema.Types.ObjectId, ref: 'ContentIdea' },
+    ],
+    contentDNAResponse: {
+      type: Schema.Types.ObjectId,
+      ref: 'ContentDNAResponse',
+    },
     version: { type: Number, default: 1 },
     previousVersions: [BrandBrainSnapshotSchema],
   },
@@ -111,12 +136,14 @@ const BrandBrainSchema = new Schema<IBrandBrain>(
 );
 
 // Auto-increment version on save
-// @ts-expect-error - Mongoose types require @types/mongoose to be installed
-BrandBrainSchema.pre('save', function (next: () => void) {
+BrandBrainSchema.pre('save', function () {
   if (this.isModified() && !this.isNew) {
     this.version += 1;
   }
-  next();
+  const MAX_VERSION_SNAPSHOTS = 50;
+  if (this.previousVersions && this.previousVersions.length > MAX_VERSION_SNAPSHOTS) {
+    this.previousVersions = this.previousVersions.slice(-MAX_VERSION_SNAPSHOTS);
+  }
 });
 
 const BrandBrain: Model<IBrandBrain> =

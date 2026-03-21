@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import ContentIdea from '@/models/ContentIdea';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { parsePagination, paginationResponse } from '@/lib/pagination';
 
 // GET /api/ideas — List ideas with optional status filter
 export async function GET(request: NextRequest) {
@@ -22,11 +23,18 @@ export async function GET(request: NextRequest) {
     if (source) filter.source = source;
     if (pillar) filter.contentPillar = pillar;
 
-    const ideas = await ContentIdea.find(filter)
-      .sort({ createdAt: -1 })
-      .lean();
+    const { page, limit, skip } = parsePagination(request.nextUrl.searchParams);
 
-    return NextResponse.json(ideas);
+    const [ideas, total] = await Promise.all([
+      ContentIdea.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ContentIdea.countDocuments(filter),
+    ]);
+
+    return NextResponse.json(paginationResponse(ideas, total, page, limit));
   } catch (error) {
     console.error('Error fetching ideas:', error);
     return NextResponse.json(

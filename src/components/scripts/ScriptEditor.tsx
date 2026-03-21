@@ -98,6 +98,8 @@ export default function ScriptEditor({
   const [feedbackText, setFeedbackText] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
 
   const markChanged = () => {
     if (!hasChanges) setHasChanges(true);
@@ -129,6 +131,34 @@ export default function ScriptEditor({
   const handleRemoveBullet = (index: number) => {
     setBulletPoints(bulletPoints.filter((_, i) => i !== index));
     markChanged();
+  };
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setOverIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === dropIndex) {
+      handleDragEnd();
+      return;
+    }
+    const updated = [...bulletPoints];
+    const [moved] = updated.splice(dragIndex, 1);
+    updated.splice(dropIndex, 0, moved);
+    setBulletPoints(updated);
+    markChanged();
+    handleDragEnd();
   };
 
   const handleSubmitFeedback = () => {
@@ -236,9 +266,39 @@ export default function ScriptEditor({
         )}
 
         {viewMode === 'bullets' && (
-          <div className="p-6 space-y-2">
+          <div className="p-6 space-y-1">
             {bulletPoints.map((bullet, index) => (
-              <div key={index} className="flex items-start gap-2">
+              <div
+                key={index}
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                onDrop={(e) => handleDrop(e, index)}
+                className={`group flex items-start gap-1.5 rounded-[var(--radius-md)] px-1 transition-all ${
+                  dragIndex === index
+                    ? 'opacity-40'
+                    : overIndex === index && dragIndex !== null
+                      ? 'border-t-2 border-[var(--color-accent)]'
+                      : 'border-t-2 border-transparent'
+                }`}
+              >
+                {/* Drag handle */}
+                <button
+                  type="button"
+                  className="mt-2 shrink-0 cursor-grab rounded-[var(--radius-sm)] p-0.5 text-[var(--color-text-muted)] opacity-40 transition-opacity hover:opacity-100 group-hover:opacity-70 active:cursor-grabbing"
+                  onMouseDown={(e) => e.currentTarget.closest('[draggable]')?.setAttribute('data-dragging', 'true')}
+                  title="Drag to reorder"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="9" cy="6" r="1.5" />
+                    <circle cx="15" cy="6" r="1.5" />
+                    <circle cx="9" cy="12" r="1.5" />
+                    <circle cx="15" cy="12" r="1.5" />
+                    <circle cx="9" cy="18" r="1.5" />
+                    <circle cx="15" cy="18" r="1.5" />
+                  </svg>
+                </button>
                 <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-accent)]" />
                 <input
                   type="text"
@@ -292,7 +352,7 @@ export default function ScriptEditor({
             type="button"
             onClick={handleSave}
             disabled={isSaving || !hasChanges}
-            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving ? (
               <>
@@ -383,7 +443,7 @@ export default function ScriptEditor({
               type="button"
               onClick={handleSubmitFeedback}
               disabled={!feedbackText.trim()}
-              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Send
             </button>

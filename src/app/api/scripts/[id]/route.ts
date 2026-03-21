@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Script from '@/models/Script';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { validateObjectId } from '@/lib/validation';
 
 // GET /api/scripts/[id] — Get full script
 export async function GET(
@@ -8,9 +10,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
     const { id } = await params;
+    const invalidId = validateObjectId(id);
+    if (invalidId) return invalidId;
 
     const script = await Script.findById(id)
       .populate('ideaId', 'title status contentPillar')
@@ -20,6 +28,16 @@ export async function GET(
       return NextResponse.json(
         { error: 'Script not found' },
         { status: 404 }
+      );
+    }
+
+    const isOwner = script.userId.toString() === user.id;
+    const isPrivileged = user.role === 'coach' || user.role === 'admin';
+
+    if (!isOwner && !isPrivileged) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       );
     }
 
@@ -39,9 +57,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
     const { id } = await params;
+    const invalidId = validateObjectId(id);
+    if (invalidId) return invalidId;
     const body = await request.json();
 
     const script = await Script.findById(id);
@@ -49,6 +73,16 @@ export async function PUT(
       return NextResponse.json(
         { error: 'Script not found' },
         { status: 404 }
+      );
+    }
+
+    const isOwner = script.userId.toString() === user.id;
+    const isPrivileged = user.role === 'coach' || user.role === 'admin';
+
+    if (!isOwner && !isPrivileged) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       );
     }
 
@@ -62,7 +96,7 @@ export async function PUT(
     // Add feedback if provided
     if (body.feedback) {
       script.feedback.push({
-        userId: body.feedback.userId,
+        userId: user.id as any,
         text: body.feedback.text,
         createdAt: new Date(),
       });
@@ -91,17 +125,35 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
     const { id } = await params;
+    const invalidId = validateObjectId(id);
+    if (invalidId) return invalidId;
 
-    const script = await Script.findByIdAndDelete(id);
+    const script = await Script.findById(id);
     if (!script) {
       return NextResponse.json(
         { error: 'Script not found' },
         { status: 404 }
       );
     }
+
+    const isOwner = script.userId.toString() === user.id;
+    const isPrivileged = user.role === 'coach' || user.role === 'admin';
+
+    if (!isOwner && !isPrivileged) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
+    await (script as any).softDelete(user.id);
 
     return NextResponse.json({ message: 'Script deleted successfully' });
   } catch (error) {

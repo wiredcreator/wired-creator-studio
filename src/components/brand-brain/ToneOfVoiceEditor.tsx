@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type {
   ToneOfVoiceParameter,
   ToneParameterCategory,
@@ -46,9 +46,9 @@ const STATUS_CONFIG: Record<
   GuideStatus,
   { label: string; bg: string; text: string }
 > = {
-  draft: { label: 'Draft', bg: 'bg-amber-100', text: 'text-amber-800' },
-  review: { label: 'In Review', bg: 'bg-blue-100', text: 'text-blue-800' },
-  active: { label: 'Active', bg: 'bg-emerald-100', text: 'text-emerald-800' },
+  draft: { label: 'Draft', bg: 'bg-[var(--color-warning-light)]', text: 'text-[var(--color-warning)]' },
+  review: { label: 'In Review', bg: 'bg-blue-900', text: 'text-blue-300' },
+  active: { label: 'Active', bg: 'bg-emerald-900', text: 'text-emerald-300' },
 };
 
 // ---------------------------------------------------------------------------
@@ -77,6 +77,14 @@ export default function ToneOfVoiceEditor({
   const [newValue, setNewValue] = useState('');
   const [currentStatus, setCurrentStatus] = useState<GuideStatus>(status);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Sync editor state when parent provides new data (e.g., after regeneration)
+  useEffect(() => {
+    setParameters(initialParameters);
+    setSummary(initialSummary);
+    setHasUnsavedChanges(false);
+    setEditingIndex(null);
+  }, [initialParameters, initialSummary]);
 
   // --- Inline Edit ---
 
@@ -165,10 +173,10 @@ export default function ToneOfVoiceEditor({
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">
+          <h2 className="text-2xl font-semibold text-[var(--color-text-primary)]">
             Tone of Voice Guide
           </h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Your living document that defines how your content sounds.
           </p>
         </div>
@@ -185,11 +193,11 @@ export default function ToneOfVoiceEditor({
           <button
             onClick={onRegenerate}
             disabled={isRegenerating}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-bg-secondary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isRegenerating ? (
               <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-[var(--color-text-muted)] border-t-transparent rounded-full animate-spin" />
                 Regenerating...
               </span>
             ) : (
@@ -201,7 +209,7 @@ export default function ToneOfVoiceEditor({
           {hasUnsavedChanges && (
             <button
               onClick={handleSave}
-              className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-white bg-[var(--color-accent)] rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
             >
               Save Changes
             </button>
@@ -210,8 +218,8 @@ export default function ToneOfVoiceEditor({
       </div>
 
       {/* Summary */}
-      <div className="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200">
-        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+      <div className="mb-8 p-4 bg-[var(--color-bg-secondary)] rounded-xl border border-[var(--color-border)]">
+        <label className="block text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide mb-2">
           Voice Summary
         </label>
         <textarea
@@ -221,7 +229,7 @@ export default function ToneOfVoiceEditor({
             setHasUnsavedChanges(true);
           }}
           rows={3}
-          className="w-full bg-transparent text-gray-800 text-sm leading-relaxed resize-none focus:outline-none"
+          className="w-full bg-transparent text-[var(--color-text-primary)] text-sm leading-relaxed resize-none focus:outline-none"
           placeholder="A brief summary of this creator's authentic voice..."
         />
       </div>
@@ -230,12 +238,12 @@ export default function ToneOfVoiceEditor({
       <div className="space-y-6">
         {grouped.map((group) => (
           <div key={group.key}>
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-3">
               {group.label}
             </h3>
 
             {group.params.length === 0 ? (
-              <p className="text-sm text-gray-400 italic mb-3">
+              <p className="text-sm text-[var(--color-text-muted)] italic mb-3">
                 No parameters in this category yet.
               </p>
             ) : (
@@ -243,7 +251,7 @@ export default function ToneOfVoiceEditor({
                 {group.params.map((param) => (
                   <div
                     key={param.originalIndex}
-                    className="group flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50/50 transition-colors"
+                    className="group flex items-start gap-3 p-3 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] transition-colors"
                   >
                     {editingIndex === param.originalIndex ? (
                       /* Editing mode */
@@ -252,26 +260,26 @@ export default function ToneOfVoiceEditor({
                           type="text"
                           value={editKey}
                           onChange={(e) => setEditKey(e.target.value)}
-                          className="w-full px-2 py-1 text-sm font-medium text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-gray-400"
+                          className="w-full px-2 py-1 text-sm font-medium text-[var(--color-text-primary)] border border-[var(--color-border)] rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                           placeholder="Parameter key"
                         />
                         <textarea
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
                           rows={2}
-                          className="w-full px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none"
+                          className="w-full px-2 py-1 text-sm text-[var(--color-text-primary)] border border-[var(--color-border)] rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
                           placeholder="Parameter value"
                         />
                         <div className="flex gap-2">
                           <button
                             onClick={saveEdit}
-                            className="px-3 py-1 text-xs font-medium text-white bg-gray-900 rounded hover:bg-gray-800"
+                            className="px-3 py-1 text-xs font-medium text-white bg-[var(--color-accent)] rounded hover:bg-[var(--color-accent-hover)]"
                           >
                             Save
                           </button>
                           <button
                             onClick={cancelEdit}
-                            className="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                            className="px-3 py-1 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] rounded hover:bg-[var(--color-bg-secondary)]"
                           >
                             Cancel
                           </button>
@@ -281,17 +289,17 @@ export default function ToneOfVoiceEditor({
                       /* Display mode */
                       <>
                         <div className="flex-1 min-w-0">
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-medium text-[var(--color-text-primary)]">
                             {param.key.replace(/_/g, ' ')}
                           </span>
-                          <p className="mt-0.5 text-sm text-gray-600 leading-relaxed">
+                          <p className="mt-0.5 text-sm text-[var(--color-text-secondary)] leading-relaxed">
                             {param.value}
                           </p>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => startEditing(param.originalIndex)}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"
+                            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] rounded hover:bg-[var(--color-bg-secondary)]"
                             title="Edit"
                           >
                             <svg
@@ -310,7 +318,7 @@ export default function ToneOfVoiceEditor({
                           </button>
                           <button
                             onClick={() => deleteParameter(param.originalIndex)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-red-50"
+                            className="p-1.5 text-[var(--color-text-muted)] hover:text-red-500 rounded hover:bg-[var(--color-bg-secondary)]"
                             title="Delete"
                           >
                             <svg
@@ -339,15 +347,15 @@ export default function ToneOfVoiceEditor({
       </div>
 
       {/* Add New Parameter */}
-      <div className="mt-8 pt-6 border-t border-gray-200">
+      <div className="mt-8 pt-6 border-t border-[var(--color-border)]">
         {isAddingNew ? (
-          <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
-            <h4 className="text-sm font-medium text-gray-700">
+          <div className="p-4 bg-[var(--color-bg-secondary)] rounded-xl border border-[var(--color-border)] space-y-3">
+            <h4 className="text-sm font-medium text-[var(--color-text-primary)]">
               Add New Parameter
             </h4>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">
+                <label className="block text-xs text-[var(--color-text-muted)] mb-1">
                   Category
                 </label>
                 <select
@@ -355,7 +363,7 @@ export default function ToneOfVoiceEditor({
                   onChange={(e) =>
                     setNewCategory(e.target.value as ToneParameterCategory)
                   }
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-card)]"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c.key} value={c.key}>
@@ -365,31 +373,31 @@ export default function ToneOfVoiceEditor({
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Key</label>
+                <label className="block text-xs text-[var(--color-text-muted)] mb-1">Key</label>
                 <input
                   type="text"
                   value={newKey}
                   onChange={(e) => setNewKey(e.target.value)}
                   placeholder="e.g. opening_style"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Value</label>
+              <label className="block text-xs text-[var(--color-text-muted)] mb-1">Value</label>
               <textarea
                 value={newValue}
                 onChange={(e) => setNewValue(e.target.value)}
                 rows={2}
                 placeholder="Specific, actionable guidance..."
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none"
+                className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
               />
             </div>
             <div className="flex gap-2">
               <button
                 onClick={addParameter}
                 disabled={!newKey.trim() || !newValue.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-[var(--color-accent)] rounded-lg hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Add Parameter
               </button>
@@ -399,7 +407,7 @@ export default function ToneOfVoiceEditor({
                   setNewKey('');
                   setNewValue('');
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors"
               >
                 Cancel
               </button>
@@ -408,7 +416,7 @@ export default function ToneOfVoiceEditor({
         ) : (
           <button
             onClick={() => setIsAddingNew(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-dashed border-gray-300 rounded-lg hover:border-gray-400 hover:text-gray-700 transition-colors w-full justify-center"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-card)] border border-dashed border-[var(--color-border)] rounded-lg hover:border-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors w-full justify-center"
           >
             <svg
               className="w-4 h-4"

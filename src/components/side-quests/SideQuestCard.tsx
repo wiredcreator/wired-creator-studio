@@ -35,9 +35,9 @@ const TYPE_LABELS: Record<SideQuestType, string> = {
 };
 
 const TYPE_COLORS: Record<SideQuestType, string> = {
-  voice_storm_prompt: 'bg-purple-50 text-purple-600 border-purple-200',
-  research_task: 'bg-amber-50 text-amber-600 border-amber-200',
-  content_exercise: 'bg-teal-50 text-teal-600 border-teal-200',
+  voice_storm_prompt: 'bg-purple-900 text-purple-300 border-purple-700',
+  research_task: 'bg-[var(--color-warning-light)] text-[var(--color-warning)] border-[var(--color-warning)]',
+  content_exercise: 'bg-teal-900 text-teal-300 border-teal-700',
 };
 
 const TYPE_ICONS: Record<SideQuestType, React.ReactNode> = {

@@ -74,6 +74,10 @@ const ScriptSchema = new Schema<IScript>(
 ScriptSchema.index({ userId: 1, status: 1 });
 ScriptSchema.index({ ideaId: 1 });
 
+// Soft delete support
+import { applySoftDelete } from '@/lib/soft-delete';
+applySoftDelete(ScriptSchema);
+
 const Script: Model<IScript> =
   mongoose.models.Script ||
   mongoose.model<IScript>('Script', ScriptSchema);

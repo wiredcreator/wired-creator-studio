@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 import dbConnect from '@/lib/db';
 import SideQuest from '@/models/SideQuest';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { parsePagination, paginationResponse } from '@/lib/pagination';
+import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
+import { generateSideQuests } from '@/lib/ai/generate';
 
-// Mock side quest data for generation
+// Fallback mock quests used when AI generation fails (network error, missing API key, etc.)
 const MOCK_QUESTS = [
   {
     title: 'Voice Storm: Your Origin Story',
@@ -63,15 +68,13 @@ const MOCK_QUESTS = [
 // GET /api/side-quests — List side quests with optional completion filter
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
-    const userId = request.nextUrl.searchParams.get('userId');
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId query parameter is required' },
-        { status: 400 }
-      );
-    }
+    const userId = user.id;
 
     const completed = request.nextUrl.searchParams.get('completed');
 
@@ -79,11 +82,18 @@ export async function GET(request: NextRequest) {
     if (completed === 'true') filter.completed = true;
     if (completed === 'false') filter.completed = false;
 
-    const quests = await SideQuest.find(filter)
-      .sort({ completed: 1, createdAt: -1 })
-      .lean();
+    const { page, limit, skip } = parsePagination(request.nextUrl.searchParams);
 
-    return NextResponse.json(quests);
+    const [quests, total] = await Promise.all([
+      SideQuest.find(filter)
+        .sort({ completed: 1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      SideQuest.countDocuments(filter),
+    ]);
+
+    return NextResponse.json(paginationResponse(quests, total, page, limit));
   } catch (error) {
     console.error('Error fetching side quests:', error);
     return NextResponse.json(
@@ -93,47 +103,69 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/side-quests — Generate new side quests (mock AI-generated, 3 of mixed types)
+// POST /api/side-quests — Generate new AI-powered side quests (3 of mixed types)
 export async function POST(request: NextRequest) {
   try {
+    const rl = aiLimiter.check(getRateLimitKey(request, 'side-quests'));
+    if (!rl.success) return rateLimitResponse(rl.resetIn);
+
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
-    const body = await request.json();
-    const { userId } = body;
+    const userId = user.id;
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    // Fetch existing quest titles to avoid duplicates
+    const existingQuests = await SideQuest.find({ userId })
+      .select('title')
+      .lean();
+    const existingTitles = existingQuests.map((q) => q.title);
 
-    // Pick 3 random quests of mixed types
-    const shuffled = [...MOCK_QUESTS].sort(() => Math.random() - 0.5);
+    // Attempt AI generation
+    let questData: { title: string; description: string; type: 'voice_storm_prompt' | 'research_task' | 'content_exercise'; prompt: string }[];
 
-    // Try to get one of each type
-    const selected: typeof MOCK_QUESTS = [];
-    const types = new Set<string>();
+    try {
+      // Assemble Brand Brain context (include tone of voice + pillars + industry, skip equipment/transcripts for speed)
+      const brandBrainContext = await assembleBrandBrainContext(userId, {
+        includeToneOfVoice: true,
+        includeContentPillars: true,
+        includeIndustryData: true,
+        includeEquipmentProfile: false,
+        includeTranscripts: false,
+      });
 
-    for (const quest of shuffled) {
-      if (selected.length >= 3) break;
-      if (!types.has(quest.type)) {
-        types.add(quest.type);
-        selected.push(quest);
+      const generated = await generateSideQuests(brandBrainContext, existingTitles);
+      questData = generated;
+    } catch (aiError) {
+      console.error('AI side quest generation failed, falling back to mock data:', aiError);
+
+      // FALLBACK: pick 3 random mock quests (one of each type)
+      const shuffled = [...MOCK_QUESTS].sort(() => Math.random() - 0.5);
+      const selected: typeof MOCK_QUESTS = [];
+      const types = new Set<string>();
+
+      for (const quest of shuffled) {
+        if (selected.length >= 3) break;
+        if (!types.has(quest.type)) {
+          types.add(quest.type);
+          selected.push(quest);
+        }
       }
-    }
-
-    // If we don't have 3 yet, fill from remaining
-    for (const quest of shuffled) {
-      if (selected.length >= 3) break;
-      if (!selected.includes(quest)) {
-        selected.push(quest);
+      for (const quest of shuffled) {
+        if (selected.length >= 3) break;
+        if (!selected.includes(quest)) {
+          selected.push(quest);
+        }
       }
+
+      questData = selected;
     }
 
     // Create in DB
     const created = await SideQuest.insertMany(
-      selected.map((q) => ({
+      questData.map((q) => ({
         userId,
         title: q.title,
         description: q.description,

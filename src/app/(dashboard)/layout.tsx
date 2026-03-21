@@ -3,7 +3,6 @@ import { auth } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import Sidebar from '@/components/Sidebar';
-import Navbar from '@/components/Navbar';
 
 export default async function DashboardLayout({
   children,
@@ -22,7 +21,12 @@ export default async function DashboardLayout({
   await dbConnect();
   const dbUser = await User.findById(session.user.id).lean();
 
-  const userName = dbUser?.name || session.user.name || 'User';
+  // User was deleted (e.g. after db nuke) but JWT still valid — force re-login
+  if (!dbUser) {
+    redirect('/login?signout=1');
+  }
+
+  const userName = dbUser.name || session.user.name || 'User';
   const userRole = (dbUser?.role || session.user.role || 'student') as 'student' | 'coach' | 'admin';
   const onboardingCompleted = dbUser?.onboardingCompleted ?? false;
 
@@ -35,12 +39,9 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--color-bg-primary)]">
       <Sidebar userName={userName} userRole={userRole} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Navbar userName={userName} />
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
-      </div>
+      <main className="flex-1 overflow-y-auto">
+        {children}
+      </main>
     </div>
   );
 }

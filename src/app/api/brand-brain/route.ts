@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import BrandBrain from '@/models/BrandBrain';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
 // GET /api/brand-brain — Fetch current user's Brand Brain
-export async function GET() {
+// Coaches/admins can pass ?userId=<id> to fetch a specific student's Brand Brain
+export async function GET(request: NextRequest) {
   try {
     const authResult = await getAuthenticatedUser();
     if (authResult instanceof NextResponse) return authResult;
@@ -12,7 +13,18 @@ export async function GET() {
 
     await dbConnect();
 
-    const brandBrain = await BrandBrain.findOne({ userId: user.id })
+    // Determine which user's Brand Brain to fetch
+    let targetUserId = user.id;
+
+    const { searchParams } = new URL(request.url);
+    const requestedUserId = searchParams.get('userId');
+
+    // Coaches/admins can look up any student's Brand Brain
+    if (requestedUserId && (user.role === 'coach' || user.role === 'admin')) {
+      targetUserId = requestedUserId;
+    }
+
+    const brandBrain = await BrandBrain.findOne({ userId: targetUserId })
       .populate('toneOfVoiceGuide')
       .lean();
 

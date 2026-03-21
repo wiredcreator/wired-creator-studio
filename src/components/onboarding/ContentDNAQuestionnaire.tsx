@@ -121,18 +121,18 @@ export default function ContentDNAQuestionnaire() {
     setValidationMessage(null);
 
     const placeholderData: ContentDNAFormData = {
-      name: 'Dev User',
-      background: 'Software developer testing the platform.',
-      neurodivergentProfile: [],
-      contentGoals: 'Test all platform features during development.',
-      twelveWeekVision: 'Have a fully functional platform ready for launch.',
-      idealViewer: 'Content creators looking to streamline their workflow.',
-      problemsSolved: 'Organizing content ideas, scripting, and brand consistency.',
-      industry: 'Content Creation / Tech',
-      keyTopics: ['content strategy', 'creator tools', 'productivity'],
-      inspirations: [{ url: 'https://youtube.com/@example', note: 'Placeholder' }],
-      voiceSamples: [],
-      noExistingContent: true,
+      name: 'test1',
+      background: 'test2',
+      neurodivergentProfile: ['test3'],
+      contentGoals: 'test4',
+      twelveWeekVision: 'test5',
+      idealViewer: 'test6',
+      problemsSolved: 'test7',
+      industry: 'test8',
+      keyTopics: ['test9', 'test10', 'test11'],
+      inspirations: [{ url: 'https://youtube.com/@test12', note: 'test13' }],
+      voiceSamples: ['test14'],
+      noExistingContent: false,
     };
 
     try {
@@ -192,16 +192,17 @@ export default function ContentDNAQuestionnaire() {
         >
           We are building your personalized Tone of Voice Guide. Your coaching team will review it shortly.
         </p>
-        <div
-          className="mt-8 px-6 py-3 text-sm font-medium"
+        <a
+          href="/dashboard/today"
+          className="mt-8 inline-block px-8 py-3 text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90"
           style={{
-            backgroundColor: 'var(--color-accent-light)',
-            color: 'var(--color-accent-hover)',
-            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--color-accent)',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: 'var(--shadow-md)',
           }}
         >
-          You can close this page or explore the dashboard.
-        </div>
+          Go to Dashboard
+        </a>
       </div>
     );
   }

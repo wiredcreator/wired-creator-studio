@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import BrandBrain from '@/models/BrandBrain';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { validateObjectId } from '@/lib/validation';
 
 // PUT /api/brand-brain/[id] — Update Brand Brain with version snapshot
 export async function PUT(
@@ -16,6 +17,8 @@ export async function PUT(
     await dbConnect();
 
     const { id } = await params;
+    const invalidId = validateObjectId(id);
+    if (invalidId) return invalidId;
     const body = await request.json();
 
     const brandBrain = await BrandBrain.findById(id);

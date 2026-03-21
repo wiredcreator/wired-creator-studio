@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import ContentDNAResponse from '@/models/ContentDNAResponse';
 import BrandBrain from '@/models/BrandBrain';
+import ToneOfVoiceGuide from '@/models/ToneOfVoiceGuide';
+import YouTubeTranscriptCache from '@/models/YouTubeTranscriptCache';
 import User from '@/models/User';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { generateToneOfVoice } from '@/lib/ai/generate';
+import { extractYouTubeTranscript } from '@/lib/apify';
 
 interface ContentDNAPayload {
   name: string;
@@ -153,13 +157,138 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // --- Link Content DNA to Brand Brain ---
+    try {
+      await BrandBrain.findOneAndUpdate(
+        { userId: user.id },
+        { $set: { contentDNAResponse: contentDNA._id } }
+      );
+    } catch (bbError) {
+      console.error('[Onboarding] Brand Brain Content DNA link failed (non-fatal):', bbError);
+    }
+
     // Mark onboarding as completed for the user
     await User.findByIdAndUpdate(user.id, { onboardingCompleted: true });
+
+    // --- Respond immediately — don't block on ToV generation or scraping ---
+    const userId = user.id;
+    const contentDNAId = contentDNA._id;
+
+    // Fire off ToV generation in the background (non-blocking)
+    (async () => {
+      try {
+        const brandBrain = await BrandBrain.findOne({ userId })
+          .select('_id')
+          .lean();
+
+        if (brandBrain) {
+          const guide = await generateToneOfVoice(
+            {
+              responses,
+              contentSamples,
+              creatorExamples,
+            },
+            [] // No transcripts available yet — will be improved after scraping completes
+          );
+
+          await ToneOfVoiceGuide.findOneAndUpdate(
+            { userId },
+            {
+              userId,
+              brandBrainId: brandBrain._id,
+              parameters: guide.parameters,
+              status: 'draft',
+              generatedFrom: {
+                questionnaireId: contentDNAId,
+                transcriptIds: [],
+              },
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
+          console.log('[Onboarding] Tone of Voice generated successfully in background');
+        }
+      } catch (tovError) {
+        console.error(
+          '[Onboarding] Tone of Voice auto-generation failed (non-fatal):',
+          tovError
+        );
+      }
+    })();
+
+    // Fire off background channel/video scraping (non-blocking)
+    (async () => {
+      try {
+        await dbConnect();
+
+        for (let i = 0; i < cleanedInspirations.length; i++) {
+          const insp = cleanedInspirations[i];
+          const url = insp.url.trim();
+
+          // Determine if this is a direct video URL we can scrape now
+          const isVideoUrl =
+            url.toLowerCase().includes('youtube.com/watch') ||
+            url.toLowerCase().includes('youtu.be/');
+
+          if (!isVideoUrl) {
+            // Channel URL/handle (e.g. @MrBeast, youtube.com/@MrBeast) — log and skip for now
+            // TODO V2: Use a channel scraping Apify actor to fetch recent video URLs, then scrape each
+            console.log(`[Onboarding Scrape] Channel URL skipped (V2): ${url}`);
+            continue;
+          }
+
+          // Check cache first
+          const cached = await YouTubeTranscriptCache.findOne({ url });
+          if (cached) {
+            console.log(`[Onboarding Scrape] Cache hit for: ${url}`);
+            // Update the ContentDNAResponse with the cached transcript
+            await ContentDNAResponse.updateOne(
+              { _id: contentDNAId, 'creatorExamples.url': url },
+              { $set: { 'creatorExamples.$.extractedTranscript': cached.transcript } }
+            );
+            continue;
+          }
+
+          // Scrape via Apify
+          console.log(`[Onboarding Scrape] Fetching transcript for: ${url}`);
+          const result = await extractYouTubeTranscript(url);
+
+          if (result && result.transcript) {
+            // Save to cache (30-day expiry)
+            await YouTubeTranscriptCache.findOneAndUpdate(
+              { url },
+              {
+                url,
+                transcript: result.transcript,
+                title: result.title,
+                channelName: result.channelName,
+                fetchedAt: new Date(),
+                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              },
+              { upsert: true }
+            );
+
+            // Update the ContentDNAResponse with the scraped transcript
+            await ContentDNAResponse.updateOne(
+              { _id: contentDNAId, 'creatorExamples.url': url },
+              { $set: { 'creatorExamples.$.extractedTranscript': result.transcript } }
+            );
+
+            console.log(`[Onboarding Scrape] Transcript saved for: ${url}`);
+          } else {
+            console.log(`[Onboarding Scrape] No transcript available for: ${url}`);
+          }
+        }
+
+        console.log('[Onboarding Scrape] Background scraping complete');
+      } catch (scrapeError) {
+        console.error('[Onboarding Scrape] Background scraping failed (non-fatal):', scrapeError);
+      }
+    })();
 
     return NextResponse.json({
       success: true,
       message: 'Content DNA saved',
-      data: { id: contentDNA._id.toString() },
+      data: { id: contentDNAId.toString() },
     });
   } catch (error) {
     console.error('Error saving Content DNA:', error);

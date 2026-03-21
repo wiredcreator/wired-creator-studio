@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 import { generateToneOfVoice } from '@/lib/ai/generate';
 import dbConnect from '@/lib/db';
 import ContentDNAResponse from '@/models/ContentDNAResponse';
+import BrandBrain from '@/models/BrandBrain';
+import ToneOfVoiceGuide from '@/models/ToneOfVoiceGuide';
+import { getAuthenticatedUser } from '@/lib/api-auth';
 import type {
   ToneOfVoiceRequest,
   ToneOfVoiceResponse,
@@ -18,8 +22,15 @@ import type {
 
 export async function POST(
   req: NextRequest
-): Promise<NextResponse<ToneOfVoiceResponse | AIErrorResponse>> {
+): Promise<NextResponse> {
   try {
+    const rl = aiLimiter.check(getRateLimitKey(req, 'tone-of-voice'));
+    if (!rl.success) return rateLimitResponse(rl.resetIn) as NextResponse;
+
+    // --- Auth guard ---
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+
     // --- Parse request body ---
     const body: ToneOfVoiceRequest = await req.json();
 
@@ -53,6 +64,19 @@ export async function POST(
       creatorExamples = creatorExamples ?? dnaDoc.creatorExamples;
     }
 
+    // Auto-load the user's ContentDNAResponse if no input was provided
+    if (!responses || responses.length === 0) {
+      await dbConnect();
+      const latestDNA = await ContentDNAResponse.findOne({ userId: authResult.id })
+        .sort({ createdAt: -1 })
+        .lean();
+      if (latestDNA) {
+        responses = latestDNA.responses;
+        contentSamples = contentSamples ?? latestDNA.contentSamples;
+        creatorExamples = creatorExamples ?? latestDNA.creatorExamples;
+      }
+    }
+
     // Validate that we have at least some input
     if (!responses || responses.length === 0) {
       return NextResponse.json(
@@ -76,7 +100,51 @@ export async function POST(
       body.transcripts
     );
 
-    return NextResponse.json({ success: true, guide }, { status: 200 });
+    // --- Persist the generated guide to MongoDB ---
+    await dbConnect();
+
+    // Resolve the brandBrainId: use what was provided, or look up the user's BrandBrain
+    let brandBrainId = body.brandBrainId;
+    if (!brandBrainId) {
+      const brandBrain = await BrandBrain.findOne({ userId: authResult.id }).select('_id').lean();
+      if (brandBrain) {
+        brandBrainId = brandBrain._id.toString();
+      }
+    }
+
+    if (!brandBrainId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'No BrandBrain found for this user. Complete onboarding first or provide a brandBrainId.',
+          code: 'MISSING_BRAND_BRAIN',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Upsert: update existing guide or create a new one
+    const savedGuide = await ToneOfVoiceGuide.findOneAndUpdate(
+      { userId: authResult.id },
+      {
+        userId: authResult.id,
+        brandBrainId,
+        parameters: guide.parameters,
+        status: 'draft',
+        generatedFrom: {
+          questionnaireId: body.contentDNAResponseId || undefined,
+          transcriptIds: [],
+        },
+        $inc: { version: 1 },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    return NextResponse.json(
+      { success: true, guide, savedGuideId: savedGuide._id.toString() },
+      { status: 200 }
+    );
   } catch (error: unknown) {
     // --- Error handling ---
     const message =

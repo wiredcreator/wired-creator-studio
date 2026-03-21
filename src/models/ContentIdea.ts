@@ -14,7 +14,8 @@ export type ContentIdeaSource =
   | 'brain_dump'
   | 'ai_generated'
   | 'trend_scrape'
-  | 'manual';
+  | 'manual'
+  | 'voice_storm';
 
 // --- Trend Data Sub-document ---
 export interface ITrendData {
@@ -42,6 +43,10 @@ export interface IContentIdea extends Document {
   trendData?: ITrendData;
   contentPillar: string;
   tags: string[];
+  rejectionReason: string;
+  sourceSessionId?: Types.ObjectId;
+  approvedAt?: Date;
+  rejectedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -62,18 +67,29 @@ const ContentIdeaSchema = new Schema<IContentIdea>(
     },
     source: {
       type: String,
-      enum: ['brain_dump', 'ai_generated', 'trend_scrape', 'manual'],
+      enum: ['brain_dump', 'ai_generated', 'trend_scrape', 'manual', 'voice_storm'],
       required: true,
     },
     trendData: { type: TrendDataSchema },
     contentPillar: { type: String, default: '' },
     tags: [{ type: String }],
+    rejectionReason: { type: String, default: '' },
+    approvedAt: { type: Date },
+    rejectedAt: { type: Date },
+    sourceSessionId: {
+      type: Schema.Types.ObjectId,
+      ref: 'VoiceStormingTranscript',
+    },
   },
   { timestamps: true }
 );
 
 // Index for efficient querying by user + status
 ContentIdeaSchema.index({ userId: 1, status: 1 });
+
+// Soft delete support
+import { applySoftDelete } from '@/lib/soft-delete';
+applySoftDelete(ContentIdeaSchema);
 
 const ContentIdea: Model<IContentIdea> =
   mongoose.models.ContentIdea ||

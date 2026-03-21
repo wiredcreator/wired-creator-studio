@@ -29,13 +29,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
+        // Check account lockout
+        if (user.isLocked()) {
+          return null;
+        }
+
         const isPasswordValid = await bcrypt.compare(
           credentials.password as string,
           user.password
         );
 
         if (!isPasswordValid) {
+          // Increment failed attempts
+          user.loginAttempts = (user.loginAttempts || 0) + 1;
+          if (user.loginAttempts >= 5) {
+            user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+          }
+          await user.save();
           return null;
+        }
+
+        // Reset failed attempts on successful login
+        if (user.loginAttempts > 0 || user.lockUntil) {
+          user.loginAttempts = 0;
+          user.lockUntil = undefined;
+          await user.save();
         }
 
         return {

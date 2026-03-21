@@ -138,4 +138,7 @@ export interface BrandBrainContextOptions {
   includeTranscripts?: boolean;
   /** Max number of recent transcripts to include (default 3). */
   maxTranscripts?: number;
+  includeApprovedIdeas?: boolean;
+  includeContentDNA?: boolean;
+  maxApprovedIdeas?: number;
 }

@@ -23,6 +23,7 @@ interface IdeaDetailProps {
 const SOURCE_LABELS: Record<ContentIdeaSource, string> = {
   ai_generated: 'AI Generated',
   brain_dump: 'Brain Dump',
+  voice_storm: 'Voice Storm',
   trend_scrape: 'Trend',
   manual: 'Manual',
 };
@@ -86,9 +87,9 @@ export default function IdeaDetail({
 
   return (
     /* Backdrop */
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm" onClick={onClose}>
       {/* Panel */}
-      <div className="idea-detail-enter relative w-full max-w-lg rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-[var(--shadow-lg)]">
+      <div className="idea-detail-enter relative w-full max-w-lg rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-[var(--shadow-lg)]" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-start justify-between border-b border-[var(--color-border-light)] px-6 py-4">
           <div className="min-w-0 flex-1">
@@ -187,7 +188,7 @@ export default function IdeaDetail({
                 <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">
                   Pillar
                 </span>
-                <span className="rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-3 py-1 text-xs font-medium text-[var(--color-text-secondary)]">
+                <span className="rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-3 py-1 text-xs font-medium text-[var(--color-text)]">
                   {idea.contentPillar}
                 </span>
               </div>
@@ -269,7 +270,7 @@ export default function IdeaDetail({
             <button
               type="button"
               onClick={() => onStartScript(idea._id)}
-              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-xs font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)]"
             >
               Start Script
             </button>

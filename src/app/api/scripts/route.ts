@@ -1,33 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 import dbConnect from '@/lib/db';
 import Script from '@/models/Script';
 import ContentIdea from '@/models/ContentIdea';
+import VoiceStormingTranscript from '@/models/VoiceStormingTranscript';
 import { generateScript } from '@/lib/ai/generate';
+import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { parsePagination, paginationResponse } from '@/lib/pagination';
 
 // GET /api/scripts — List scripts with optional status filter
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
-    const userId = request.nextUrl.searchParams.get('userId');
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId query parameter is required' },
-        { status: 400 }
-      );
-    }
+    const userId = user.id;
 
     const status = request.nextUrl.searchParams.get('status');
 
     const filter: Record<string, unknown> = { userId };
     if (status) filter.status = status;
 
-    const scripts = await Script.find(filter)
-      .populate('ideaId', 'title status contentPillar')
-      .sort({ createdAt: -1 })
-      .lean();
+    const { page, limit, skip } = parsePagination(request.nextUrl.searchParams);
 
-    return NextResponse.json(scripts);
+    const [scripts, total] = await Promise.all([
+      Script.find(filter)
+        .populate('ideaId', 'title status contentPillar')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Script.countDocuments(filter),
+    ]);
+
+    return NextResponse.json(paginationResponse(scripts, total, page, limit));
   } catch (error) {
     console.error('Error fetching scripts:', error);
     return NextResponse.json(
@@ -40,14 +50,22 @@ export async function GET(request: NextRequest) {
 // POST /api/scripts — Generate a new script from an approved idea
 export async function POST(request: NextRequest) {
   try {
+    const rl = aiLimiter.check(getRateLimitKey(request, 'scripts-generate'));
+    if (!rl.success) return rateLimitResponse(rl.resetIn);
+
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
     await dbConnect();
 
     const body = await request.json();
-    const { userId, ideaId, voiceStormTranscriptId } = body;
+    const { ideaId, voiceStormTranscriptId } = body;
+    const userId = user.id;
 
-    if (!userId || !ideaId) {
+    if (!ideaId) {
       return NextResponse.json(
-        { error: 'userId and ideaId are required' },
+        { error: 'ideaId is required' },
         { status: 400 }
       );
     }
@@ -61,11 +79,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate the script (mock for now)
+    // Assemble Brand Brain context (includes tone of voice guide)
+    const brandBrainContext = await assembleBrandBrainContext(userId, {
+      includeToneOfVoice: true,
+      includeContentPillars: true,
+      includeIndustryData: true,
+    });
+
+    // Fetch voice storm transcript if one is linked
+    let voiceStormTranscript: string | undefined;
+    if (voiceStormTranscriptId) {
+      try {
+        const vsDoc = await VoiceStormingTranscript.findById(voiceStormTranscriptId).lean();
+        if (vsDoc && vsDoc.transcript) {
+          voiceStormTranscript = vsDoc.transcript;
+        }
+      } catch {
+        // Voice storm fetch is best-effort — continue without it
+      }
+    }
+
+    // Generate the script using Claude (falls back to mock if no API key)
     const generated = await generateScript(
-      ideaId,
-      '', // voice storm transcript — will be wired up later
-      ''  // brand brain context — will be wired up later
+      idea.title,
+      idea.description || '',
+      brandBrainContext,
+      voiceStormTranscript,
     );
 
     // Save to DB

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import BrandBrain from '@/models/BrandBrain';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { validateObjectId } from '@/lib/validation';
 
 // POST /api/brand-brain/[id]/rollback — Rollback to a previous version
 export async function POST(
@@ -16,6 +17,8 @@ export async function POST(
     await dbConnect();
 
     const { id } = await params;
+    const invalidId = validateObjectId(id);
+    if (invalidId) return invalidId;
     const body = await request.json();
     const { targetVersion } = body;
 
