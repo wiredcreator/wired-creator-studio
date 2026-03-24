@@ -7,8 +7,9 @@ import IdentityStep from './steps/IdentityStep';
 import VisionStep from './steps/VisionStep';
 import AudienceStep from './steps/AudienceStep';
 import NicheStep from './steps/NicheStep';
-import InspirationStep from './steps/InspirationStep';
 import VoiceSamplesStep from './steps/VoiceSamplesStep';
+import InspirationStep from './steps/InspirationStep';
+import CoreMessageStep from './steps/CoreMessageStep';
 import ReviewStep from './steps/ReviewStep';
 
 const TOTAL_STEPS = STEP_LABELS.length;
@@ -16,32 +17,37 @@ const TOTAL_STEPS = STEP_LABELS.length;
 // Validation per step - returns an error message or null
 function validateStep(step: number, data: ContentDNAFormData): string | null {
   switch (step) {
-    case 0: // Identity
-      if (!data.name.trim()) return 'Please enter your name to continue.';
+    case 0: // Your Story (Q1-Q3)
+      if (!data.yourStory.trim()) return 'Tell us about what you do and how you got here.';
+      if (!data.winsAndMilestones.trim()) return 'Share at least a few wins or milestones.';
+      if (!data.contentGoal.trim()) return 'Tell us what you want your content to lead to.';
       return null;
-    case 1: // Vision
-      if (!data.contentGoals.trim()) return 'Share at least a brief note about your content goals.';
-      if (!data.twelveWeekVision.trim()) return 'Tell us where you see yourself in 12 weeks.';
+    case 1: // Your Business (Q4-Q5)
+      if (!data.offerAndContent.trim()) return 'Tell us about what you sell or plan to sell.';
+      if (!data.goToPersonFor.trim()) return 'Tell us what people come to you for.';
       return null;
-    case 2: // Audience
-      if (!data.idealViewer.trim()) return 'Describe who you are creating for.';
-      if (!data.problemsSolved.trim()) return 'Tell us what problems you solve.';
+    case 2: // Your Passion (Q6-Q8)
+      if (!data.talkWithoutPreparing.trim()) return 'Tell us what you could talk about for 30 minutes.';
+      if (!data.audienceAndProblem.trim()) return 'Describe your audience and the problem you solve.';
+      if (!data.uniquePerspective.trim()) return 'Tell us what makes your perspective different.';
       return null;
-    case 3: // Niche
-      if (!data.industry.trim()) return 'Enter your industry or niche.';
-      if (data.keyTopics.length < 3) return 'Add at least 3 key topics.';
+    case 3: // Your Stories (Q9-Q10)
+      if (!data.personalStories.trim()) return 'Share at least a couple personal stories.';
+      if (!data.knownForAndAgainst.trim()) return 'Tell us what you want to be known for and against.';
       return null;
-    case 4: // Inspiration
-      // At least one URL should be filled
+    case 4: // Your History (Q11-Q13)
+      if (!data.contentHistory.trim()) return 'Tell us about your content creation history.';
+      if (!data.timeAndEnergy.trim()) return 'Share how much time and energy you have for content.';
+      if (!data.easyVsDraining.trim()) return 'Tell us what feels easy vs. draining.';
+      return null;
+    case 5: // Your Inspiration (Q14-Q15)
       if (!data.inspirations.some((e) => e.url.trim())) {
         return 'Add at least one creator or YouTube URL.';
       }
+      if (!data.naturalFormat.trim()) return 'Tell us what format feels most natural for you.';
       return null;
-    case 5: // Voice Samples
-      // Either skip or provide at least one sample
-      if (!data.noExistingContent && !data.voiceSamples.some((s) => s.trim())) {
-        return 'Paste at least one content sample, or check "I don\'t have any yet."';
-      }
+    case 6: // Your Core Message (Q16)
+      if (!data.coreMessage.trim()) return 'Share your core message.';
       return null;
     default:
       return null;
@@ -121,18 +127,22 @@ export default function ContentDNAQuestionnaire() {
     setValidationMessage(null);
 
     const placeholderData: ContentDNAFormData = {
-      name: 'test1',
-      background: 'test2',
-      neurodivergentProfile: ['test3'],
-      contentGoals: 'test4',
-      twelveWeekVision: 'test5',
-      idealViewer: 'test6',
-      problemsSolved: 'test7',
-      industry: 'test8',
-      keyTopics: ['test9', 'test10', 'test11'],
-      inspirations: [{ url: 'https://youtube.com/@test12', note: 'test13' }],
-      voiceSamples: ['test14'],
-      noExistingContent: false,
+      yourStory: 'Test story about my journey',
+      winsAndMilestones: 'Test wins and milestones',
+      contentGoal: 'Test content goal',
+      offerAndContent: 'Test offer description',
+      goToPersonFor: 'Test go-to expertise',
+      talkWithoutPreparing: 'Test passionate topics',
+      audienceAndProblem: 'Test audience and problem',
+      uniquePerspective: 'Test unique perspective',
+      personalStories: 'Test personal stories',
+      knownForAndAgainst: 'Test known for and against',
+      contentHistory: 'Test content history',
+      timeAndEnergy: 'Test time and energy',
+      easyVsDraining: 'Test easy vs draining',
+      inspirations: [{ url: 'https://youtube.com/@test', note: 'Test note' }],
+      naturalFormat: 'Test format preference',
+      coreMessage: 'Test core message',
     };
 
     try {
@@ -250,12 +260,15 @@ export default function ContentDNAQuestionnaire() {
           <NicheStep data={formData} onChange={updateFormData} />
         )}
         {currentStep === 4 && (
-          <InspirationStep data={formData} onChange={updateFormData} />
-        )}
-        {currentStep === 5 && (
           <VoiceSamplesStep data={formData} onChange={updateFormData} />
         )}
+        {currentStep === 5 && (
+          <InspirationStep data={formData} onChange={updateFormData} />
+        )}
         {currentStep === 6 && (
+          <CoreMessageStep data={formData} onChange={updateFormData} />
+        )}
+        {currentStep === 7 && (
           <ReviewStep data={formData} onEditStep={goToStep} />
         )}
       </div>

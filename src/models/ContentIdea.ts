@@ -33,6 +33,42 @@ const TrendDataSchema = new Schema<ITrendData>(
   { _id: false }
 );
 
+// --- Resource Sub-document ---
+export interface IResource {
+  _id?: Types.ObjectId;
+  type: 'text' | 'file';
+  name: string;
+  content: string; // text content or file URL
+  fileType?: string; // e.g. 'pdf', 'doc'
+  createdAt?: Date;
+}
+
+const ResourceSchema = new Schema<IResource>(
+  {
+    type: { type: String, enum: ['text', 'file'], required: true },
+    name: { type: String, required: true },
+    content: { type: String, default: '' },
+    fileType: { type: String },
+    createdAt: { type: Date, default: Date.now },
+  },
+);
+
+// --- Concept Answers Sub-document ---
+export interface IConceptAnswers {
+  whoIsThisFor: string;
+  whatWillTheyLearn: string;
+  whyShouldTheyCare: string;
+}
+
+const ConceptAnswersSchema = new Schema<IConceptAnswers>(
+  {
+    whoIsThisFor: { type: String, default: '' },
+    whatWillTheyLearn: { type: String, default: '' },
+    whyShouldTheyCare: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
 // --- Content Idea Document ---
 export interface IContentIdea extends Document {
   userId: Types.ObjectId;
@@ -47,6 +83,11 @@ export interface IContentIdea extends Document {
   sourceSessionId?: Types.ObjectId;
   approvedAt?: Date;
   rejectedAt?: Date;
+  conceptAnswers?: IConceptAnswers;
+  callToAction: string;
+  alternativeTitles: string[];
+  resources: IResource[];
+  outline: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -76,6 +117,11 @@ const ContentIdeaSchema = new Schema<IContentIdea>(
     rejectionReason: { type: String, default: '' },
     approvedAt: { type: Date },
     rejectedAt: { type: Date },
+    conceptAnswers: { type: ConceptAnswersSchema },
+    callToAction: { type: String, default: '' },
+    alternativeTitles: [{ type: String }],
+    resources: [{ type: ResourceSchema }],
+    outline: { type: String, default: '' },
     sourceSessionId: {
       type: Schema.Types.ObjectId,
       ref: 'VoiceStormingTranscript',

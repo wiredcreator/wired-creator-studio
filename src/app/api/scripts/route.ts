@@ -8,6 +8,7 @@ import { generateScript } from '@/lib/ai/generate';
 import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { parsePagination, paginationResponse } from '@/lib/pagination';
+import { awardXP } from '@/lib/xp-service';
 
 // GET /api/scripts — List scripts with optional status filter
 export async function GET(request: NextRequest) {
@@ -105,6 +106,8 @@ export async function POST(request: NextRequest) {
       idea.description || '',
       brandBrainContext,
       voiceStormTranscript,
+      undefined,
+      idea.callToAction || undefined,
     );
 
     // Save to DB
@@ -119,6 +122,11 @@ export async function POST(request: NextRequest) {
       status: 'draft',
       version: 1,
     });
+
+    // Fire-and-forget XP award
+    awardXP(userId, 'approve_script', { scriptId: script._id.toString() }).catch((err) =>
+      console.error('[XP] Failed to award approve_script XP:', err)
+    );
 
     return NextResponse.json(script, { status: 201 });
   } catch (error) {

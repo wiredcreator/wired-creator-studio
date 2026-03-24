@@ -92,6 +92,7 @@ export async function PUT(
     if (body.bulletPoints !== undefined) script.bulletPoints = body.bulletPoints;
     if (body.teleprompterVersion !== undefined) script.teleprompterVersion = body.teleprompterVersion;
     if (body.status !== undefined) script.status = body.status;
+    if (body.thumbnail !== undefined) script.thumbnail = body.thumbnail;
 
     // Add feedback if provided
     if (body.feedback) {

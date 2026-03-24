@@ -11,8 +11,8 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'system',
-  resolvedTheme: 'light',
+  theme: 'dark',
+  resolvedTheme: 'dark',
   setTheme: () => {},
 });
 
@@ -21,8 +21,8 @@ export function useTheme() {
 }
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('system');
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setThemeState] = useState<Theme>('dark');
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
 
   useEffect(() => {
     const stored = localStorage.getItem('wc-theme') as Theme | null;
@@ -38,8 +38,12 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
         resolved = t;
       }
       setResolvedTheme(resolved);
-      // Light mode adds class, dark is the default (no class needed)
-      document.documentElement.classList.toggle('light', resolved === 'light');
+      // Apply data-theme attribute — dark is default (no attribute needed)
+      if (resolved === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
     };
 
     apply(theme);

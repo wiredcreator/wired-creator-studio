@@ -3,13 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/PageWrapper";
 import TaskCard, { TaskData } from "@/components/tasks/TaskCard";
-
-const PLACEHOLDER_USER_ID = "self";
-
-function getTodayISO(): string {
-  const now = new Date();
-  return now.toISOString().split("T")[0];
-}
+import TaskDetailModal from "@/components/tasks/TaskDetailModal";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -22,22 +16,20 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<TaskData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error] = useState<string | null>(null);
-  const [userId, setUserId] = useState(PLACEHOLDER_USER_ID);
+  const [activeTab, setActiveTab] = useState<"todo" | "completed">("todo");
+  const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
 
   const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
-      const today = getTodayISO();
-      const res = await fetch(`/api/tasks?date=${today}`);
+      const res = await fetch("/api/tasks");
       if (!res.ok) {
-        // No tasks or auth not ready — just show empty state
         setTasks([]);
         return;
       }
       const data = await res.json();
       setTasks(data.data || data);
     } catch {
-      // Network error — silently show empty state
       setTasks([]);
     } finally {
       setLoading(false);
@@ -65,6 +57,22 @@ export default function DashboardPage() {
       )
     );
 
+    // Also update the selected task if it's open
+    if (selectedTask && selectedTask._id === taskId) {
+      setSelectedTask((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: newStatus,
+              completedAt:
+                newStatus === "completed"
+                  ? new Date().toISOString()
+                  : undefined,
+            }
+          : null
+      );
+    }
+
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: "PUT",
@@ -74,30 +82,24 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error("Failed to update task");
       const updated = await res.json();
       setTasks((prev) => prev.map((t) => (t._id === taskId ? updated : t)));
+      if (selectedTask && selectedTask._id === taskId) {
+        setSelectedTask(updated);
+      }
     } catch {
-      // Revert on error
       fetchTasks();
     }
   };
 
-  const handleAddComment = async (taskId: string, text: string) => {
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, text }),
-      });
-      if (!res.ok) throw new Error("Failed to add comment");
-      const updated = await res.json();
-      setTasks((prev) => prev.map((t) => (t._id === taskId ? updated : t)));
-    } catch {
-      console.error("Error adding comment");
-    }
+  const handleMarkCompleteFromModal = (taskId: string) => {
+    handleStatusChange(taskId, "completed");
   };
 
-  const completedCount = tasks.filter((t) => t.status === "completed").length;
-  const totalCount = tasks.length;
-  const allDone = totalCount > 0 && completedCount === totalCount;
+  const todoTasks = tasks.filter(
+    (t) => t.status !== "completed" && t.status !== "skipped"
+  );
+  const completedTasks = tasks.filter((t) => t.status === "completed");
+
+  const activeTasks = activeTab === "todo" ? todoTasks : completedTasks;
 
   const todayFormatted = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -107,34 +109,84 @@ export default function DashboardPage() {
 
   return (
     <PageWrapper
-      title={`${getGreeting()}`}
+      title={getGreeting()}
       subtitle={`${todayFormatted} — Focus on what matters right now.`}
     >
-      <div className="space-y-5">
+      <div className="space-y-6">
         {/* Progress indicator */}
-        {totalCount > 0 && (
+        {tasks.length > 0 && (
           <div className="flex items-center gap-3">
             <div className="h-1.5 flex-1 rounded-full bg-[var(--color-bg-secondary)]">
               <div
                 className="h-1.5 rounded-full bg-[var(--color-accent)] transition-all duration-500"
                 style={{
-                  width: `${(completedCount / totalCount) * 100}%`,
+                  width: `${
+                    tasks.length > 0
+                      ? (completedTasks.length / tasks.length) * 100
+                      : 0
+                  }%`,
                 }}
               />
             </div>
             <span className="shrink-0 text-xs font-medium text-[var(--color-text-muted)]">
-              {completedCount}/{totalCount}
+              {completedTasks.length}/{tasks.length}
             </span>
           </div>
         )}
 
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: 4, borderRadius: 12, backgroundColor: 'var(--color-bg-secondary)', padding: 4 }}>
+          <button
+            onClick={() => setActiveTab("todo")}
+            style={{
+              flex: 1,
+              borderRadius: 10,
+              padding: '10px 16px',
+              fontSize: 14,
+              fontWeight: 500,
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              ...(activeTab === "todo"
+                ? { backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', boxShadow: 'var(--shadow-sm)' }
+                : { backgroundColor: 'transparent', color: 'var(--color-text-muted)' }),
+            }}
+          >
+            To Do
+            {todoTasks.length > 0 && (
+              <span style={{ marginLeft: 8, fontSize: 12 }}>({todoTasks.length})</span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("completed")}
+            style={{
+              flex: 1,
+              borderRadius: 10,
+              padding: '10px 16px',
+              fontSize: 14,
+              fontWeight: 500,
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              ...(activeTab === "completed"
+                ? { backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', boxShadow: 'var(--shadow-sm)' }
+                : { backgroundColor: 'transparent', color: 'var(--color-text-muted)' }),
+            }}
+          >
+            Completed
+            {completedTasks.length > 0 && (
+              <span className="ml-2 text-xs">({completedTasks.length})</span>
+            )}
+          </button>
+        </div>
+
         {/* Loading state */}
         {loading && (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-24 animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-bg-card)]"
+                className="h-32 animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-bg-card)]"
               />
             ))}
           </div>
@@ -154,49 +206,51 @@ export default function DashboardPage() {
         )}
 
         {/* All done celebration */}
-        {allDone && !loading && (
-          <div className="animate-fadeIn rounded-[var(--radius-lg)] border border-[var(--color-success)] bg-[var(--color-success-light)] p-8 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-success)]">
-              <svg
-                className="h-6 w-6 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m4.5 12.75 6 6 9-13.5"
-                />
-              </svg>
+        {!loading &&
+          activeTab === "todo" &&
+          todoTasks.length === 0 &&
+          completedTasks.length > 0 && (
+            <div className="animate-fadeIn rounded-[var(--radius-lg)] border border-[var(--color-success)] bg-[var(--color-success-light)] p-8 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-success)]">
+                <svg
+                  className="h-6 w-6 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m4.5 12.75 6 6 9-13.5"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-[var(--color-text-primary)]">
+                Great work today
+              </h3>
+              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                You finished everything on your list. Rest up and come back
+                tomorrow.
+              </p>
             </div>
-            <h3 className="text-base font-semibold text-[var(--color-text-primary)]">
-              Great work today
-            </h3>
-            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-              You finished everything on your list. Rest up and come back
-              tomorrow.
-            </p>
-          </div>
-        )}
+          )}
 
-        {/* Task list */}
-        {!loading && !error && tasks.length > 0 && (
-          <div className="space-y-3">
-            {tasks.map((task) => (
+        {/* Task grid */}
+        {!loading && !error && activeTasks.length > 0 && (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {activeTasks.map((task) => (
               <TaskCard
                 key={task._id}
                 task={task}
-                currentUserId={userId}
                 onStatusChange={handleStatusChange}
-                onAddComment={handleAddComment}
+                onClick={setSelectedTask}
               />
             ))}
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Empty state — no tasks at all */}
         {!loading && !error && tasks.length === 0 && (
           <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] p-12 text-center">
             <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-bg-secondary)]">
@@ -215,11 +269,37 @@ export default function DashboardPage() {
               </svg>
             </div>
             <p className="text-sm text-[var(--color-text)]">
-              No tasks for today yet. Your coach will set things up for you.
+              No tasks yet. Your coach will set things up for you.
             </p>
           </div>
         )}
+
+        {/* Empty state — completed tab with no completed tasks */}
+        {!loading &&
+          !error &&
+          activeTab === "completed" &&
+          completedTasks.length === 0 &&
+          tasks.length > 0 && (
+            <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] p-12 text-center">
+              <p className="text-sm text-[var(--color-text)]">
+                No completed tasks yet. Keep going!
+              </p>
+            </div>
+          )}
       </div>
+
+      {/* Task detail modal */}
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onMarkComplete={handleMarkCompleteFromModal}
+          onTaskUpdated={(updated) => {
+            setSelectedTask(updated);
+            setTasks((prev) => prev.map((t) => (t._id === updated._id ? updated : t)));
+          }}
+        />
+      )}
     </PageWrapper>
   );
 }

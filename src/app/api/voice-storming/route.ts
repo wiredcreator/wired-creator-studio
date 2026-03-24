@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import VoiceStormingTranscript from '@/models/VoiceStormingTranscript';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { parsePagination, paginationResponse } from '@/lib/pagination';
+import { awardXP } from '@/lib/xp-service';
 
 // GET /api/voice-storming — List voice-storming transcripts for the authenticated user
 export async function GET(request: NextRequest) {
@@ -101,6 +102,11 @@ export async function POST(request: NextRequest) {
       promptUsed,
       extractedInsights: [],
     });
+
+    // Fire-and-forget XP award
+    awardXP(user.id, 'voice_storm', { transcriptId: newTranscript._id.toString() }).catch((err) =>
+      console.error('[XP] Failed to award voice_storm XP:', err)
+    );
 
     return NextResponse.json(newTranscript, { status: 201 });
   } catch (error) {

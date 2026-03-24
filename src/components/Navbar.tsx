@@ -1,7 +1,6 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import ThemeToggle from "./ThemeToggle";
 
 export default function Navbar() {
   return (
@@ -9,10 +8,8 @@ export default function Navbar() {
       <div />
 
       <div className="flex items-center gap-1">
-        <ThemeToggle />
-
         <button
-          className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] transition-colors hover:bg-[rgba(255,255,255,0.04)] hover:text-[var(--color-text-secondary)]"
+          className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-secondary)]"
           aria-label="Notifications"
         >
           <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -22,7 +19,7 @@ export default function Navbar() {
 
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] transition-colors hover:bg-[rgba(255,255,255,0.04)] hover:text-[var(--color-text-secondary)]"
+          className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-secondary)]"
           aria-label="Sign out"
           title="Sign out"
         >

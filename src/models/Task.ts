@@ -17,6 +17,11 @@ export interface ITaskComment {
   createdAt: Date;
 }
 
+export interface IExtensionRequested {
+  days: number;
+  requestedAt: Date;
+}
+
 export interface ITask extends Document {
   userId: Types.ObjectId;
   title: string;
@@ -26,12 +31,15 @@ export interface ITask extends Document {
   dueDate: Date;
   completedAt?: Date;
   assignedBy: Types.ObjectId;
-  comments: ITaskComment[];
+  comments: mongoose.Types.DocumentArray<ITaskComment>;
   linkedContentId?: Types.ObjectId;
   embeddedVideoUrl?: string;
   weekNumber: number;
   dayOfWeek: number;
   order: number;
+  stuckAt?: Date;
+  stuckBy?: Types.ObjectId;
+  extensionRequested?: IExtensionRequested;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -123,6 +131,20 @@ const TaskSchema = new Schema<ITask>(
     order: {
       type: Number,
       default: 0,
+    },
+    stuckAt: {
+      type: Date,
+    },
+    stuckBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    extensionRequested: {
+      type: {
+        days: { type: Number, required: true },
+        requestedAt: { type: Date, required: true },
+      },
+      default: undefined,
     },
   },
   {

@@ -2,12 +2,12 @@
 
 import { ContentDNAFormData } from '@/types/onboarding';
 
-interface VisionStepProps {
+interface YourBusinessStepProps {
   data: ContentDNAFormData;
   onChange: (updates: Partial<ContentDNAFormData>) => void;
 }
 
-export default function VisionStep({ data, onChange }: VisionStepProps) {
+export default function VisionStep({ data, onChange }: YourBusinessStepProps) {
   return (
     <div className="space-y-8 animate-fadeIn">
       <div className="text-center mb-10">
@@ -15,34 +15,34 @@ export default function VisionStep({ data, onChange }: VisionStepProps) {
           className="text-3xl font-semibold mb-3"
           style={{ color: 'var(--color-text-primary)' }}
         >
-          What&apos;s your content vision?
+          Your Business
         </h2>
         <p
           className="text-lg"
           style={{ color: 'var(--color-text-secondary)' }}
         >
-          Dream big. There are no wrong answers here.
+          Help us understand what you&apos;re building and how content fits in.
         </p>
       </div>
 
-      {/* Content Goals */}
+      {/* Q4 */}
       <div className="space-y-2">
         <label
-          htmlFor="contentGoals"
+          htmlFor="offerAndContent"
           className="block text-base font-medium"
           style={{ color: 'var(--color-text-primary)' }}
         >
-          What are your goals for content creation? <span style={{ color: 'var(--color-warning)' }}>*</span>
+          What do you sell or plan to sell, and how does content connect to that? <span style={{ color: 'var(--color-warning)' }}>*</span>
         </label>
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          Why are you creating content? What does success look like?
+          Tell us about your offer, your service, your product, whatever it is. If you don&apos;t have one yet, tell us what you&apos;re working toward. We need to understand this because your content strategy should be built to drive people toward your thing, not just get views.
         </p>
         <textarea
-          id="contentGoals"
-          value={data.contentGoals}
-          onChange={(e) => onChange({ contentGoals: e.target.value })}
-          placeholder="E.g., I want to build an audience that trusts my expertise so I can grow my coaching business..."
-          rows={4}
+          id="offerAndContent"
+          value={data.offerAndContent}
+          onChange={(e) => onChange({ offerAndContent: e.target.value })}
+          placeholder="Describe your offer and how content connects to it..."
+          rows={5}
           className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none"
           style={{
             backgroundColor: 'var(--color-bg-primary)',
@@ -55,24 +55,24 @@ export default function VisionStep({ data, onChange }: VisionStepProps) {
         />
       </div>
 
-      {/* 12-Week Vision */}
+      {/* Q5 */}
       <div className="space-y-2">
         <label
-          htmlFor="twelveWeekVision"
+          htmlFor="goToPersonFor"
           className="block text-base font-medium"
           style={{ color: 'var(--color-text-primary)' }}
         >
-          Where do you see your content in 12 weeks? <span style={{ color: 'var(--color-warning)' }}>*</span>
+          What do people always come to you for? <span style={{ color: 'var(--color-warning)' }}>*</span>
         </label>
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          Be specific. How many videos? What topics? How does it feel?
+          Think about the questions friends, coworkers, or clients keep asking you. The stuff people DM you about. The thing someone once said &quot;you should make content about that.&quot; What do you naturally become the go-to person for?
         </p>
         <textarea
-          id="twelveWeekVision"
-          value={data.twelveWeekVision}
-          onChange={(e) => onChange({ twelveWeekVision: e.target.value })}
-          placeholder="E.g., I want to have published 12 YouTube videos, have a consistent posting schedule, and feel confident on camera..."
-          rows={4}
+          id="goToPersonFor"
+          value={data.goToPersonFor}
+          onChange={(e) => onChange({ goToPersonFor: e.target.value })}
+          placeholder="What do people always come to you for?"
+          rows={5}
           className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none"
           style={{
             backgroundColor: 'var(--color-bg-primary)',

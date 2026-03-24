@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ScriptStatus } from '@/models/Script';
 
 // ---------------------------------------------------------------------------
@@ -19,6 +19,7 @@ export interface ScriptEditorData {
   fullScript: string;
   bulletPoints: string[];
   teleprompterVersion: string;
+  thumbnail?: string;
   status: ScriptStatus;
   feedback: ScriptFeedbackItem[];
   version: number;
@@ -37,12 +38,15 @@ interface ScriptEditorProps {
     bulletPoints?: string[];
     teleprompterVersion?: string;
     status?: ScriptStatus;
+    thumbnail?: string;
   }) => void;
   onRegenerate: () => void;
   onAddFeedback: (text: string) => void;
+  onRevert: () => void;
   onClose: () => void;
   isSaving?: boolean;
   isRegenerating?: boolean;
+  isReverting?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -54,9 +58,10 @@ type ViewMode = 'full' | 'bullets' | 'teleprompter';
 const STATUS_OPTIONS: { value: ScriptStatus; label: string }[] = [
   { value: 'draft', label: 'Draft' },
   { value: 'review', label: 'In Review' },
-  { value: 'approved', label: 'Approved' },
+  { value: 'approved', label: 'Ready to Film' },
   { value: 'filming', label: 'Filming' },
-  { value: 'completed', label: 'Completed' },
+  { value: 'completed', label: 'Published' },
+  { value: 'published', label: 'Published' },
 ];
 
 const STATUS_COLORS: Record<ScriptStatus, string> = {
@@ -65,6 +70,7 @@ const STATUS_COLORS: Record<ScriptStatus, string> = {
   approved: 'text-[var(--color-accent)]',
   filming: 'text-[var(--color-success)]',
   completed: 'text-[var(--color-success)]',
+  published: 'text-[var(--color-success)]',
 };
 
 function formatDate(dateString: string): string {
@@ -76,6 +82,8 @@ function formatDate(dateString: string): string {
   });
 }
 
+const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024; // 2MB
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -85,9 +93,11 @@ export default function ScriptEditor({
   onSave,
   onRegenerate,
   onAddFeedback,
+  onRevert,
   onClose,
   isSaving = false,
   isRegenerating = false,
+  isReverting = false,
 }: ScriptEditorProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('full');
   const [title, setTitle] = useState(script.title);
@@ -95,24 +105,31 @@ export default function ScriptEditor({
   const [bulletPoints, setBulletPoints] = useState(script.bulletPoints);
   const [teleprompterVersion, setTeleprompterVersion] = useState(script.teleprompterVersion);
   const [status, setStatus] = useState<ScriptStatus>(script.status);
+  const [thumbnail, setThumbnail] = useState(script.thumbnail || '');
   const [feedbackText, setFeedbackText] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showRevertConfirm, setShowRevertConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const markChanged = () => {
     if (!hasChanges) setHasChanges(true);
   };
 
-  const handleSave = () => {
-    onSave({
-      title,
-      fullScript,
-      bulletPoints,
-      teleprompterVersion,
-      status,
-    });
+  const buildUpdates = useCallback((overrideStatus?: ScriptStatus) => ({
+    title,
+    fullScript,
+    bulletPoints,
+    teleprompterVersion,
+    status: overrideStatus || status,
+    thumbnail,
+  }), [title, fullScript, bulletPoints, teleprompterVersion, status, thumbnail]);
+
+  const handleSave = (overrideStatus?: ScriptStatus) => {
+    if (overrideStatus) setStatus(overrideStatus);
+    onSave(buildUpdates(overrideStatus));
     setHasChanges(false);
   };
 
@@ -167,6 +184,63 @@ export default function ScriptEditor({
     setFeedbackText('');
   };
 
+  const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_THUMBNAIL_SIZE) {
+      alert('Thumbnail must be under 2MB.');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setThumbnail(result);
+      markChanged();
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveThumbnail = () => {
+    setThumbnail('');
+    markChanged();
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Browser-level protection: warn before closing/refreshing with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!hasChanges) return;
+      e.preventDefault();
+      // Most modern browsers ignore custom messages but still show a prompt
+      e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasChanges]);
+
+  // Intercept the back/close button with a confirmation dialog
+  const handleClose = useCallback(() => {
+    if (!hasChanges) {
+      onClose();
+      return;
+    }
+    const shouldSave = window.confirm(
+      'You have unsaved changes. Do you want to save before leaving?'
+    );
+    if (shouldSave) {
+      onSave(buildUpdates());
+      setHasChanges(false);
+    }
+    onClose();
+  }, [hasChanges, onClose, onSave, buildUpdates]);
+
   return (
     <div className="animate-fadeIn">
       {/* Header */}
@@ -174,7 +248,7 @@ export default function ScriptEditor({
         <div className="min-w-0 flex-1">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="mb-3 inline-flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -200,7 +274,7 @@ export default function ScriptEditor({
 
         <div className="flex shrink-0 items-center gap-2">
           {/* Version badge */}
-          <span className="rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-2.5 py-1 text-xs text-[var(--color-text-muted)]">
+          <span className="rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-2.5 py-1 text-xs text-white">
             v{script.version}
           </span>
 
@@ -217,6 +291,50 @@ export default function ScriptEditor({
             ))}
           </select>
         </div>
+      </div>
+
+      {/* Thumbnail upload section */}
+      <div className="mb-5">
+        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">
+          Thumbnail
+        </label>
+        {thumbnail ? (
+          <div className="relative inline-block rounded-[var(--radius-lg)] border border-[var(--color-border)] overflow-hidden">
+            <img
+              src={thumbnail}
+              alt="Script thumbnail"
+              className="block max-h-48 w-auto object-contain"
+            />
+            <button
+              type="button"
+              onClick={handleRemoveThumbnail}
+              className="absolute top-2 right-2 rounded-[var(--radius-md)] bg-[var(--color-bg-card)] p-1.5 text-[var(--color-text-muted)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--color-error-light)] hover:text-[var(--color-error)]"
+              title="Remove thumbnail"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] px-5 py-4 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+            </svg>
+            Upload thumbnail
+          </button>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleThumbnailUpload}
+          className="hidden"
+        />
       </div>
 
       {/* View mode tabs */}
@@ -345,14 +463,25 @@ export default function ScriptEditor({
         )}
       </div>
 
+      {/* Unsaved changes indicator */}
+      {hasChanges && (
+        <div className="mt-4 flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-warning)] bg-[var(--color-bg-secondary)] px-3 py-2">
+          <svg className="h-4 w-4 shrink-0 text-[var(--color-warning)]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+          <span className="text-sm font-medium text-[var(--color-warning)]">Unsaved changes</span>
+        </div>
+      )}
+
       {/* Actions */}
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Save as Draft */}
           <button
             type="button"
-            onClick={handleSave}
-            disabled={isSaving || !hasChanges}
-            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={() => handleSave('draft')}
+            disabled={isSaving}
+            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving ? (
               <>
@@ -363,10 +492,21 @@ export default function ScriptEditor({
                 Saving...
               </>
             ) : (
-              'Save Changes'
+              'Save as Draft'
             )}
           </button>
 
+          {/* Save as Ready to Film */}
+          <button
+            type="button"
+            onClick={() => handleSave('approved')}
+            disabled={isSaving}
+            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Save as Ready to Film
+          </button>
+
+          {/* Regenerate */}
           <button
             type="button"
             onClick={onRegenerate}
@@ -392,17 +532,57 @@ export default function ScriptEditor({
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowFeedback(!showFeedback)}
-          className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)]"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-          </svg>
-          Feedback ({script.feedback.length})
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowFeedback(!showFeedback)}
+            className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)]"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+            </svg>
+            Feedback ({script.feedback.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowRevertConfirm(true)}
+            disabled={isReverting}
+            className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+            </svg>
+            {isReverting ? 'Reverting...' : 'Revert to idea'}
+          </button>
+        </div>
       </div>
+
+      {/* Revert confirmation */}
+      {showRevertConfirm && (
+        <div className="mt-4 animate-fadeIn rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
+          <p className="text-sm text-[var(--color-text-primary)]">
+            Revert this script back to the idea stage? You can add more resources and regenerate the script later.
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setShowRevertConfirm(false); onRevert(); }}
+              disabled={isReverting}
+              className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isReverting ? 'Reverting...' : 'Yes, revert'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowRevertConfirm(false)}
+              className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Feedback section */}
       {showFeedback && (
@@ -417,7 +597,7 @@ export default function ScriptEditor({
                   className="rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] px-3 py-2.5"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-[var(--color-text-secondary)]">Feedback</span>
+                    <span className="text-xs font-medium text-white">Feedback</span>
                     <span className="text-xs text-[var(--color-text-muted)]">
                       {formatDate(fb.createdAt)}
                     </span>
@@ -437,7 +617,7 @@ export default function ScriptEditor({
               onChange={(e) => setFeedbackText(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitFeedback(); } }}
               placeholder="Leave a note..."
-              className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
+              className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] outline-none"
             />
             <button
               type="button"

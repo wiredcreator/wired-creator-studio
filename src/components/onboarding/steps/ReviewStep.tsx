@@ -86,75 +86,41 @@ export default function ReviewStep({ data, onEditStep }: ReviewStepProps) {
         </p>
       </div>
 
-      {/* Identity */}
+      {/* Step 1: Your Story */}
       <SectionCard title={STEP_LABELS[0]} stepIndex={0} onEdit={onEditStep}>
-        <ReviewField label="Name" value={data.name} />
-        <ReviewField label="Background" value={data.background} />
-        {data.neurodivergentProfile.length > 0 && (
-          <div className="mb-3 last:mb-0">
-            <span className="text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
-              Profile
-            </span>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {data.neurodivergentProfile.map((item) => (
-                <span
-                  key={item}
-                  className="px-3 py-1 text-sm"
-                  style={{
-                    backgroundColor: 'var(--color-accent-light)',
-                    color: 'var(--color-accent-hover)',
-                    borderRadius: 'var(--radius-full)',
-                  }}
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        <ReviewField label="What you do and how you got here" value={data.yourStory} />
+        <ReviewField label="Biggest wins and milestones" value={data.winsAndMilestones} />
+        <ReviewField label="What you want content to lead to" value={data.contentGoal} />
       </SectionCard>
 
-      {/* Vision */}
+      {/* Step 2: Your Business */}
       <SectionCard title={STEP_LABELS[1]} stepIndex={1} onEdit={onEditStep}>
-        <ReviewField label="Content Goals" value={data.contentGoals} />
-        <ReviewField label="12-Week Vision" value={data.twelveWeekVision} />
+        <ReviewField label="What you sell and how content connects" value={data.offerAndContent} />
+        <ReviewField label="What people come to you for" value={data.goToPersonFor} />
       </SectionCard>
 
-      {/* Audience */}
+      {/* Step 3: Your Passion */}
       <SectionCard title={STEP_LABELS[2]} stepIndex={2} onEdit={onEditStep}>
-        <ReviewField label="Ideal Viewer" value={data.idealViewer} />
-        <ReviewField label="Problems Solved" value={data.problemsSolved} />
+        <ReviewField label="What you could talk about for 30 minutes" value={data.talkWithoutPreparing} />
+        <ReviewField label="Your audience and their painful problem" value={data.audienceAndProblem} />
+        <ReviewField label="Your unique perspective" value={data.uniquePerspective} />
       </SectionCard>
 
-      {/* Niche */}
+      {/* Step 4: Your Stories */}
       <SectionCard title={STEP_LABELS[3]} stepIndex={3} onEdit={onEditStep}>
-        <ReviewField label="Industry" value={data.industry} />
-        {data.keyTopics.length > 0 && (
-          <div className="mb-3 last:mb-0">
-            <span className="text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
-              Content Pillars
-            </span>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {data.keyTopics.map((topic) => (
-                <span
-                  key={topic}
-                  className="px-3 py-1 text-sm"
-                  style={{
-                    backgroundColor: 'var(--color-accent-light)',
-                    color: 'var(--color-accent-hover)',
-                    borderRadius: 'var(--radius-full)',
-                  }}
-                >
-                  {topic}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        <ReviewField label="Personal stories that shaped you" value={data.personalStories} />
+        <ReviewField label="Known for and against" value={data.knownForAndAgainst} />
       </SectionCard>
 
-      {/* Inspiration */}
+      {/* Step 5: Your History */}
       <SectionCard title={STEP_LABELS[4]} stepIndex={4} onEdit={onEditStep}>
+        <ReviewField label="Content creation history" value={data.contentHistory} />
+        <ReviewField label="Time and energy for content" value={data.timeAndEnergy} />
+        <ReviewField label="Easy vs. draining parts" value={data.easyVsDraining} />
+      </SectionCard>
+
+      {/* Step 6: Your Inspiration */}
+      <SectionCard title={STEP_LABELS[5]} stepIndex={5} onEdit={onEditStep}>
         {data.inspirations.filter((e) => e.url.trim()).length > 0 ? (
           data.inspirations
             .filter((e) => e.url.trim())
@@ -175,40 +141,12 @@ export default function ReviewStep({ data, onEditStep }: ReviewStepProps) {
             No creators added yet.
           </p>
         )}
+        <ReviewField label="Most natural format" value={data.naturalFormat} />
       </SectionCard>
 
-      {/* Voice Samples */}
-      <SectionCard title={STEP_LABELS[5]} stepIndex={5} onEdit={onEditStep}>
-        {data.noExistingContent ? (
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            Starting fresh - no existing content provided.
-          </p>
-        ) : data.voiceSamples.filter((s) => s.trim()).length > 0 ? (
-          <div className="space-y-3">
-            {data.voiceSamples
-              .filter((s) => s.trim())
-              .map((sample, i) => (
-                <div
-                  key={i}
-                  className="p-3 text-sm"
-                  style={{
-                    backgroundColor: 'var(--color-bg-primary)',
-                    borderRadius: 'var(--radius-md)',
-                    color: 'var(--color-text-primary)',
-                  }}
-                >
-                  <p className="whitespace-pre-wrap line-clamp-3">{sample}</p>
-                </div>
-              ))}
-            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              {data.voiceSamples.filter((s) => s.trim()).length} sample(s) provided
-            </p>
-          </div>
-        ) : (
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            No samples added yet.
-          </p>
-        )}
+      {/* Step 7: Your Core Message */}
+      <SectionCard title={STEP_LABELS[6]} stepIndex={6} onEdit={onEditStep}>
+        <ReviewField label="Core message" value={data.coreMessage} />
       </SectionCard>
     </div>
   );

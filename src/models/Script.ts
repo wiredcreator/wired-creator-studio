@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
 // --- Status Enum ---
-export type ScriptStatus = 'draft' | 'review' | 'approved' | 'filming' | 'completed';
+export type ScriptStatus = 'draft' | 'review' | 'approved' | 'filming' | 'completed' | 'published';
 
 // --- Feedback Sub-document ---
 export interface IScriptFeedback {
@@ -32,6 +32,7 @@ export interface IScript extends Document {
   bulletPoints: string[];
   teleprompterVersion: string;
   voiceStormTranscriptId?: Types.ObjectId;
+  thumbnail?: string;
   status: ScriptStatus;
   feedback: IScriptFeedback[];
   version: number;
@@ -59,9 +60,10 @@ const ScriptSchema = new Schema<IScript>(
       type: Schema.Types.ObjectId,
       ref: 'VoiceStormingTranscript',
     },
+    thumbnail: { type: String, default: '' },
     status: {
       type: String,
-      enum: ['draft', 'review', 'approved', 'filming', 'completed'],
+      enum: ['draft', 'review', 'approved', 'filming', 'completed', 'published'],
       default: 'draft',
     },
     feedback: [ScriptFeedbackSchema],

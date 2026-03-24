@@ -11,6 +11,7 @@ export interface ScriptCardData {
   title: string;
   fullScript: string;
   status: ScriptStatus;
+  thumbnail?: string;
   ideaId?: {
     _id: string;
     title: string;
@@ -33,20 +34,22 @@ interface ScriptCardProps {
 const STATUS_LABELS: Record<ScriptStatus, string> = {
   draft: 'Draft',
   review: 'In Review',
-  approved: 'Approved',
+  approved: 'Ready to Film',
   filming: 'Filming',
-  completed: 'Completed',
+  completed: 'Published',
+  published: 'Published',
 };
 
-const STATUS_COLORS: Record<ScriptStatus, string> = {
-  draft: 'bg-[var(--color-bg-secondary)] text-[var(--color-text)]',
-  review: 'bg-[var(--color-warning-light)] text-[var(--color-warning)]',
-  approved: 'bg-[var(--color-accent-light)] text-[var(--color-accent)]',
-  filming: 'bg-[var(--color-success-light)] text-[var(--color-success)]',
-  completed: 'bg-[var(--color-success-light)] text-[var(--color-success)]',
+const STATUS_STYLES: Record<ScriptStatus, React.CSSProperties> = {
+  draft: { backgroundColor: '#E0E3EA', color: '#555770' },
+  review: { backgroundColor: '#FEF3C7', color: '#92400E' },
+  approved: { backgroundColor: 'rgba(74,144,217,0.12)', color: '#4A90D9' },
+  filming: { backgroundColor: 'rgba(74,144,217,0.12)', color: '#4A90D9' },
+  completed: { backgroundColor: 'rgba(34,197,94,0.12)', color: '#16A34A' },
+  published: { backgroundColor: 'rgba(34,197,94,0.12)', color: '#16A34A' },
 };
 
-function getPreview(fullScript: string, maxLength = 140): string {
+function getPreview(fullScript: string, maxLength = 100): string {
   const trimmed = fullScript.replace(/\n+/g, ' ').trim();
   if (trimmed.length <= maxLength) return trimmed;
   return trimmed.slice(0, maxLength).trim() + '...';
@@ -67,46 +70,64 @@ export default function ScriptCard({ script, onClick }: ScriptCardProps) {
   return (
     <button
       type="button"
-      className="group w-full cursor-pointer rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 text-left shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-[var(--color-accent)]"
+      className="group w-full cursor-pointer text-left transition-all duration-200 overflow-hidden"
+      style={{ borderRadius: 16, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-card)', boxShadow: 'var(--shadow-sm)' }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-md)'; e.currentTarget.style.borderColor = 'var(--color-accent)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}
       onClick={() => onClick?.(script)}
     >
-      {/* Title */}
-      <h3 className="text-base font-semibold leading-snug text-[var(--color-text-primary)] line-clamp-2">
-        {script.title}
-      </h3>
-
-      {/* Preview snippet */}
-      <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-secondary)] line-clamp-3">
-        {getPreview(script.fullScript)}
-      </p>
-
-      {/* Meta row */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {/* Linked idea */}
-        {script.ideaId && typeof script.ideaId === 'object' && (
-          <span className="inline-flex items-center gap-1 rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-text)]">
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+      <div className="flex">
+        {/* Thumbnail */}
+        {script.thumbnail ? (
+          <div className="relative hidden sm:block w-40 shrink-0">
+            <img
+              src={script.thumbnail}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          </div>
+        ) : (
+          <div className="relative hidden sm:flex w-40 shrink-0 items-center justify-center" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
+            <svg className="h-8 w-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
             </svg>
-            {script.ideaId.title.length > 30
-              ? script.ideaId.title.slice(0, 30) + '...'
-              : script.ideaId.title}
-          </span>
+          </div>
         )}
 
-        {/* Status badge */}
-        <span
-          className={`inline-flex items-center rounded-[var(--radius-full)] px-2.5 py-0.5 text-xs font-medium ${
-            STATUS_COLORS[script.status]
-          }`}
-        >
-          {STATUS_LABELS[script.status]}
-        </span>
+        {/* Content */}
+        <div className="flex-1 p-5 min-w-0">
+          {/* Title */}
+          <h3 className="text-base leading-snug line-clamp-1" style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            {script.title}
+          </h3>
 
-        {/* Version + date */}
-        <span className="ml-auto text-xs text-[var(--color-text-muted)]">
-          v{script.version} · {formatDate(script.createdAt)}
-        </span>
+          {/* Preview snippet */}
+          <p className="mt-1.5 text-sm leading-relaxed line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>
+            {getPreview(script.fullScript)}
+          </p>
+
+          {/* Meta row */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {/* Content pillar */}
+            {script.ideaId && typeof script.ideaId === 'object' && script.ideaId.contentPillar && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, backgroundColor: 'rgba(74,144,217,0.1)', padding: '2px 10px', fontSize: 12, fontWeight: 500, color: '#4A90D9' }}>
+                {script.ideaId.contentPillar}
+              </span>
+            )}
+
+            {/* Status badge */}
+            <span
+              style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '2px 10px', fontSize: 12, fontWeight: 500, ...STATUS_STYLES[script.status] }}
+            >
+              {STATUS_LABELS[script.status]}
+            </span>
+
+            {/* Version + date */}
+            <span className="ml-auto text-xs text-[var(--color-text-muted)]">
+              v{script.version} · {formatDate(script.updatedAt || script.createdAt)}
+            </span>
+          </div>
+        </div>
       </div>
     </button>
   );

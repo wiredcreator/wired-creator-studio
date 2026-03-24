@@ -34,10 +34,10 @@ const TYPE_LABELS: Record<SideQuestType, string> = {
   content_exercise: 'Exercise',
 };
 
-const TYPE_COLORS: Record<SideQuestType, string> = {
-  voice_storm_prompt: 'bg-purple-900 text-purple-300 border-purple-700',
-  research_task: 'bg-[var(--color-warning-light)] text-[var(--color-warning)] border-[var(--color-warning)]',
-  content_exercise: 'bg-teal-900 text-teal-300 border-teal-700',
+const TYPE_STYLES: Record<SideQuestType, React.CSSProperties> = {
+  voice_storm_prompt: { backgroundColor: 'rgba(147,51,234,0.15)', color: '#A78BFA', borderColor: 'rgba(147,51,234,0.3)' },
+  research_task: { backgroundColor: 'var(--color-warning-light)', color: 'var(--color-warning)', borderColor: 'var(--color-warning)' },
+  content_exercise: { backgroundColor: 'rgba(20,184,166,0.15)', color: '#2DD4BF', borderColor: 'rgba(20,184,166,0.3)' },
 };
 
 const TYPE_ICONS: Record<SideQuestType, React.ReactNode> = {
@@ -93,7 +93,7 @@ export default function SideQuestCard({ quest, onComplete }: SideQuestCardProps)
               <h3 className="text-sm font-medium text-[var(--color-text-muted)] line-through">
                 {quest.title}
               </h3>
-              <span className={`inline-flex items-center rounded-[var(--radius-full)] border px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[quest.type]}`}>
+              <span className="inline-flex items-center rounded-[var(--radius-full)] border px-2 py-0.5 text-xs font-medium" style={TYPE_STYLES[quest.type]}>
                 {TYPE_LABELS[quest.type]}
               </span>
             </div>
@@ -140,7 +140,7 @@ export default function SideQuestCard({ quest, onComplete }: SideQuestCardProps)
             </p>
 
             <div className="mt-3 flex items-center gap-2">
-              <span className={`inline-flex items-center rounded-[var(--radius-full)] border px-2.5 py-0.5 text-xs font-medium ${TYPE_COLORS[quest.type]}`}>
+              <span className="inline-flex items-center rounded-[var(--radius-full)] border px-2.5 py-0.5 text-xs font-medium" style={TYPE_STYLES[quest.type]}>
                 {TYPE_LABELS[quest.type]}
               </span>
 

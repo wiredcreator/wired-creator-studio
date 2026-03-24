@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import Task from '@/models/Task';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { validateObjectId } from '@/lib/validation';
+import { awardXP } from '@/lib/xp-service';
 
 // PUT /api/tasks/[id] — Update a task
 export async function PUT(
@@ -59,7 +61,34 @@ export async function PUT(
     if (body.dayOfWeek !== undefined) task.dayOfWeek = body.dayOfWeek;
     if (body.order !== undefined) task.order = body.order;
 
+    // Handle "I'm Stuck" flag
+    if (body.stuck === true) {
+      task.stuckAt = new Date();
+      task.stuckBy = new mongoose.Types.ObjectId(user.id);
+    }
+
+    // Handle "Request more time" extension
+    if (body.extensionDays !== undefined) {
+      const days = Number(body.extensionDays);
+      if (days > 0) {
+        const currentDue = new Date(task.dueDate);
+        currentDue.setDate(currentDue.getDate() + days);
+        task.dueDate = currentDue;
+        task.extensionRequested = {
+          days,
+          requestedAt: new Date(),
+        };
+      }
+    }
+
     await task.save();
+
+    // Fire-and-forget XP award when task is completed
+    if (body.status === 'completed') {
+      awardXP(task.userId.toString(), 'complete_task', { taskId: id }).catch((err) =>
+        console.error('[XP] Failed to award complete_task XP:', err)
+      );
+    }
 
     // Re-fetch with populated fields
     const updated = await Task.findById(id)

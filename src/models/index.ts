@@ -24,3 +24,12 @@ export type { IScript, IScriptFeedback, ScriptStatus } from './Script';
 
 export { default as SideQuest } from './SideQuest';
 export type { ISideQuest, SideQuestType } from './SideQuest';
+
+export { default as BugReport } from './BugReport';
+export type { IBugReport, BugSeverity, BugStatus } from './BugReport';
+
+export { default as CustomPrompt } from './CustomPrompt';
+export type { ICustomPrompt, CustomPromptCategory } from './CustomPrompt';
+
+export { default as UserXP } from './UserXP';
+export type { IUserXP, IXPHistoryEntry } from './UserXP';

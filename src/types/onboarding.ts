@@ -3,63 +3,68 @@
 export interface InspirationEntry {
   url: string;
   note: string;
+  transcript?: string;
+  videoTitle?: string;
 }
 
 export interface ContentDNAFormData {
-  // Step 1: Identity
-  name: string;
-  background: string;
-  neurodivergentProfile: string[];
+  // Step 1: Your Story (Q1-Q3)
+  yourStory: string;
+  winsAndMilestones: string;
+  contentGoal: string;
 
-  // Step 2: Vision
-  contentGoals: string;
-  twelveWeekVision: string;
+  // Step 2: Your Business (Q4-Q5)
+  offerAndContent: string;
+  goToPersonFor: string;
 
-  // Step 3: Audience
-  idealViewer: string;
-  problemsSolved: string;
+  // Step 3: Your Passion (Q6-Q8)
+  talkWithoutPreparing: string;
+  audienceAndProblem: string;
+  uniquePerspective: string;
 
-  // Step 4: Niche
-  industry: string;
-  keyTopics: string[];
+  // Step 4: Your Stories (Q9-Q10)
+  personalStories: string;
+  knownForAndAgainst: string;
 
-  // Step 5: Inspiration
+  // Step 5: Your History (Q11-Q13)
+  contentHistory: string;
+  timeAndEnergy: string;
+  easyVsDraining: string;
+
+  // Step 6: Your Inspiration (Q14-Q15)
   inspirations: InspirationEntry[];
+  naturalFormat: string;
 
-  // Step 6: Voice Samples
-  voiceSamples: string[];
-  noExistingContent: boolean;
+  // Step 7: Your Core Message (Q16)
+  coreMessage: string;
 }
 
 export const INITIAL_FORM_DATA: ContentDNAFormData = {
-  name: '',
-  background: '',
-  neurodivergentProfile: [],
-  contentGoals: '',
-  twelveWeekVision: '',
-  idealViewer: '',
-  problemsSolved: '',
-  industry: '',
-  keyTopics: [],
+  yourStory: '',
+  winsAndMilestones: '',
+  contentGoal: '',
+  offerAndContent: '',
+  goToPersonFor: '',
+  talkWithoutPreparing: '',
+  audienceAndProblem: '',
+  uniquePerspective: '',
+  personalStories: '',
+  knownForAndAgainst: '',
+  contentHistory: '',
+  timeAndEnergy: '',
+  easyVsDraining: '',
   inspirations: [{ url: '', note: '' }],
-  voiceSamples: [''],
-  noExistingContent: false,
+  naturalFormat: '',
+  coreMessage: '',
 };
 
 export const STEP_LABELS = [
-  'Identity',
-  'Vision',
-  'Audience',
-  'Niche',
-  'Inspiration',
-  'Your Voice',
+  'Your Story',
+  'Your Business',
+  'Your Passion',
+  'Your Stories',
+  'Your History',
+  'Your Inspiration',
+  'Your Core Message',
   'Review',
-] as const;
-
-export const NEURODIVERGENT_OPTIONS = [
-  'ADHD',
-  'Autism',
-  'Dyslexia',
-  'Other',
-  'Prefer not to say',
 ] as const;

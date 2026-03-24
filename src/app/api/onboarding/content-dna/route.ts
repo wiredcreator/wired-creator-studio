@@ -10,54 +10,59 @@ import { generateToneOfVoice } from '@/lib/ai/generate';
 import { extractYouTubeTranscript } from '@/lib/apify';
 
 interface ContentDNAPayload {
-  name: string;
-  background: string;
-  neurodivergentProfile: string[];
-  contentGoals: string;
-  twelveWeekVision: string;
-  idealViewer: string;
-  problemsSolved: string;
-  industry: string;
-  keyTopics: string[];
+  // Step 1: Your Story (Q1-Q3)
+  yourStory: string;
+  winsAndMilestones: string;
+  contentGoal: string;
+
+  // Step 2: Your Business (Q4-Q5)
+  offerAndContent: string;
+  goToPersonFor: string;
+
+  // Step 3: Your Passion (Q6-Q8)
+  talkWithoutPreparing: string;
+  audienceAndProblem: string;
+  uniquePerspective: string;
+
+  // Step 4: Your Stories (Q9-Q10)
+  personalStories: string;
+  knownForAndAgainst: string;
+
+  // Step 5: Your History (Q11-Q13)
+  contentHistory: string;
+  timeAndEnergy: string;
+  easyVsDraining: string;
+
+  // Step 6: Your Inspiration (Q14-Q15)
   inspirations: { url: string; note: string }[];
-  voiceSamples: string[];
-  noExistingContent: boolean;
+  naturalFormat: string;
+
+  // Step 7: Your Core Message (Q16)
+  coreMessage: string;
 }
 
 function validatePayload(data: ContentDNAPayload): string | null {
-  if (!data.name?.trim()) {
-    return 'Name is required.';
-  }
-  if (!data.contentGoals?.trim()) {
-    return 'Content goals are required.';
-  }
-  if (!data.twelveWeekVision?.trim()) {
-    return '12-week vision is required.';
-  }
-  if (!data.idealViewer?.trim()) {
-    return 'Ideal viewer description is required.';
-  }
-  if (!data.problemsSolved?.trim()) {
-    return 'Problems solved description is required.';
-  }
-  if (!data.industry?.trim()) {
-    return 'Industry or niche is required.';
-  }
-  if (!Array.isArray(data.keyTopics) || data.keyTopics.length < 3) {
-    return 'At least 3 key topics are required.';
-  }
+  if (!data.yourStory?.trim()) return 'Your story is required.';
+  if (!data.winsAndMilestones?.trim()) return 'Wins and milestones are required.';
+  if (!data.contentGoal?.trim()) return 'Content goal is required.';
+  if (!data.offerAndContent?.trim()) return 'Offer description is required.';
+  if (!data.goToPersonFor?.trim()) return 'Go-to expertise is required.';
+  if (!data.talkWithoutPreparing?.trim()) return 'Passionate topics are required.';
+  if (!data.audienceAndProblem?.trim()) return 'Audience and problem description is required.';
+  if (!data.uniquePerspective?.trim()) return 'Unique perspective is required.';
+  if (!data.personalStories?.trim()) return 'Personal stories are required.';
+  if (!data.knownForAndAgainst?.trim()) return 'Known for and against is required.';
+  if (!data.contentHistory?.trim()) return 'Content history is required.';
+  if (!data.timeAndEnergy?.trim()) return 'Time and energy description is required.';
+  if (!data.easyVsDraining?.trim()) return 'Easy vs. draining description is required.';
   if (
     !Array.isArray(data.inspirations) ||
     !data.inspirations.some((e) => e.url?.trim())
   ) {
     return 'At least one inspiration URL or channel name is required.';
   }
-  if (
-    !data.noExistingContent &&
-    (!Array.isArray(data.voiceSamples) || !data.voiceSamples.some((s) => s?.trim()))
-  ) {
-    return 'At least one voice sample is required, or mark that you have no existing content.';
-  }
+  if (!data.naturalFormat?.trim()) return 'Natural format preference is required.';
+  if (!data.coreMessage?.trim()) return 'Core message is required.';
   return null;
 }
 
@@ -66,15 +71,21 @@ function validatePayload(data: ContentDNAPayload): string | null {
  */
 function buildResponses(data: ContentDNAPayload) {
   return [
-    { questionId: 'name', question: 'What is your name?', answer: data.name, answerType: 'text' as const },
-    { questionId: 'background', question: 'Tell us about your background', answer: data.background, answerType: 'text' as const },
-    { questionId: 'neurodivergentProfile', question: 'Neurodivergent profile', answer: data.neurodivergentProfile, answerType: 'multiselect' as const },
-    { questionId: 'contentGoals', question: 'What are your content creation goals?', answer: data.contentGoals, answerType: 'text' as const },
-    { questionId: 'twelveWeekVision', question: 'Where do you see yourself in 12 weeks?', answer: data.twelveWeekVision, answerType: 'text' as const },
-    { questionId: 'idealViewer', question: 'Describe your ideal viewer', answer: data.idealViewer, answerType: 'text' as const },
-    { questionId: 'problemsSolved', question: 'What problems do you solve for your audience?', answer: data.problemsSolved, answerType: 'text' as const },
-    { questionId: 'industry', question: 'What is your industry or niche?', answer: data.industry, answerType: 'text' as const },
-    { questionId: 'keyTopics', question: 'What are your key content topics?', answer: data.keyTopics, answerType: 'multiselect' as const },
+    { questionId: 'yourStory', question: 'What do you do and how did you end up here?', answer: data.yourStory, answerType: 'text' as const },
+    { questionId: 'winsAndMilestones', question: 'What are the biggest wins, results, or milestones you can point to?', answer: data.winsAndMilestones, answerType: 'text' as const },
+    { questionId: 'contentGoal', question: 'What do you want your content to actually lead to?', answer: data.contentGoal, answerType: 'text' as const },
+    { questionId: 'offerAndContent', question: 'What do you sell or plan to sell, and how does content connect to that?', answer: data.offerAndContent, answerType: 'text' as const },
+    { questionId: 'goToPersonFor', question: 'What do people always come to you for?', answer: data.goToPersonFor, answerType: 'text' as const },
+    { questionId: 'talkWithoutPreparing', question: 'What could you talk about for 30 minutes without preparing?', answer: data.talkWithoutPreparing, answerType: 'text' as const },
+    { questionId: 'audienceAndProblem', question: 'Who do you want your content to reach, and what painful problem are you solving for them?', answer: data.audienceAndProblem, answerType: 'text' as const },
+    { questionId: 'uniquePerspective', question: 'What makes your perspective different from everyone else talking about this stuff?', answer: data.uniquePerspective, answerType: 'text' as const },
+    { questionId: 'personalStories', question: 'What are 2 or 3 personal stories that shaped who you are today?', answer: data.personalStories, answerType: 'text' as const },
+    { questionId: 'knownForAndAgainst', question: 'What do you want to be known FOR, and what do you want to be known AGAINST?', answer: data.knownForAndAgainst, answerType: 'text' as const },
+    { questionId: 'contentHistory', question: 'Have you tried making content before? What happened?', answer: data.contentHistory, answerType: 'text' as const },
+    { questionId: 'timeAndEnergy', question: 'How much time and energy do you realistically have for content?', answer: data.timeAndEnergy, answerType: 'text' as const },
+    { questionId: 'easyVsDraining', question: 'What parts of making content feel easy to you, and what parts feel like they\'d drain you?', answer: data.easyVsDraining, answerType: 'text' as const },
+    { questionId: 'naturalFormat', question: 'What format feels most natural for you to create in right now?', answer: data.naturalFormat, answerType: 'text' as const },
+    { questionId: 'coreMessage', question: 'If someone watched all your content and walked away with one core message about you, what would you want it to be?', answer: data.coreMessage, answerType: 'text' as const },
   ];
 }
 
@@ -99,18 +110,11 @@ export async function POST(request: NextRequest) {
 
     // Clean up the data: filter out empty entries
     const cleanedInspirations = body.inspirations.filter((e) => e.url.trim());
-    const cleanedVoiceSamples = body.noExistingContent
-      ? []
-      : body.voiceSamples.filter((s) => s.trim());
-    const cleanedKeyTopics = body.keyTopics.filter((t) => t.trim());
 
     await dbConnect();
 
     // Build the responses array for the ContentDNAResponse model
-    const responses = buildResponses({
-      ...body,
-      keyTopics: cleanedKeyTopics,
-    });
+    const responses = buildResponses(body);
 
     // Build creator examples from inspiration URLs
     const creatorExamples = cleanedInspirations.map((insp) => ({
@@ -119,11 +123,8 @@ export async function POST(request: NextRequest) {
       extractedTranscript: '',
     }));
 
-    // Build content samples from voice samples
-    const contentSamples = cleanedVoiceSamples.map((sample) => ({
-      text: sample,
-      type: 'written',
-    }));
+    // No more separate content samples — voice samples removed in V2 questionnaire
+    const contentSamples: { text: string; type: string }[] = [];
 
     // Upsert: update if the user already submitted, otherwise create
     const contentDNA = await ContentDNAResponse.findOneAndUpdate(
@@ -139,18 +140,15 @@ export async function POST(request: NextRequest) {
     );
 
     // Create an initial BrandBrain document if one does not exist
+    // Extract topic keywords from passion and business answers for content pillars
     const existingBrandBrain = await BrandBrain.findOne({ userId: user.id });
     if (!existingBrandBrain) {
       await BrandBrain.create({
         userId: user.id,
-        contentPillars: cleanedKeyTopics.map((topic) => ({
-          title: topic,
-          description: topic,
-          keywords: [],
-        })),
+        contentPillars: [],
         industryData: {
-          field: body.industry,
-          keywords: cleanedKeyTopics,
+          field: '',
+          keywords: [],
           competitors: [],
         },
         equipmentProfile: {},

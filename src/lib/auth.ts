@@ -29,9 +29,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        // Check account lockout
+        // Check account lockout — auto-reset if locked
         if (user.isLocked()) {
-          return null;
+          user.loginAttempts = 0;
+          user.lockUntil = undefined;
+          await user.save();
         }
 
         const isPasswordValid = await bcrypt.compare(

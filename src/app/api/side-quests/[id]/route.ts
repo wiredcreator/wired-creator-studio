@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import SideQuest from '@/models/SideQuest';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { validateObjectId } from '@/lib/validation';
+import { awardXP } from '@/lib/xp-service';
 
 // PUT /api/side-quests/[id] — Mark complete or add response
 export async function PUT(
@@ -59,6 +60,13 @@ export async function PUT(
     }
 
     await quest.save();
+
+    // Fire-and-forget XP award when side quest is completed
+    if (body.completed === true) {
+      awardXP(user.id, 'complete_side_quest', { questId: id }).catch((err) =>
+        console.error('[XP] Failed to award complete_side_quest XP:', err)
+      );
+    }
 
     return NextResponse.json(quest);
   } catch (error) {

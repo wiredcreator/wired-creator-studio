@@ -1,34 +1,13 @@
 'use client';
 
-import { ContentDNAFormData, NEURODIVERGENT_OPTIONS } from '@/types/onboarding';
+import { ContentDNAFormData } from '@/types/onboarding';
 
-interface IdentityStepProps {
+interface YourStoryStepProps {
   data: ContentDNAFormData;
   onChange: (updates: Partial<ContentDNAFormData>) => void;
 }
 
-export default function IdentityStep({ data, onChange }: IdentityStepProps) {
-  const toggleNeurodivergent = (option: string) => {
-    const current = data.neurodivergentProfile;
-
-    // "Prefer not to say" is exclusive
-    if (option === 'Prefer not to say') {
-      onChange({
-        neurodivergentProfile: current.includes(option) ? [] : [option],
-      });
-      return;
-    }
-
-    // Remove "Prefer not to say" when selecting something else
-    const filtered = current.filter((o) => o !== 'Prefer not to say');
-
-    if (filtered.includes(option)) {
-      onChange({ neurodivergentProfile: filtered.filter((o) => o !== option) });
-    } else {
-      onChange({ neurodivergentProfile: [...filtered, option] });
-    }
-  };
-
+export default function IdentityStep({ data, onChange }: YourStoryStepProps) {
   return (
     <div className="space-y-8 animate-fadeIn">
       <div className="text-center mb-10">
@@ -36,61 +15,34 @@ export default function IdentityStep({ data, onChange }: IdentityStepProps) {
           className="text-3xl font-semibold mb-3"
           style={{ color: 'var(--color-text-primary)' }}
         >
-          Let&apos;s get to know you
+          Your Story
         </h2>
         <p
           className="text-lg"
           style={{ color: 'var(--color-text-secondary)' }}
         >
-          Just the basics to start your journey.
+          15-20 minutes. Long-form answers. Voice-to-text is encouraged.
         </p>
       </div>
 
-      {/* Name */}
+      {/* Q1 */}
       <div className="space-y-2">
         <label
-          htmlFor="name"
+          htmlFor="yourStory"
           className="block text-base font-medium"
           style={{ color: 'var(--color-text-primary)' }}
         >
-          What should we call you? <span style={{ color: 'var(--color-warning)' }}>*</span>
-        </label>
-        <input
-          id="name"
-          type="text"
-          value={data.name}
-          onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="Your name"
-          className="w-full px-4 py-3 text-base rounded-lg border transition-colors duration-200"
-          style={{
-            backgroundColor: 'var(--color-bg-primary)',
-            borderColor: 'var(--color-border)',
-            color: 'var(--color-text-primary)',
-            borderRadius: 'var(--radius-md)',
-          }}
-          onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
-          onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
-        />
-      </div>
-
-      {/* Background */}
-      <div className="space-y-2">
-        <label
-          htmlFor="background"
-          className="block text-base font-medium"
-          style={{ color: 'var(--color-text-primary)' }}
-        >
-          Tell us a bit about yourself
+          What do you do and how did you end up here? <span style={{ color: 'var(--color-warning)' }}>*</span>
         </label>
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          Your profession, passions, or anything that describes who you are.
+          Tell us about your work, your business, or whatever you spend most of your energy building. The messy path, the wins and failures, the stuff that actually got you to where you are now.
         </p>
         <textarea
-          id="background"
-          value={data.background}
-          onChange={(e) => onChange({ background: e.target.value })}
-          placeholder="E.g., I'm a nutritionist who runs a private practice and loves teaching people about gut health..."
-          rows={3}
+          id="yourStory"
+          value={data.yourStory}
+          onChange={(e) => onChange({ yourStory: e.target.value })}
+          placeholder="Tell us your story..."
+          rows={5}
           className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none"
           style={{
             backgroundColor: 'var(--color-bg-primary)',
@@ -103,47 +55,64 @@ export default function IdentityStep({ data, onChange }: IdentityStepProps) {
         />
       </div>
 
-      {/* Neurodivergent Profile */}
-      <div className="space-y-3">
+      {/* Q2 */}
+      <div className="space-y-2">
         <label
+          htmlFor="winsAndMilestones"
           className="block text-base font-medium"
           style={{ color: 'var(--color-text-primary)' }}
         >
-          Do any of these resonate with you?
+          What are the biggest wins, results, or milestones you can point to? <span style={{ color: 'var(--color-warning)' }}>*</span>
         </label>
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          Totally optional. This helps us personalize your experience.
+          Numbers, outcomes, things you&apos;ve built, problems you&apos;ve solved, clients you&apos;ve helped. Even small ones count. If you&apos;re earlier in your journey, tell us what you&apos;re actively studying, experimenting with, or working toward becoming the person who knows this stuff. This becomes your credibility bank — it&apos;s what gives your content weight.
         </p>
-        <div className="flex flex-wrap gap-3 mt-2">
-          {NEURODIVERGENT_OPTIONS.map((option) => {
-            const isSelected = data.neurodivergentProfile.includes(option);
-            return (
-              <button
-                key={option}
-                type="button"
-                onClick={() => toggleNeurodivergent(option)}
-                className="px-4 py-2.5 text-sm font-medium border transition-all duration-200 cursor-pointer"
-                style={{
-                  borderRadius: 'var(--radius-full)',
-                  backgroundColor: isSelected
-                    ? 'var(--color-accent-light)'
-                    : 'var(--color-bg-card)',
-                  borderColor: isSelected
-                    ? 'var(--color-accent)'
-                    : 'var(--color-border)',
-                  color: isSelected
-                    ? 'var(--color-accent-hover)'
-                    : 'var(--color-text-secondary)',
-                }}
-              >
-                {isSelected && (
-                  <span className="mr-1.5">&#10003;</span>
-                )}
-                {option}
-              </button>
-            );
-          })}
-        </div>
+        <textarea
+          id="winsAndMilestones"
+          value={data.winsAndMilestones}
+          onChange={(e) => onChange({ winsAndMilestones: e.target.value })}
+          placeholder="Share your wins and milestones..."
+          rows={5}
+          className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none"
+          style={{
+            backgroundColor: 'var(--color-bg-primary)',
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text-primary)',
+            borderRadius: 'var(--radius-md)',
+          }}
+          onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
+          onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
+        />
+      </div>
+
+      {/* Q3 */}
+      <div className="space-y-2">
+        <label
+          htmlFor="contentGoal"
+          className="block text-base font-medium"
+          style={{ color: 'var(--color-text-primary)' }}
+        >
+          What do you want your content to actually lead to? <span style={{ color: 'var(--color-warning)' }}>*</span>
+        </label>
+        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+          Not &quot;get more followers.&quot; What&apos;s the real outcome you&apos;re after? Maybe it&apos;s filling your coaching program. Maybe it&apos;s landing speaking gigs. Maybe it&apos;s quitting your job in 12 months. If your content worked exactly the way you wanted it to, what changes in your life or business?
+        </p>
+        <textarea
+          id="contentGoal"
+          value={data.contentGoal}
+          onChange={(e) => onChange({ contentGoal: e.target.value })}
+          placeholder="What's the real outcome you're after?"
+          rows={5}
+          className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none"
+          style={{
+            backgroundColor: 'var(--color-bg-primary)',
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text-primary)',
+            borderRadius: 'var(--radius-md)',
+          }}
+          onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
+          onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
+        />
       </div>
     </div>
   );

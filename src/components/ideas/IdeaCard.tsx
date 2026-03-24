@@ -13,6 +13,7 @@ export interface IdeaCardData {
   status: ContentIdeaStatus;
   source: ContentIdeaSource;
   contentPillar: string;
+  priorityScore?: number | null;
   trendData?: {
     sourceUrl: string;
     platform: string;
@@ -117,13 +118,6 @@ export default function IdeaCard({
 
         {/* Tags row */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          {/* Content pillar */}
-          {idea.contentPillar && (
-            <span className="inline-flex items-center rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-text)]">
-              {idea.contentPillar}
-            </span>
-          )}
-
           {/* Source badge */}
           <span
             className={`inline-flex items-center rounded-[var(--radius-full)] px-2.5 py-0.5 text-xs font-medium ${
@@ -158,6 +152,16 @@ export default function IdeaCard({
               {idea.trendData.platform || 'Source'}
             </a>
           )}
+        </div>
+
+        {/* Metadata tags: Priority Score + Content Pillar */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] px-2.5 py-1 text-xs font-medium text-[var(--color-text)]">
+            Priority Score: {idea.priorityScore != null ? idea.priorityScore : 'None'}
+          </span>
+          <span className="inline-flex items-center rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] px-2.5 py-1 text-xs font-medium text-[var(--color-text)]">
+            Content Pillar: {idea.contentPillar || 'None'}
+          </span>
         </div>
       </button>
 

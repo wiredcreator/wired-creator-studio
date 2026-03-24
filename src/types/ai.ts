@@ -126,6 +126,18 @@ export interface AIErrorResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Side Quest Generation
+// ---------------------------------------------------------------------------
+
+/** A single side quest produced by the AI generator. */
+export interface GeneratedSideQuest {
+  title: string;
+  description: string;
+  type: 'voice_storm_prompt' | 'research_task' | 'content_exercise';
+  prompt: string;
+}
+
+// ---------------------------------------------------------------------------
 // Brand Brain context assembly options
 // ---------------------------------------------------------------------------
 

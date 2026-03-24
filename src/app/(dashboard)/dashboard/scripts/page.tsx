@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import PageWrapper from '@/components/PageWrapper';
 import ScriptCard from '@/components/scripts/ScriptCard';
 import ScriptEditor from '@/components/scripts/ScriptEditor';
@@ -13,14 +13,30 @@ import type { ScriptStatus } from '@/models/Script';
 // Constants
 // ---------------------------------------------------------------------------
 
-const STATUS_TABS: { value: ScriptStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'draft', label: 'Drafts' },
-  { value: 'review', label: 'In Review' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'filming', label: 'Filming' },
-  { value: 'completed', label: 'Completed' },
+type ScriptView = 'drafts' | 'ready' | 'published';
+
+const VIEW_TABS: { value: ScriptView; label: string; description: string }[] = [
+  { value: 'drafts', label: 'Drafts', description: 'Work in progress — scripts you should be working on' },
+  { value: 'ready', label: 'Ready to Film', description: 'In the pipeline for filming' },
+  { value: 'published', label: 'Published', description: 'Scripts that have gone to YouTube' },
 ];
+
+/** Map each ScriptStatus to a view tab */
+function statusToView(status: ScriptStatus): ScriptView {
+  switch (status) {
+    case 'draft':
+    case 'review':
+      return 'drafts';
+    case 'approved':
+    case 'filming':
+      return 'ready';
+    case 'completed':
+    case 'published':
+      return 'published';
+    default:
+      return 'drafts';
+  }
+}
 
 const GENERATING_MESSAGES = [
   'Writing your script...',
@@ -54,17 +70,19 @@ interface TranscriptOption {
 
 export default function ScriptsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const preselectedIdeaId = searchParams.get('ideaId');
 
   // --- State ---
   const [userId, setUserId] = useState('');
   const [scripts, setScripts] = useState<ScriptCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<ScriptStatus | 'all'>('all');
+  const [activeView, setActiveView] = useState<ScriptView>('drafts');
 
   // Editor state
   const [editingScript, setEditingScript] = useState<ScriptEditorData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isReverting, setIsReverting] = useState(false);
 
   // Generation state
   const [showGenerateForm, setShowGenerateForm] = useState(!!preselectedIdeaId);
@@ -210,6 +228,7 @@ export default function ScriptsPage() {
     bulletPoints?: string[];
     teleprompterVersion?: string;
     status?: ScriptStatus;
+    thumbnail?: string;
   }) => {
     if (!editingScript) return;
 
@@ -307,11 +326,42 @@ export default function ScriptsPage() {
     }
   };
 
-  // --- Filtered scripts ---
+  // --- Revert script to idea stage ---
+  const handleRevert = async () => {
+    if (!editingScript) return;
+
+    setIsReverting(true);
+    try {
+      const res = await fetch(`/api/scripts/${editingScript._id}/revert`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) throw new Error('Revert failed');
+
+      // Remove script from local list and close editor
+      setScripts((prev) => prev.filter((s) => s._id !== editingScript._id));
+      setEditingScript(null);
+      router.push('/dashboard/ideas');
+    } catch (err) {
+      console.error('Failed to revert script:', err);
+    } finally {
+      setIsReverting(false);
+    }
+  };
+
+  // --- Filtered scripts by view ---
   const filteredScripts = useMemo(() => {
-    if (activeTab === 'all') return scripts;
-    return scripts.filter((s) => s.status === activeTab);
-  }, [scripts, activeTab]);
+    return scripts.filter((s) => statusToView(s.status) === activeView);
+  }, [scripts, activeView]);
+
+  // --- View counts ---
+  const viewCounts = useMemo(() => {
+    const counts: Record<ScriptView, number> = { drafts: 0, ready: 0, published: 0 };
+    scripts.forEach((s) => {
+      counts[statusToView(s.status)]++;
+    });
+    return counts;
+  }, [scripts]);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -336,9 +386,11 @@ export default function ScriptsPage() {
           onSave={handleSave}
           onRegenerate={handleRegenerate}
           onAddFeedback={handleAddFeedback}
+          onRevert={handleRevert}
           onClose={() => setEditingScript(null)}
           isSaving={isSaving}
           isRegenerating={isRegenerating}
+          isReverting={isReverting}
         />
       </PageWrapper>
     );
@@ -358,7 +410,7 @@ export default function ScriptsPage() {
             <button
               type="button"
               onClick={() => setShowGenerateForm(true)}
-              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)]"
+              style={{ backgroundColor: 'var(--color-accent)', color: '#FFFFFF', borderRadius: 12, padding: '8px 16px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer' }}
             >
               + New Script
             </button>
@@ -452,7 +504,7 @@ export default function ScriptsPage() {
           </div>
         )}
 
-        {/* Empty state when no form */}
+        {/* Empty state when no form and no scripts */}
         {!showGenerateForm && !isGenerating && scripts.length === 0 && (
           <div className="mt-4 rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] p-10 text-center">
             <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent-light)]">
@@ -468,31 +520,62 @@ export default function ScriptsPage() {
       </section>
 
       {/* ================================================================ */}
-      {/* SCRIPTS LIST                                                     */}
+      {/* SCRIPTS LIST WITH THREE VIEWS                                    */}
       {/* ================================================================ */}
       {scripts.length > 0 && (
         <section>
-          <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
-            Your Scripts
-          </h2>
-
-          {/* Status tabs */}
-          <div className="mb-4 flex gap-1 overflow-x-auto rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] p-1">
-            {STATUS_TABS.map((tab) => (
+          {/* View tabs: Drafts / Ready to Film / Published */}
+          <div style={{ display: 'flex', gap: 4, borderRadius: 12, backgroundColor: 'var(--color-bg-secondary)', padding: 4, marginBottom: 20 }}>
+            {VIEW_TABS.map((tab) => (
               <button
                 key={tab.value}
                 type="button"
-                onClick={() => setActiveTab(tab.value)}
-                className={`whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors ${
-                  activeTab === tab.value
-                    ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)] shadow-[var(--shadow-sm)]'
-                    : 'text-[var(--color-text)] hover:text-[var(--color-text-secondary)]'
-                }`}
+                onClick={() => setActiveView(tab.value)}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  borderRadius: 10,
+                  padding: '10px 16px',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  ...(activeView === tab.value
+                    ? { backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', boxShadow: 'var(--shadow-sm)' }
+                    : { backgroundColor: 'transparent', color: 'var(--color-text-muted)' }),
+                }}
               >
                 {tab.label}
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    height: 20,
+                    minWidth: 20,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 999,
+                    padding: '0 6px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    ...(activeView === tab.value
+                      ? { backgroundColor: 'var(--color-accent)', color: '#FFFFFF' }
+                      : { backgroundColor: 'var(--color-hover)', color: 'var(--color-text-muted)' }),
+                  }}
+                >
+                  {viewCounts[tab.value]}
+                </span>
               </button>
             ))}
           </div>
+
+          {/* View description */}
+          <p className="mb-4 text-xs text-[var(--color-text-muted)]">
+            {VIEW_TABS.find((t) => t.value === activeView)?.description}
+          </p>
 
           {/* Script cards */}
           {filteredScripts.length > 0 ? (
@@ -508,7 +591,9 @@ export default function ScriptsPage() {
           ) : (
             <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] p-8 text-center">
               <p className="text-sm text-[var(--color-text)]">
-                No scripts match this filter.
+                {activeView === 'drafts' && 'No draft scripts. Generate a new script to get started.'}
+                {activeView === 'ready' && 'No scripts ready to film yet. Finish editing a draft and mark it as ready.'}
+                {activeView === 'published' && 'No published scripts yet. Mark a script as published after it goes to YouTube.'}
               </p>
             </div>
           )}

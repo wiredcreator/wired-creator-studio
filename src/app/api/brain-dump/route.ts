@@ -7,6 +7,7 @@ import BrandBrain from '@/models/BrandBrain';
 import { processBrainDump } from '@/lib/ai/generate';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { parsePagination, paginationResponse } from '@/lib/pagination';
+import { awardXP } from '@/lib/xp-service';
 
 // POST /api/brain-dump — Submit a brain dump transcript for processing
 export async function POST(request: NextRequest) {
@@ -100,6 +101,11 @@ export async function POST(request: NextRequest) {
       // Non-fatal: brain dump processing succeeded even if Brand Brain link fails
       console.error('[BrainDump] Brand Brain write-back failed (non-fatal):', bbError);
     }
+
+    // Fire-and-forget XP award
+    awardXP(userId, 'brain_dump', { sessionId: callTranscript._id.toString() }).catch((err) =>
+      console.error('[XP] Failed to award brain_dump XP:', err)
+    );
 
     return NextResponse.json(
       {

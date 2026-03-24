@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import Sidebar from '@/components/Sidebar';
+import BrainDumpFAB from '@/components/BrainDumpFAB';
 
 export default async function DashboardLayout({
   children,
@@ -37,11 +38,12 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--color-bg-primary)]">
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
       <Sidebar userName={userName} userRole={userRole} />
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>
+      <BrainDumpFAB />
     </div>
   );
 }

@@ -889,9 +889,8 @@ export default function StudentDetailPage() {
                       <div key={task._id} className="group relative">
                         <TaskCard
                           task={task}
-                          currentUserId={coachId}
                           onStatusChange={handleStatusChange}
-                          onAddComment={handleAddComment}
+                          onClick={() => {}}
                         />
                         {/* Admin action buttons */}
                         <div className="absolute right-3 top-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">

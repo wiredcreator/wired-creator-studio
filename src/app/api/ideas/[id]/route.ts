@@ -115,6 +115,11 @@ export async function PUT(
     if (body.contentPillar !== undefined) idea.contentPillar = body.contentPillar;
     if (body.tags !== undefined) idea.tags = body.tags;
     if (body.trendData !== undefined) idea.trendData = body.trendData;
+    if (body.conceptAnswers !== undefined) idea.conceptAnswers = body.conceptAnswers;
+    if (body.callToAction !== undefined) idea.callToAction = body.callToAction;
+    if (body.alternativeTitles !== undefined) idea.alternativeTitles = body.alternativeTitles;
+    if (body.resources !== undefined) idea.resources = body.resources;
+    if (body.outline !== undefined) idea.outline = body.outline;
 
     await idea.save();
 

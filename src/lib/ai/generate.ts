@@ -14,7 +14,48 @@ import type {
   GeneratedIdea,
   GeneratedScript,
   BrainDumpOutput,
+  GeneratedSideQuest,
 } from '@/types/ai';
+import dbConnect from '@/lib/db';
+import CustomPrompt from '@/models/CustomPrompt';
+import type { CustomPromptCategory } from '@/models/CustomPrompt';
+
+// ---------------------------------------------------------------------------
+// Custom Prompt Integration
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches all active custom prompts for a given category and appends them
+ * to the base system prompt. Returns the augmented system prompt string.
+ */
+async function getAugmentedSystemPrompt(
+  basePrompt: string,
+  category: CustomPromptCategory
+): Promise<string> {
+  try {
+    await dbConnect();
+    const customPrompts = await CustomPrompt.find({
+      category,
+      isActive: true,
+    })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    if (customPrompts.length === 0) {
+      return basePrompt;
+    }
+
+    const customSection = customPrompts
+      .map((p) => `## Custom Instructions: ${p.name}\n${p.promptText}`)
+      .join('\n\n');
+
+    return `${basePrompt}\n\n${customSection}`;
+  } catch (error) {
+    // If custom prompt fetch fails, fall back to the base prompt
+    console.error('Failed to fetch custom prompts, using base prompt:', error);
+    return basePrompt;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Tone of Voice Guide Generation
@@ -93,11 +134,13 @@ export async function generateToneOfVoice(
     '\nPlease analyze all of the above and generate a comprehensive Tone of Voice Guide.'
   );
 
+  const toneSystemPrompt = await getAugmentedSystemPrompt(TONE_OF_VOICE_SYSTEM_PROMPT, 'tone_of_voice');
+
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 4096,
-      system: TONE_OF_VOICE_SYSTEM_PROMPT,
+      system: toneSystemPrompt,
       messages: [{ role: 'user', content: userParts.join('\n') }],
     })
   );
@@ -154,11 +197,13 @@ export async function processBrainDump(
       ? `\n\n## Creator's Content Pillars\n${contentPillars.map((p, i) => `${i + 1}. ${p}`).join('\n')}`
       : '\n\n## Creator\'s Content Pillars\nNo content pillars defined yet. Use "uncategorized" for all theme mappings.';
 
+  const brainDumpSystemPrompt = await getAugmentedSystemPrompt(BRAIN_DUMP_PROCESSING_PROMPT, 'brain_dump_processing');
+
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 4096,
-      system: BRAIN_DUMP_PROCESSING_PROMPT,
+      system: brainDumpSystemPrompt,
       messages: [
         {
           role: 'user',
@@ -221,11 +266,13 @@ export async function generateIdeas(
     '\nGenerate 6-8 concrete, ready-to-film video ideas based on the above context.',
   ].join('\n');
 
+  const ideaSystemPrompt = await getAugmentedSystemPrompt(IDEA_GENERATION_SYSTEM_PROMPT, 'idea_generation');
+
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 2048,
-      system: IDEA_GENERATION_SYSTEM_PROMPT,
+      system: ideaSystemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     })
   );
@@ -260,7 +307,8 @@ export async function generateScript(
   ideaDescription: string,
   brandBrainContext: string,
   voiceStormTranscript?: string,
-  toneOfVoiceContext?: string
+  toneOfVoiceContext?: string,
+  callToAction?: string
 ): Promise<GeneratedScript> {
   const client = getAnthropicClient();
 
@@ -285,15 +333,21 @@ export async function generateScript(
     userParts.push(`\n## Voice Storming Transcript\nUse this as the primary source of ideas, anecdotes, and natural phrasing:\n\n${voiceStormTranscript}`);
   }
 
+  if (callToAction) {
+    userParts.push(`\n## Call to Action\nThe script should end with this call to action: ${callToAction}`);
+  }
+
   userParts.push(
     '\nPlease generate a complete video script based on the above context. Return ONLY valid JSON with the fields: title, fullScript, bulletPoints (array of strings), and teleprompterVersion.'
   );
+
+  const scriptSystemPrompt = await getAugmentedSystemPrompt(SCRIPT_GENERATION_SYSTEM_PROMPT, 'script_generation');
 
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 4096,
-      system: SCRIPT_GENERATION_SYSTEM_PROMPT,
+      system: scriptSystemPrompt,
       messages: [{ role: 'user', content: userParts.join('\n') }],
     })
   );
@@ -358,11 +412,13 @@ export async function processVoiceStorming(
       ? `\n\nContent Pillars: ${contentPillars.join(', ')}`
       : '';
 
+  const voiceStormSystemPrompt = await getAugmentedSystemPrompt(VOICE_STORMING_PROCESSING_PROMPT, 'tone_of_voice');
+
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 2048,
-      system: VOICE_STORMING_PROCESSING_PROMPT,
+      system: voiceStormSystemPrompt,
       messages: [
         {
           role: 'user',
@@ -440,13 +496,8 @@ export async function generateSessionTitle(transcript: string): Promise<string> 
 // Side Quest Generation
 // ---------------------------------------------------------------------------
 
-/** A single side quest produced by the AI generator. */
-export interface GeneratedSideQuest {
-  title: string;
-  description: string;
-  type: 'voice_storm_prompt' | 'research_task' | 'content_exercise';
-  prompt: string;
-}
+// Re-export for convenience (canonical definition is in @/types/ai)
+export type { GeneratedSideQuest } from '@/types/ai';
 
 /**
  * Generates 3 personalized side quests (one of each type) using the student's
@@ -476,11 +527,13 @@ export async function generateSideQuests(
 
   userParts.push('\nGenerate 3 personalized side quests based on the above context.');
 
+  const sideQuestSystemPrompt = await getAugmentedSystemPrompt(SIDE_QUEST_GENERATION_PROMPT, 'side_quest_generation');
+
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1500,
-      system: SIDE_QUEST_GENERATION_PROMPT,
+      system: sideQuestSystemPrompt,
       messages: [{ role: 'user', content: userParts.join('\n') }],
     })
   );

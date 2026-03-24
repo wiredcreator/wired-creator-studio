@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import ContentIdea from '@/models/ContentIdea';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { parsePagination, paginationResponse } from '@/lib/pagination';
+import { awardXP } from '@/lib/xp-service';
 
 // GET /api/ideas — List ideas with optional status filter
 export async function GET(request: NextRequest) {
@@ -73,6 +74,11 @@ export async function POST(request: NextRequest) {
       contentPillar: body.contentPillar || '',
       tags: body.tags || [],
     });
+
+    // Fire-and-forget XP award
+    awardXP(user.id, 'generate_idea', { ideaId: idea._id.toString() }).catch((err) =>
+      console.error('[XP] Failed to award generate_idea XP:', err)
+    );
 
     return NextResponse.json(idea, { status: 201 });
   } catch (error) {

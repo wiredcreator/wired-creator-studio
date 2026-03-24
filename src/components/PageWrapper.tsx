@@ -11,12 +11,12 @@ export default function PageWrapper({ children, title, subtitle }: PageWrapperPr
         {(title || subtitle) && (
           <div className="mb-10">
             {title && (
-              <h1 className="text-3xl font-normal tracking-tight text-[var(--color-text-primary)]">
+              <h1 className="text-3xl tracking-tight" style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
                 {title}
               </h1>
             )}
             {subtitle && (
-              <p className="mt-2 text-[14px] leading-relaxed text-[var(--color-text-muted)]">
+              <p className="mt-2 text-[14px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                 {subtitle}
               </p>
             )}
