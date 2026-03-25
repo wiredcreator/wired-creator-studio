@@ -134,16 +134,15 @@ export async function assembleBrandBrainContext(
     }
   }
 
-  // --- Content DNA ---
+  // --- Content DNA (Creator Profile) ---
   if (options.includeContentDNA && brandBrain.contentDNAResponse) {
     try {
       const dna = await ContentDNAResponse.findById(brandBrain.contentDNAResponse).lean();
 
       if (dna && dna.responses?.length > 0) {
-        sections.push('\n## Content DNA Profile');
-        for (const r of dna.responses) {
-          const answer = Array.isArray(r.answer) ? r.answer.join(', ') : r.answer;
-          sections.push(`- **${r.question}**: ${answer}`);
+        const creatorProfile = buildCreatorProfile(dna.responses);
+        if (creatorProfile) {
+          sections.push(creatorProfile);
         }
       }
     } catch {
@@ -231,6 +230,78 @@ export async function assembleBrandBrainContext(
 
   sections.push('\n=== END BRAND BRAIN CONTEXT ===');
   return sections.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Creator Profile Builder (Content DNA → structured context)
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps Content DNA questionIds to structured Creator Profile labels.
+ * The mapping is keyed by questionId so it gracefully handles old 9-question
+ * formats (missing questionIds are simply skipped).
+ */
+const CREATOR_PROFILE_FIELDS: { questionId: string; label: string }[] = [
+  { questionId: 'yourStory', label: 'Origin Story' },
+  { questionId: 'winsAndMilestones', label: 'Credibility & Proof Points' },
+  { questionId: 'contentGoal', label: 'Content Goal' },
+  { questionId: 'offerAndContent', label: 'Offer/Monetization' },
+  { questionId: 'goToPersonFor', label: 'Known Expertise' },
+  { questionId: 'talkWithoutPreparing', label: 'Passion Topics' },
+  { questionId: 'audienceAndProblem', label: 'Target Audience & Pain Points' },
+  { questionId: 'uniquePerspective', label: 'Unique Perspective' },
+  { questionId: 'personalStories', label: 'Personal Stories' },
+  { questionId: 'knownForAndAgainst', label: 'Brand Positioning (FOR/AGAINST)' },
+  { questionId: 'contentHistory', label: 'Content History' },
+  { questionId: 'timeAndEnergy', label: 'Time & Energy Budget' },
+  { questionId: 'easyVsDraining', label: 'Easy vs Draining Formats' },
+  { questionId: 'naturalFormat', label: 'Natural Format Preference' },
+  { questionId: 'coreMessage', label: 'Core Message' },
+];
+
+interface DNAResponse {
+  questionId: string;
+  question: string;
+  answer: string | string[];
+}
+
+/**
+ * Builds a structured "Creator Profile" section from Content DNA responses.
+ * Only includes non-empty answers. Returns null if no usable data is found.
+ */
+function buildCreatorProfile(responses: DNAResponse[]): string | null {
+  // Index responses by questionId for O(1) lookups
+  const byId = new Map<string, string>();
+  for (const r of responses) {
+    const text = Array.isArray(r.answer) ? r.answer.join(', ') : r.answer;
+    if (text && text.trim()) {
+      byId.set(r.questionId, text.trim());
+    }
+  }
+
+  const lines: string[] = [];
+
+  // Map known fields using the structured labels
+  for (const field of CREATOR_PROFILE_FIELDS) {
+    const value = byId.get(field.questionId);
+    if (value) {
+      lines.push(`**${field.label}:** ${truncateText(value, 800)}`);
+      byId.delete(field.questionId); // mark as handled
+    }
+  }
+
+  // Include any remaining responses not in the mapping (forward-compat / old format)
+  for (const r of responses) {
+    const text = byId.get(r.questionId);
+    if (text) {
+      const answer = truncateText(text, 800);
+      lines.push(`**${r.question}:** ${answer}`);
+    }
+  }
+
+  if (lines.length === 0) return null;
+
+  return '\n## Creator Profile\n' + lines.join('\n');
 }
 
 // ---------------------------------------------------------------------------

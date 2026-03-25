@@ -93,6 +93,7 @@ export async function PUT(
     if (body.teleprompterVersion !== undefined) script.teleprompterVersion = body.teleprompterVersion;
     if (body.status !== undefined) script.status = body.status;
     if (body.thumbnail !== undefined) script.thumbnail = body.thumbnail;
+    if (body.sections !== undefined) script.sections = body.sections;
 
     // Add feedback if provided
     if (body.feedback) {
@@ -104,7 +105,7 @@ export async function PUT(
     }
 
     // Increment version on content changes
-    if (body.fullScript !== undefined || body.bulletPoints !== undefined || body.teleprompterVersion !== undefined) {
+    if (body.fullScript !== undefined || body.bulletPoints !== undefined || body.teleprompterVersion !== undefined || body.sections !== undefined) {
       script.version = (script.version || 1) + 1;
     }
 

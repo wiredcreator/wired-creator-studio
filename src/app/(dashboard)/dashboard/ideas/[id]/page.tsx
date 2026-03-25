@@ -424,18 +424,18 @@ function ConceptStep({
   const conceptQuestions = [
     {
       key: 'whoIsThisFor' as const,
-      label: 'Who is this for?',
-      placeholder: 'e.g. Entrepreneurs with ADHD who struggle to post consistently...',
+      label: 'Who is this video for?',
+      placeholder: 'Explain the audience this video is targeted for.',
     },
     {
       key: 'whatWillTheyLearn' as const,
-      label: 'What will they learn?',
-      placeholder: 'e.g. A 3-step system to batch content in under 2 hours...',
+      label: 'What do they believe right now that\'s holding them back?',
+      placeholder: 'The current assumption, misconception, or gap they have before watching this video.',
     },
     {
       key: 'whyShouldTheyCare' as const,
-      label: 'Why should they care?',
-      placeholder: 'e.g. Most creators quit in 90 days because they overthink content...',
+      label: 'What do they walk away with?',
+      placeholder: 'The shift, takeaway, or new understanding they have after watching.',
     },
   ];
 

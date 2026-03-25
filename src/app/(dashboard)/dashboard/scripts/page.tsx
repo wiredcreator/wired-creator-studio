@@ -6,7 +6,7 @@ import PageWrapper from '@/components/PageWrapper';
 import ScriptCard from '@/components/scripts/ScriptCard';
 import ScriptEditor from '@/components/scripts/ScriptEditor';
 import type { ScriptCardData } from '@/components/scripts/ScriptCard';
-import type { ScriptEditorData } from '@/components/scripts/ScriptEditor';
+import type { ScriptEditorData, ScriptSection } from '@/components/scripts/ScriptEditor';
 import type { ScriptStatus } from '@/models/Script';
 
 // ---------------------------------------------------------------------------
@@ -227,6 +227,7 @@ export default function ScriptsPage() {
     fullScript?: string;
     bulletPoints?: string[];
     teleprompterVersion?: string;
+    sections?: ScriptSection[];
     status?: ScriptStatus;
     thumbnail?: string;
   }) => {

@@ -389,6 +389,26 @@ export default function BrainDumpPage() {
             {sessionTitle}
           </h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{sessionDate}</p>
+
+          {/* Theme Tags */}
+          {(() => {
+            const themes =
+              view.type === 'detail'
+                ? view.session.extractedThemes
+                : view.data.themes.map((t) => t.theme);
+            return themes.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {themes.map((theme, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-[var(--radius-full)] bg-[var(--color-accent-light)] text-[var(--color-accent)]"
+                  >
+                    {theme}
+                  </span>
+                ))}
+              </div>
+            ) : null;
+          })()}
         </div>
 
         {/* Side-by-side layout */}

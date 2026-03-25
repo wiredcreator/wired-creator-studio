@@ -10,6 +10,7 @@ const ALLOWED_FIELDS = new Set([
   'neurodivergentProfile',
   'contentGoals',
   'timezone',
+  'profileImage',
 ]);
 
 export async function GET() {

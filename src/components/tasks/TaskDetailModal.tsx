@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { TaskData } from "./TaskCard";
+import { TaskComment, TaskData } from "./TaskCard";
 
 interface TaskDetailModalProps {
   task: TaskData;
@@ -100,6 +100,43 @@ function RichDescription({ text }: { text: string }) {
   );
 }
 
+const AVATAR_COLORS = [
+  "#6366f1", "#8b5cf6", "#ec4899", "#f43f5e",
+  "#f97316", "#eab308", "#22c55e", "#14b8a6",
+  "#06b6d4", "#3b82f6",
+];
+
+function getAvatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function relativeTime(dateString: string): string {
+  const now = Date.now();
+  const then = new Date(dateString).getTime();
+  const diffMs = now - then;
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay === 1) return "1 day ago";
+  if (diffDay < 30) return `${diffDay} days ago`;
+  const diffMonth = Math.floor(diffDay / 30);
+  if (diffMonth === 1) return "1 month ago";
+  return `${diffMonth} months ago`;
+}
+
+function getCommentUserName(userId: TaskComment["userId"]): string {
+  if (typeof userId === "object" && userId !== null) return userId.name || "User";
+  return "User";
+}
+
 const TIME_OPTIONS = [
   { label: "3 days", days: 3 },
   { label: "5 days", days: 5 },
@@ -118,11 +155,18 @@ export default function TaskDetailModal({
   const isCompleted = task.status === "completed";
   const overdue = isOverdue(task.dueDate, isCompleted);
 
+  const [confirmingComplete, setConfirmingComplete] = useState(false);
   const [stuckLoading, setStuckLoading] = useState(false);
   const [stuckConfirmed, setStuckConfirmed] = useState(false);
   const [timePopoverOpen, setTimePopoverOpen] = useState(false);
   const [extensionLoading, setExtensionLoading] = useState(false);
   const [extensionConfirmed, setExtensionConfirmed] = useState(false);
+
+  // Comments
+  const [comments, setComments] = useState<TaskComment[]>(task.comments || []);
+  const [commentText, setCommentText] = useState("");
+  const [commentSending, setCommentSending] = useState(false);
+  const commentsEndRef = useRef<HTMLDivElement>(null);
 
   // Close on Escape key
   useEffect(() => {
@@ -196,6 +240,39 @@ export default function TaskDetailModal({
       console.error("Failed to request extension:", err);
     } finally {
       setExtensionLoading(false);
+    }
+  };
+
+  // Sync comments when task prop changes
+  useEffect(() => {
+    setComments(task.comments || []);
+  }, [task.comments]);
+
+  // Scroll to bottom when new comments arrive
+  useEffect(() => {
+    commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [comments.length]);
+
+  const handleSendComment = async () => {
+    const trimmed = commentText.trim();
+    if (!trimmed || commentSending) return;
+    setCommentSending(true);
+    try {
+      const res = await fetch(`/api/tasks/${task._id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: trimmed }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setComments(updated.comments || []);
+        setCommentText("");
+        onTaskUpdated?.(updated);
+      }
+    } catch (err) {
+      console.error("Failed to send comment:", err);
+    } finally {
+      setCommentSending(false);
     }
   };
 
@@ -319,6 +396,96 @@ export default function TaskDetailModal({
               No details have been added to this task yet.
             </p>
           )}
+
+          {/* Comments section */}
+          <div className="space-y-4 pt-1">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+              Comments
+            </h3>
+
+            {/* Comment list */}
+            {comments.length > 0 && (
+              <div className="space-y-3">
+                {comments.map((comment) => {
+                  const name = getCommentUserName(comment.userId);
+                  const initial = name.charAt(0).toUpperCase();
+                  const color = getAvatarColor(name);
+
+                  return (
+                    <div key={comment._id} className="flex gap-3">
+                      {/* Avatar */}
+                      <div
+                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                        style={{ backgroundColor: color }}
+                      >
+                        {initial}
+                      </div>
+
+                      {/* Comment body */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                            {name}
+                          </span>
+                          <span className="text-xs text-[var(--color-text-muted)]">
+                            {relativeTime(comment.createdAt)}
+                          </span>
+                        </div>
+                        <div className="mt-1 rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] px-3 py-2">
+                          <p className="text-sm leading-relaxed text-[var(--color-text-secondary)]">
+                            {comment.text}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={commentsEndRef} />
+              </div>
+            )}
+
+            {/* Reply input */}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendComment();
+                  }
+                }}
+                placeholder="Ask a question or leave a note for your coach..."
+                className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+              />
+              <button
+                onClick={handleSendComment}
+                disabled={!commentText.trim() || commentSending}
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40 outline-none ring-0"
+                aria-label="Send comment"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Privacy note */}
+            <p className="text-xs text-[var(--color-text-muted)]">
+              Comments are private — only you and your coach can see them.
+            </p>
+          </div>
         </div>
 
         {/* Footer with action buttons */}
@@ -385,13 +552,38 @@ export default function TaskDetailModal({
               Close
             </button>
 
-            {!isCompleted && (
+            {!isCompleted && !confirmingComplete && (
               <button
-                onClick={() => onMarkComplete(task._id)}
+                onClick={() => setConfirmingComplete(true)}
                 className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] outline-none ring-0"
               >
                 Mark as Complete
               </button>
+            )}
+            {!isCompleted && confirmingComplete && (
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 text-sm font-medium text-[var(--color-text-primary)]">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  Are you sure?
+                </span>
+                <button
+                  onClick={() => {
+                    setConfirmingComplete(false);
+                    onMarkComplete(task._id);
+                  }}
+                  className="rounded-[var(--radius-md)] bg-[var(--color-success)] px-3 py-2 text-sm font-medium text-white transition-colors hover:brightness-110 outline-none ring-0"
+                >
+                  Yes, complete
+                </button>
+                <button
+                  onClick={() => setConfirmingComplete(false)}
+                  className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] outline-none ring-0"
+                >
+                  Cancel
+                </button>
+              </div>
             )}
             {isCompleted && (
               <div className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-success)] px-4 py-2 text-sm font-medium text-white">

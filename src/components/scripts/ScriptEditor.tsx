@@ -13,12 +13,21 @@ interface ScriptFeedbackItem {
   createdAt: string;
 }
 
+export interface ScriptSection {
+  id: string;
+  title: string;
+  content: string;
+  source: 'ai' | 'user';
+  order: number;
+}
+
 export interface ScriptEditorData {
   _id: string;
   title: string;
   fullScript: string;
   bulletPoints: string[];
   teleprompterVersion: string;
+  sections?: ScriptSection[];
   thumbnail?: string;
   status: ScriptStatus;
   feedback: ScriptFeedbackItem[];
@@ -37,6 +46,7 @@ interface ScriptEditorProps {
     fullScript?: string;
     bulletPoints?: string[];
     teleprompterVersion?: string;
+    sections?: ScriptSection[];
     status?: ScriptStatus;
     thumbnail?: string;
   }) => void;
@@ -53,7 +63,11 @@ interface ScriptEditorProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-type ViewMode = 'full' | 'bullets' | 'teleprompter';
+type ViewMode = 'full' | 'sections' | 'bullets' | 'teleprompter';
+
+function generateSectionId(): string {
+  return `section_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
 
 const STATUS_OPTIONS: { value: ScriptStatus; label: string }[] = [
   { value: 'draft', label: 'Draft' },
@@ -112,6 +126,11 @@ export default function ScriptEditor({
   const [hasChanges, setHasChanges] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [sections, setSections] = useState<ScriptSection[]>(
+    () => (script.sections || []).sort((a, b) => a.order - b.order)
+  );
+  const [sectionDragIndex, setSectionDragIndex] = useState<number | null>(null);
+  const [sectionOverIndex, setSectionOverIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const markChanged = () => {
@@ -123,9 +142,10 @@ export default function ScriptEditor({
     fullScript,
     bulletPoints,
     teleprompterVersion,
+    sections,
     status: overrideStatus || status,
     thumbnail,
-  }), [title, fullScript, bulletPoints, teleprompterVersion, status, thumbnail]);
+  }), [title, fullScript, bulletPoints, teleprompterVersion, sections, status, thumbnail]);
 
   const handleSave = (overrideStatus?: ScriptStatus) => {
     if (overrideStatus) setStatus(overrideStatus);
@@ -148,6 +168,67 @@ export default function ScriptEditor({
   const handleRemoveBullet = (index: number) => {
     setBulletPoints(bulletPoints.filter((_, i) => i !== index));
     markChanged();
+  };
+
+  // --- Section handlers ---
+  const handleAddSection = () => {
+    const newSection: ScriptSection = {
+      id: generateSectionId(),
+      title: '',
+      content: '',
+      source: 'user',
+      order: sections.length,
+    };
+    setSections([...sections, newSection]);
+    markChanged();
+  };
+
+  const handleSectionTitleChange = (index: number, value: string) => {
+    const updated = [...sections];
+    updated[index] = { ...updated[index], title: value };
+    setSections(updated);
+    markChanged();
+  };
+
+  const handleSectionContentChange = (index: number, value: string) => {
+    const updated = [...sections];
+    updated[index] = { ...updated[index], content: value };
+    setSections(updated);
+    markChanged();
+  };
+
+  const handleRemoveSection = (index: number) => {
+    const updated = sections.filter((_, i) => i !== index).map((s, i) => ({ ...s, order: i }));
+    setSections(updated);
+    markChanged();
+  };
+
+  const handleSectionDragStart = (index: number) => {
+    setSectionDragIndex(index);
+  };
+
+  const handleSectionDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setSectionOverIndex(index);
+  };
+
+  const handleSectionDragEnd = () => {
+    setSectionDragIndex(null);
+    setSectionOverIndex(null);
+  };
+
+  const handleSectionDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (sectionDragIndex === null || sectionDragIndex === dropIndex) {
+      handleSectionDragEnd();
+      return;
+    }
+    const updated = [...sections];
+    const [moved] = updated.splice(sectionDragIndex, 1);
+    updated.splice(dropIndex, 0, moved);
+    setSections(updated.map((s, i) => ({ ...s, order: i })));
+    markChanged();
+    handleSectionDragEnd();
   };
 
   const handleDragStart = (index: number) => {
@@ -345,6 +426,11 @@ export default function ScriptEditor({
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
             </svg>
           )},
+          { key: 'sections', label: 'Sections', icon: (
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
+            </svg>
+          )},
           { key: 'bullets', label: 'Key Beats', icon: (
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
@@ -381,6 +467,106 @@ export default function ScriptEditor({
             className="min-h-[400px] w-full resize-y rounded-[var(--radius-lg)] border-none bg-transparent p-6 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
             placeholder="Write your full script here..."
           />
+        )}
+
+        {viewMode === 'sections' && (
+          <div className="p-6 space-y-3">
+            {sections.length === 0 && (
+              <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">
+                No sections yet. Add your first section to organize your script.
+              </p>
+            )}
+
+            {sections.map((section, index) => (
+              <div
+                key={section.id}
+                draggable
+                onDragStart={() => handleSectionDragStart(index)}
+                onDragOver={(e) => handleSectionDragOver(e, index)}
+                onDragEnd={handleSectionDragEnd}
+                onDrop={(e) => handleSectionDrop(e, index)}
+                className={`group rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] transition-all ${
+                  sectionDragIndex === index
+                    ? 'opacity-40'
+                    : sectionOverIndex === index && sectionDragIndex !== null
+                      ? 'border-[var(--color-accent)]'
+                      : ''
+                }`}
+              >
+                {/* Section header */}
+                <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-4 py-2.5">
+                  {/* Drag handle */}
+                  <button
+                    type="button"
+                    className="shrink-0 cursor-grab rounded-[var(--radius-sm)] p-0.5 text-[var(--color-text-muted)] opacity-40 transition-opacity hover:opacity-100 group-hover:opacity-70 active:cursor-grabbing"
+                    title="Drag to reorder"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="9" cy="6" r="1.5" />
+                      <circle cx="15" cy="6" r="1.5" />
+                      <circle cx="9" cy="12" r="1.5" />
+                      <circle cx="15" cy="12" r="1.5" />
+                      <circle cx="9" cy="18" r="1.5" />
+                      <circle cx="15" cy="18" r="1.5" />
+                    </svg>
+                  </button>
+
+                  {/* Section number */}
+                  <span className="shrink-0 rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-2 py-0.5 text-xs font-medium text-white">
+                    {index + 1}
+                  </span>
+
+                  {/* Title input */}
+                  <input
+                    type="text"
+                    value={section.title}
+                    onChange={(e) => handleSectionTitleChange(index, e.target.value)}
+                    className="flex-1 border-none bg-transparent text-sm font-medium text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+                    placeholder="Section title..."
+                  />
+
+                  {/* Source badge */}
+                  {section.source === 'ai' && (
+                    <span className="shrink-0 rounded-[var(--radius-full)] bg-[var(--color-accent-light)] px-2 py-0.5 text-xs font-medium text-[var(--color-accent)]">
+                      AI
+                    </span>
+                  )}
+
+                  {/* Remove button */}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSection(index)}
+                    className="shrink-0 rounded-[var(--radius-sm)] p-1 text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-[var(--color-error-light)] hover:text-[var(--color-error)] group-hover:opacity-100"
+                    title="Remove section"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Section content */}
+                <textarea
+                  value={section.content}
+                  onChange={(e) => handleSectionContentChange(index, e.target.value)}
+                  className="min-h-[120px] w-full resize-y border-none bg-transparent px-4 py-3 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+                  placeholder="Write this section's content..."
+                />
+              </div>
+            ))}
+
+            {/* Add Section button */}
+            <button
+              type="button"
+              onClick={handleAddSection}
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-transparent px-4 py-3 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Add Section
+            </button>
+          </div>
         )}
 
         {viewMode === 'bullets' && (

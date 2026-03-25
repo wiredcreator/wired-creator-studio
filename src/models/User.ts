@@ -11,6 +11,7 @@ export interface IUser extends Document {
   contentGoals: string;
   timezone: string;
   avatarUrl: string;
+  profileImage: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   // Auth security fields
@@ -71,6 +72,10 @@ const UserSchema = new Schema<IUser>(
       default: 'America/New_York',
     },
     avatarUrl: {
+      type: String,
+      default: '',
+    },
+    profileImage: {
       type: String,
       default: '',
     },

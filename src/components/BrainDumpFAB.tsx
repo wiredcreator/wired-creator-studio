@@ -661,49 +661,34 @@ export default function BrainDumpFAB() {
       )}
 
       {/* FAB Button */}
-      <div className="relative group">
-        <button
-          onClick={() => {
-            if (open) {
-              handleClose();
-            } else {
-              setOpen(true);
-            }
-          }}
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: '50%',
-            backgroundColor: '#4A90D9',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(74,144,217,0.3)',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-          aria-label="Brain Dump"
-        >
-          {open ? (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-            </svg>
-          )}
-        </button>
-        {!open && (
-          <div
-            className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap rounded-[8px] px-3 py-1.5 text-xs font-medium shadow-lg"
-            style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}
-          >
-            Brain Dump
-          </div>
+      <button
+        onClick={() => {
+          if (open) {
+            handleClose();
+          } else {
+            setOpen(true);
+          }
+        }}
+        className="flex items-center gap-2 text-white text-sm font-medium transition-all hover:scale-105 hover:opacity-90"
+        style={{
+          padding: '12px 24px',
+          borderRadius: 24,
+          backgroundColor: 'var(--color-accent, #4A90D9)',
+          boxShadow: '0 4px 14px rgba(74,144,217,0.35)',
+          border: 'none',
+          cursor: 'pointer',
+        }}
+        aria-label="Brain Dump"
+      >
+        {open ? (
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        ) : (
+          <span className="text-base leading-none">&#10022;</span>
         )}
-      </div>
+        <span>{open ? 'Close' : 'Brain dump'}</span>
+      </button>
     </div>
   );
 }

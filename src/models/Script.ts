@@ -23,6 +23,26 @@ const ScriptFeedbackSchema = new Schema<IScriptFeedback>(
   { _id: false }
 );
 
+// --- Section Sub-document ---
+export interface IScriptSection {
+  id: string;
+  title: string;
+  content: string;
+  source: 'ai' | 'user';
+  order: number;
+}
+
+const ScriptSectionSchema = new Schema<IScriptSection>(
+  {
+    id: { type: String, required: true },
+    title: { type: String, required: true, default: '' },
+    content: { type: String, default: '' },
+    source: { type: String, enum: ['ai', 'user'], default: 'user' },
+    order: { type: Number, required: true, default: 0 },
+  },
+  { _id: false }
+);
+
 // --- Script Document ---
 export interface IScript extends Document {
   userId: Types.ObjectId;
@@ -31,6 +51,7 @@ export interface IScript extends Document {
   fullScript: string;
   bulletPoints: string[];
   teleprompterVersion: string;
+  sections: IScriptSection[];
   voiceStormTranscriptId?: Types.ObjectId;
   thumbnail?: string;
   status: ScriptStatus;
@@ -56,6 +77,7 @@ const ScriptSchema = new Schema<IScript>(
     fullScript: { type: String, required: true },
     bulletPoints: [{ type: String }],
     teleprompterVersion: { type: String, default: '' },
+    sections: [ScriptSectionSchema],
     voiceStormTranscriptId: {
       type: Schema.Types.ObjectId,
       ref: 'VoiceStormingTranscript',

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Task from '@/models/Task';
+import Notification from '@/models/Notification';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { parsePagination, paginationResponse } from '@/lib/pagination';
 
@@ -103,6 +104,16 @@ export async function POST(request: NextRequest) {
       dayOfWeek,
       order: body.order || 0,
     });
+
+    // Fire-and-forget notification to the assigned student
+    Notification.create({
+      userId,
+      type: 'task_assigned',
+      title: 'New task assigned',
+      message: `Your coach assigned you: ${title}`,
+      relatedId: task._id.toString(),
+      relatedType: 'task',
+    }).catch(() => {});
 
     return NextResponse.json(task, { status: 201 });
   } catch (error) {

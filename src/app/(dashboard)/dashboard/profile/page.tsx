@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import PageWrapper from '@/components/PageWrapper';
@@ -18,6 +18,7 @@ interface ProfileData {
   contentGoals: string;
   timezone: string;
   avatarUrl: string;
+  profileImage: string;
   createdAt: string;
 }
 
@@ -48,6 +49,7 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
 
   // Profile form state
+  const [profileImage, setProfileImage] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [background, setBackground] = useState('');
@@ -67,6 +69,7 @@ export default function SettingsPage() {
       const user = data.user;
 
       setProfile(user);
+      setProfileImage(user.profileImage || '');
       const nameParts = (user.name || '').split(' ');
       setFirstName(nameParts[0] || '');
       setLastName(nameParts.slice(1).join(' ') || '');
@@ -103,6 +106,7 @@ export default function SettingsPage() {
           neurodivergentProfile,
           contentGoals,
           timezone,
+          profileImage,
         }),
       });
 
@@ -177,6 +181,8 @@ export default function SettingsPage() {
       {!loading && activeTab === 'profile' && (
         <ProfileTab
           profile={profile}
+          profileImage={profileImage}
+          onProfileImageChange={setProfileImage}
           firstName={firstName}
           lastName={lastName}
           background={background}
@@ -208,6 +214,8 @@ export default function SettingsPage() {
 
 function ProfileTab({
   profile,
+  profileImage,
+  onProfileImageChange,
   firstName,
   lastName,
   background,
@@ -226,6 +234,8 @@ function ProfileTab({
   onSave,
 }: {
   profile: ProfileData | null;
+  profileImage: string;
+  onProfileImageChange: (v: string) => void;
   firstName: string;
   lastName: string;
   background: string;
@@ -250,13 +260,94 @@ function ProfileTab({
     .toUpperCase()
     .slice(0, 2) || '?';
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageError, setImageError] = useState('');
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageError('');
+
+    if (file.size > 2 * 1024 * 1024) {
+      setImageError('Image must be under 2MB');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setImageError('Please select an image file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      onProfileImageChange(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* Profile picture + name */}
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-bg-card)] p-6">
         <div className="flex items-center gap-5 mb-6">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[#B8842A] text-lg font-bold text-[var(--color-bg-dark)]">
-            {initials}
+          {/* Profile image / initials */}
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="group relative shrink-0 overflow-hidden outline-none"
+              style={{ borderRadius: '50%', width: 80, height: 80, minWidth: 80, minHeight: 80 }}
+            >
+              {profileImage ? (
+                <img
+                  src={profileImage}
+                  alt="Profile"
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex items-center justify-center text-xl font-bold text-white" style={{ borderRadius: '50%', backgroundColor: 'var(--color-accent)', width: 80, height: 80 }}>
+                  {initials}
+                </div>
+              )}
+              {/* Hover overlay with camera icon */}
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" />
+                </svg>
+              </div>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            {!profileImage && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs font-medium text-[var(--color-accent)] hover:underline outline-none"
+              >
+                Upload photo
+              </button>
+            )}
+            {profileImage && (
+              <button
+                type="button"
+                onClick={() => onProfileImageChange('')}
+                className="text-xs font-medium text-[var(--color-error)] hover:underline outline-none"
+              >
+                Remove
+              </button>
+            )}
+            {imageError && (
+              <p className="text-xs text-[var(--color-error)]">{imageError}</p>
+            )}
           </div>
           <div>
             <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
