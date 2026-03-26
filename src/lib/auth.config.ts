@@ -4,6 +4,7 @@ import Credentials from 'next-auth/providers/credentials';
 // Edge-compatible auth config (no Node.js-only imports like mongoose/bcrypt).
 // Used by middleware. The full authorize logic lives in auth.ts.
 export default {
+  trustHost: true,
   providers: [
     Credentials({
       name: 'credentials',
