@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { ContentIdeaStatus, ContentIdeaSource } from '@/models/ContentIdea';
 
 // ---------------------------------------------------------------------------
@@ -38,6 +39,14 @@ interface IdeaCardProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
+const SUGGESTED_SOURCE_LABELS: Record<ContentIdeaSource, string> = {
+  ai_generated: 'Brand Brain',
+  brain_dump: 'Brain Dump',
+  voice_storm: 'Voice Storm',
+  trend_scrape: 'Content Scout',
+  manual: 'Manual',
+};
+
 const SOURCE_LABELS: Record<ContentIdeaSource, string> = {
   ai_generated: 'AI Generated',
   brain_dump: 'Brain Dump',
@@ -74,6 +83,11 @@ const STATUS_DOT_COLORS: Record<ContentIdeaStatus, string> = {
   published: 'bg-[var(--color-success)]',
 };
 
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -89,7 +103,74 @@ export default function IdeaCard({
   animationClass,
 }: IdeaCardProps) {
   const isSuggested = variant === 'suggested';
+  const [isSaved, setIsSaved] = useState(false);
 
+  // Suggested variant: simplified card matching client prototype
+  if (isSuggested) {
+    const handleSaveClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isSaved) return;
+      setIsSaved(true);
+      onSave?.(idea._id);
+    };
+
+    return (
+      <div
+        className={`group relative rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] ${animationClass || ''}`}
+      >
+        <div className="flex items-start gap-3 p-5">
+          {/* Main content — clickable */}
+          <button
+            type="button"
+            className="min-w-0 flex-1 cursor-pointer text-left"
+            onClick={() => onClick?.(idea)}
+          >
+            {/* Title */}
+            <h3 className="text-base font-semibold leading-snug text-[var(--color-text-primary)] line-clamp-2">
+              {idea.title}
+            </h3>
+
+            {/* Description */}
+            {idea.description && (
+              <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-secondary)] line-clamp-3">
+                {idea.description}
+              </p>
+            )}
+
+            {/* Source badge + date */}
+            <div className="mt-4 flex items-center gap-2">
+              <span className="inline-flex items-center rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-text)]">
+                {SUGGESTED_SOURCE_LABELS[idea.source]}
+              </span>
+              <span className="text-xs text-[var(--color-text-muted)]">
+                {formatDate(idea.createdAt)}
+              </span>
+            </div>
+          </button>
+
+          {/* Circle save button */}
+          <button
+            type="button"
+            onClick={handleSaveClick}
+            className="mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200"
+            style={{
+              borderColor: isSaved ? 'var(--color-accent)' : 'var(--color-border)',
+              backgroundColor: isSaved ? 'var(--color-accent)' : 'transparent',
+            }}
+            title={isSaved ? 'Saved to parking lot' : 'Save to parking lot'}
+          >
+            {isSaved && (
+              <svg className="h-3.5 w-3.5 text-[var(--color-bg-dark)]" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Pipeline variant: unchanged
   return (
     <div
       className={`group relative rounded-[var(--radius-lg)] border bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] ${
@@ -127,15 +208,13 @@ export default function IdeaCard({
             {SOURCE_LABELS[idea.source]}
           </span>
 
-          {/* Status indicator (pipeline variant only) */}
-          {!isSuggested && (
-            <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-              <span
-                className={`inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLORS[idea.status]}`}
-              />
-              {STATUS_LABELS[idea.status]}
-            </span>
-          )}
+          {/* Status indicator */}
+          <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+            <span
+              className={`inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLORS[idea.status]}`}
+            />
+            {STATUS_LABELS[idea.status]}
+          </span>
 
           {/* Trend link */}
           {idea.trendData?.sourceUrl && (
@@ -153,76 +232,24 @@ export default function IdeaCard({
             </a>
           )}
         </div>
-
-        {/* Metadata tags: Priority Score + Content Pillar */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] px-2.5 py-1 text-xs font-medium text-[var(--color-text)]">
-            Priority Score: {idea.priorityScore != null ? idea.priorityScore : 'None'}
-          </span>
-          <span className="inline-flex items-center rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] px-2.5 py-1 text-xs font-medium text-[var(--color-text)]">
-            Content Pillar: {idea.contentPillar || 'None'}
-          </span>
-        </div>
       </button>
 
-      {/* Action buttons */}
+      {/* Action buttons — pipeline: status dropdown */}
       <div className="flex border-t border-[var(--color-border-light)] px-2 py-1.5">
-        {isSuggested ? (
-          /* Suggested ideas: Approve / Save / Reject */
-          <>
-            <button
-              type="button"
-              onClick={() => onApprove?.(idea._id)}
-              className="idea-action-btn flex flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-md)] py-2 text-xs font-medium text-[var(--color-success)] transition-colors hover:bg-[var(--color-success-light)]"
-              title="Approve"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-              </svg>
-              Approve
-            </button>
-            <button
-              type="button"
-              onClick={() => onSave?.(idea._id)}
-              className="idea-action-btn flex flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-md)] py-2 text-xs font-medium text-[var(--color-warning)] transition-colors hover:bg-[var(--color-warning-light)]"
-              title="Save for Later"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
-              </svg>
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={() => onReject?.(idea._id)}
-              className="idea-action-btn flex flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-md)] py-2 text-xs font-medium text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-light)]"
-              title="Reject"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-              Pass
-            </button>
-          </>
-        ) : (
-          /* Pipeline ideas: status dropdown */
-          <>
-            <select
-              value={idea.status}
-              onChange={(e) =>
-                onStatusChange?.(idea._id, e.target.value as ContentIdeaStatus)
-              }
-              onClick={(e) => e.stopPropagation()}
-              className="flex-1 cursor-pointer rounded-[var(--radius-md)] border-none bg-transparent py-2 pl-2 text-xs font-medium text-[var(--color-text-secondary)] outline-none transition-colors hover:bg-[var(--color-bg-secondary)]"
-            >
-              <option value="approved">Approved</option>
-              <option value="saved">Saved for Later</option>
-              <option value="scripted">Scripted</option>
-              <option value="filmed">Filmed</option>
-              <option value="published">Published</option>
-            </select>
-          </>
-        )}
+        <select
+          value={idea.status}
+          onChange={(e) =>
+            onStatusChange?.(idea._id, e.target.value as ContentIdeaStatus)
+          }
+          onClick={(e) => e.stopPropagation()}
+          className="flex-1 cursor-pointer rounded-[var(--radius-md)] border-none bg-transparent py-2 pl-2 text-xs font-medium text-[var(--color-text-secondary)] outline-none transition-colors hover:bg-[var(--color-bg-secondary)]"
+        >
+          <option value="approved">Approved</option>
+          <option value="saved">Saved for Later</option>
+          <option value="scripted">Scripted</option>
+          <option value="filmed">Filmed</option>
+          <option value="published">Published</option>
+        </select>
       </div>
     </div>
   );

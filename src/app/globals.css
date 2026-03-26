@@ -246,6 +246,15 @@ body::before {
 .idea-detail-enter { animation: ideaDetailEnter 0.25s ease-out; }
 .idea-approve-flash { animation: approveFlash 0.5s ease-out; }
 
+/* ── Scrollbar hide utility ── */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 .idea-action-btn {
   transition: transform 0.15s ease, background-color 0.15s ease;
 }

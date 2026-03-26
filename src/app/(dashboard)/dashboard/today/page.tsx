@@ -109,8 +109,7 @@ export default function DashboardPage() {
 
   return (
     <PageWrapper
-      title={getGreeting()}
-      subtitle={`${todayFormatted} — Focus on what matters right now.`}
+      title="Tasks"
     >
       <div className="space-y-6">
         {/* Progress indicator */}
@@ -135,48 +134,35 @@ export default function DashboardPage() {
         )}
 
         {/* Tab switcher */}
-        <div style={{ display: 'flex', gap: 4, borderRadius: 12, backgroundColor: 'var(--color-bg-secondary)', padding: 4 }}>
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveTab("todo")}
-            style={{
-              flex: 1,
-              borderRadius: 10,
-              padding: '10px 16px',
-              fontSize: 14,
-              fontWeight: 500,
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              ...(activeTab === "todo"
-                ? { backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', boxShadow: 'var(--shadow-sm)' }
-                : { backgroundColor: 'transparent', color: 'var(--color-text-muted)' }),
-            }}
+            className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-all outline-none ring-0 ${
+              activeTab === "todo"
+                ? "bg-blue-600 text-white"
+                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+            }`}
           >
-            To Do
+            To do
             {todoTasks.length > 0 && (
-              <span style={{ marginLeft: 8, fontSize: 12 }}>({todoTasks.length})</span>
+              <span className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-xs font-semibold ${
+                activeTab === "todo"
+                  ? "bg-blue-500 text-white"
+                  : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]"
+              }`}>
+                {todoTasks.length}
+              </span>
             )}
           </button>
           <button
             onClick={() => setActiveTab("completed")}
-            style={{
-              flex: 1,
-              borderRadius: 10,
-              padding: '10px 16px',
-              fontSize: 14,
-              fontWeight: 500,
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              ...(activeTab === "completed"
-                ? { backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', boxShadow: 'var(--shadow-sm)' }
-                : { backgroundColor: 'transparent', color: 'var(--color-text-muted)' }),
-            }}
+            className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-all outline-none ring-0 ${
+              activeTab === "completed"
+                ? "bg-blue-600 text-white"
+                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+            }`}
           >
             Completed
-            {completedTasks.length > 0 && (
-              <span className="ml-2 text-xs">({completedTasks.length})</span>
-            )}
           </button>
         </div>
 

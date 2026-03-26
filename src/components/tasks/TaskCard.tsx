@@ -57,14 +57,27 @@ export default function TaskCard({ task, onStatusChange, onClick }: TaskCardProp
     onStatusChange(task._id, newStatus);
   };
 
+  const isFlagged = !!task.stuckAt;
+  const commentCount = task.comments?.length || 0;
+
   return (
     <div
       onClick={() => onClick(task)}
-      className="flex cursor-pointer flex-col justify-between rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-bg-card)] p-5 transition-colors hover:border-[var(--color-border)]"
+      className="group flex cursor-pointer flex-col justify-between rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-bg-card)] p-6 transition-colors hover:border-[var(--color-border)]"
     >
       {/* Top row: tags left, checkbox right */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
+          {/* Flagged badge */}
+          {isFlagged && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-600 px-2.5 py-0.5 text-xs font-medium text-white">
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+              </svg>
+              Flagged
+            </span>
+          )}
+
           {/* Status tag */}
           {isCompleted ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-success)] px-2.5 py-0.5 text-xs font-medium text-white">
@@ -127,6 +140,23 @@ export default function TaskCard({ task, onStatusChange, onClick }: TaskCardProp
       >
         {task.title}
       </h3>
+
+      {/* Bottom row: comment count left, view details right */}
+      <div className="mt-4 flex items-center justify-between">
+        <div>
+          {commentCount > 0 && (
+            <span className="text-xs text-[var(--color-text-muted)]">
+              <svg className="mr-1 inline h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+              </svg>
+              {commentCount} {commentCount === 1 ? "comment" : "comments"}
+            </span>
+          )}
+        </div>
+        <span className="text-xs font-medium text-[var(--color-accent)]">
+          View details &rarr;
+        </span>
+      </div>
     </div>
   );
 }

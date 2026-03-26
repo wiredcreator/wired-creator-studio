@@ -6,6 +6,7 @@ import PageWrapper from '@/components/PageWrapper';
 import IdeaCard from '@/components/ideas/IdeaCard';
 import IdeaDetail from '@/components/ideas/IdeaDetail';
 import IdeaStats from '@/components/ideas/IdeaStats';
+import ContentScout from '@/components/ideas/ContentScout';
 import type { IdeaCardData } from '@/components/ideas/IdeaCard';
 import type { ContentIdeaStatus } from '@/models/ContentIdea';
 
@@ -61,12 +62,12 @@ function getRandomMessage(): string {
 // ---------------------------------------------------------------------------
 
 function EntryCard({
-  icon,
+  emoji,
   title,
   description,
   onClick,
 }: {
-  icon: React.ReactNode;
+  emoji: string;
   title: string;
   description: string;
   onClick: () => void;
@@ -78,32 +79,28 @@ function EntryCard({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        gap: 20,
+        justifyContent: 'space-between',
         borderRadius: 16,
         border: '1px solid var(--color-border)',
         backgroundColor: 'var(--color-bg-card)',
-        padding: '36px 28px',
-        textAlign: 'center',
+        padding: '28px 28px 24px',
+        textAlign: 'left',
         cursor: 'pointer',
         transition: 'all 0.2s',
         boxShadow: 'var(--shadow-sm)',
+        minHeight: 200,
       }}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-md)'; e.currentTarget.style.borderColor = 'var(--color-accent)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}
     >
-      <div style={{
-        width: 64, height: 64, borderRadius: '50%',
-        backgroundColor: 'var(--color-accent-light)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: 'var(--color-accent)',
-      }}>
-        {icon}
-      </div>
       <div>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)' }}>{title}</h3>
-        <p style={{ marginTop: 8, fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{description}</p>
+        <span style={{ fontSize: 28, display: 'block', marginBottom: 16 }}>{emoji}</span>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 8 }}>{title}</h3>
+        <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{description}</p>
       </div>
+      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-accent)', marginTop: 16 }}>
+        Get started →
+      </span>
     </button>
   );
 }
@@ -452,7 +449,7 @@ export default function IdeasPage() {
 
   if (isLoading) {
     return (
-      <PageWrapper title="Ideas" subtitle="Your content ideas, all in one place.">
+      <PageWrapper>
         <div className="flex items-center justify-center py-20">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
         </div>
@@ -461,48 +458,47 @@ export default function IdeasPage() {
   }
 
   return (
-    <PageWrapper title="Ideas" subtitle="Your content ideas, all in one place.">
+    <PageWrapper title={currentView === 'entry' ? undefined : 'Ideas'}>
 
       {/* ================================================================ */}
       {/* ENTRY POINTS VIEW                                                */}
       {/* ================================================================ */}
       {currentView === 'entry' && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          {/* Start with my own idea */}
-          <EntryCard
-            icon={
-              <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-              </svg>
-            }
-            title="Start with my own idea"
-            description="Have something in mind? Create an idea from scratch."
-            onClick={() => setCurrentView('own-idea')}
-          />
+        <div>
+          <div className="mb-8 text-center">
+            <span className="mb-4 inline-block rounded-full bg-[var(--color-accent-light)] px-4 py-1.5 text-xs font-medium text-[var(--color-accent)]">
+              ✨ Idea Studio
+            </span>
+            <h1 className="text-[28px] font-bold tracking-tight text-[var(--color-text-primary)]">
+              What do you want to create?
+            </h1>
+            <p className="mt-2 text-[15px] text-[var(--color-text-muted)]">
+              Pick one path below — you can always come back and choose another.
+            </p>
+          </div>
 
-          {/* Find ideas for me */}
-          <EntryCard
-            icon={
-              <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
-              </svg>
-            }
-            title="Find ideas for me"
-            description="Let AI generate ideas from your Brand Brain or discover trends."
-            onClick={() => setCurrentView('find-ideas')}
-          />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <EntryCard
+              emoji="✏️"
+              title="Start with my own idea"
+              description="You've got a spark. Let's develop it into a full content plan."
+              onClick={() => setCurrentView('own-idea')}
+            />
 
-          {/* View idea parking lot */}
-          <EntryCard
-            icon={
-              <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
-              </svg>
-            }
-            title="View idea parking lot"
-            description={`Browse and manage your ${ideas.length + suggestedIdeas.length} saved ideas.`}
-            onClick={() => setCurrentView('parking-lot')}
-          />
+            <EntryCard
+              emoji="✨"
+              title="Find ideas for me"
+              description="Get AI-powered ideas tailored to your niche and content style."
+              onClick={() => setCurrentView('find-ideas')}
+            />
+
+            <EntryCard
+              emoji="📦"
+              title="Idea parking lot"
+              description="Browse the ideas you've saved — ready when you are."
+              onClick={() => setCurrentView('parking-lot')}
+            />
+          </div>
         </div>
       )}
 
@@ -513,73 +509,50 @@ export default function IdeasPage() {
         <div>
           <BackButton onClick={() => setCurrentView('entry')} />
 
-          <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 shadow-[var(--shadow-sm)]">
-            <h2 className="mb-5 text-lg font-semibold text-[var(--color-text-primary)]">
-              Create Your Idea
+          <div className="mx-auto max-w-lg text-center">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-accent-light)]">
+              <span className="text-3xl">💡</span>
+            </div>
+
+            <h2 className="mb-2 text-xl font-bold text-[var(--color-text-primary)]">
+              What&apos;s your idea?
             </h2>
+            <p className="mb-6 text-sm text-[var(--color-text-muted)]">
+              Just the title is enough — you can flesh it out after.
+            </p>
 
             <form onSubmit={handleManualSubmit} className="space-y-4">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]">
-                  Title
-                </label>
+              <div className="relative">
                 <input
                   type="text"
                   value={manualTitle}
                   onChange={(e) => setManualTitle(e.target.value)}
-                  placeholder="e.g. 5 Things I Wish I Knew Before..."
+                  placeholder="e.g. How I plan a month of content in one day"
                   required
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 pr-12 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
                 />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]">
-                  Concept
-                </label>
-                <textarea
-                  value={manualDescription}
-                  onChange={(e) => setManualDescription(e.target.value)}
-                  placeholder="What's the angle? What makes this idea interesting?"
-                  rows={4}
-                  className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]">
-                  Content Pillar
-                </label>
-                <select
-                  value={manualPillar}
-                  onChange={(e) => setManualPillar(e.target.value)}
-                  className="w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
-                >
-                  <option value="">Select a pillar (optional)</option>
-                  {CONTENT_PILLAR_OPTIONS.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={isSubmittingManual || !manualTitle.trim()}
-                  className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-5 py-2.5 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
-                >
-                  {isSubmittingManual ? 'Creating...' : 'Create Idea'}
-                </button>
                 <button
                   type="button"
-                  onClick={() => setCurrentView('entry')}
-                  className="rounded-[var(--radius-md)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)]"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+                  title="Voice input"
                 >
-                  Cancel
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                  </svg>
                 </button>
               </div>
+
+              <p className="text-xs text-[var(--color-text-muted)]">
+                Type your idea or click 🎙 to speak it — press ↵ Enter to save
+              </p>
+
+              <button
+                type="submit"
+                disabled={isSubmittingManual || !manualTitle.trim()}
+                className="w-full rounded-[var(--radius-md)] bg-[var(--color-accent)] px-5 py-3 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
+              >
+                {isSubmittingManual ? 'Saving...' : '💡 Save Idea'}
+              </button>
             </form>
           </div>
         </div>
@@ -592,60 +565,59 @@ export default function IdeasPage() {
         <div>
           <BackButton onClick={() => setCurrentView('entry')} />
 
-          {/* Sub-tabs: Brand Brain | Content Scout */}
-          <div className="mb-6 flex gap-1 rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] p-1">
-            <button
-              type="button"
-              onClick={() => setFindIdeasTab('brand-brain')}
-              className={`flex-1 rounded-[var(--radius-sm)] px-4 py-2 text-sm font-medium transition-colors ${
-                findIdeasTab === 'brand-brain'
-                  ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)] shadow-[var(--shadow-sm)]'
-                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-              }`}
-            >
-              Brand Brain
-            </button>
-            <button
-              type="button"
-              onClick={() => setFindIdeasTab('content-scout')}
-              className={`flex-1 rounded-[var(--radius-sm)] px-4 py-2 text-sm font-medium transition-colors ${
-                findIdeasTab === 'content-scout'
-                  ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)] shadow-[var(--shadow-sm)]'
-                  : 'text-[var(--color-text-muted)]'
-              }`}
-            >
-              Content Scout
-            </button>
+          {/* Heading + tabs + regenerate — single row */}
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
+              Find Content Ideas
+            </h2>
+
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => setFindIdeasTab('brand-brain')}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                  findIdeasTab === 'brand-brain'
+                    ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)] shadow-[var(--shadow-sm)]'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:opacity-80'
+                }`}
+              >
+                Brand Brain
+              </button>
+              <button
+                type="button"
+                onClick={() => setFindIdeasTab('content-scout')}
+                className={`text-sm font-medium transition-colors ${
+                  findIdeasTab === 'content-scout'
+                    ? 'text-[var(--color-text-primary)]'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:opacity-80'
+                }`}
+              >
+                Content Scout
+              </button>
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-50"
+              >
+                {isGenerating ? (
+                  <span className="flex items-center gap-2">
+                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Generating...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    <span>&#8635;</span>
+                    Regenerate
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Brand Brain Tab */}
           {findIdeasTab === 'brand-brain' && (
             <div>
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-                    Brand Brain Ideas
-                  </h2>
-                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                    Generate ideas based on your Brand Brain context, brain dumps, and content pillars.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleGenerate}
-                  disabled={isGenerating}
-                  className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-all hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
-                >
-                  {isGenerating ? (
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      Generating...
-                    </span>
-                  ) : (
-                    'Generate Ideas'
-                  )}
-                </button>
-              </div>
 
               {/* Generating state */}
               {isGenerating && (
@@ -660,9 +632,6 @@ export default function IdeasPage() {
               {/* Suggested ideas cards */}
               {suggestedIdeas.length > 0 && !isGenerating && (
                 <div>
-                  <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
-                    {suggestedIdeas.length} idea{suggestedIdeas.length !== 1 ? 's' : ''} to review
-                  </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {suggestedIdeas.map((idea, index) => (
                       <div
@@ -703,27 +672,9 @@ export default function IdeasPage() {
             </div>
           )}
 
-          {/* Content Scout Tab — Coming Soon */}
+          {/* Content Scout Tab */}
           {findIdeasTab === 'content-scout' && (
-            <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-10 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-bg-secondary)]">
-                <svg className="h-7 w-7 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
-                Content Scout
-              </h3>
-              <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-text-secondary)]">
-                Content Scout will automatically discover trending topics and viral content ideas from YouTube, Reddit, and X relevant to your niche. Stay ahead of the curve without the manual research.
-              </p>
-              <div className="mt-5 inline-flex items-center gap-2 rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)]">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                </svg>
-                Coming Soon
-              </div>
-            </div>
+            <ContentScout userId={userId} />
           )}
         </div>
       )}

@@ -202,10 +202,15 @@ export default function IdeaDetail({
               <select
                 value={idea.status}
                 onChange={(e) => handleStatusChange(e.target.value as ContentIdeaStatus)}
-                className="cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] outline-none transition-colors hover:border-[var(--color-accent)]"
+                className="cursor-pointer appearance-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] py-2 pl-3 pr-8 text-sm font-medium text-[var(--color-text-primary)] outline-none transition-colors hover:border-[var(--color-accent)]"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 8px center',
+                }}
               >
                 {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
+                  <option key={opt.value} value={opt.value} style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)' }}>
                     {opt.label}
                   </option>
                 ))}

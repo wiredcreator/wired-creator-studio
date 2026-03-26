@@ -156,10 +156,8 @@ export default function TaskDetailModal({
   const overdue = isOverdue(task.dueDate, isCompleted);
 
   const [confirmingComplete, setConfirmingComplete] = useState(false);
-  const [stuckLoading, setStuckLoading] = useState(false);
   const [stuckConfirmed, setStuckConfirmed] = useState(false);
   const [timePopoverOpen, setTimePopoverOpen] = useState(false);
-  const [extensionLoading, setExtensionLoading] = useState(false);
   const [extensionConfirmed, setExtensionConfirmed] = useState(false);
 
   // Comments
@@ -201,7 +199,10 @@ export default function TaskDetailModal({
   };
 
   const handleStuck = async () => {
-    setStuckLoading(true);
+    // Optimistic: show confirmation immediately
+    setStuckConfirmed(true);
+    setTimeout(() => setStuckConfirmed(false), 3000);
+
     try {
       const res = await fetch(`/api/tasks/${task._id}`, {
         method: "PUT",
@@ -210,20 +211,21 @@ export default function TaskDetailModal({
       });
       if (res.ok) {
         const updated = await res.json();
-        setStuckConfirmed(true);
         onTaskUpdated?.(updated);
-        setTimeout(() => setStuckConfirmed(false), 3000);
       }
     } catch (err) {
       console.error("Failed to flag stuck:", err);
-    } finally {
-      setStuckLoading(false);
+      // Revert optimistic update on failure
+      setStuckConfirmed(false);
     }
   };
 
   const handleExtension = async (days: number) => {
-    setExtensionLoading(true);
     setTimePopoverOpen(false);
+    // Optimistic: show confirmation immediately
+    setExtensionConfirmed(true);
+    setTimeout(() => setExtensionConfirmed(false), 3000);
+
     try {
       const res = await fetch(`/api/tasks/${task._id}`, {
         method: "PUT",
@@ -232,14 +234,12 @@ export default function TaskDetailModal({
       });
       if (res.ok) {
         const updated = await res.json();
-        setExtensionConfirmed(true);
         onTaskUpdated?.(updated);
-        setTimeout(() => setExtensionConfirmed(false), 3000);
       }
     } catch (err) {
       console.error("Failed to request extension:", err);
-    } finally {
-      setExtensionLoading(false);
+      // Revert optimistic update on failure
+      setExtensionConfirmed(false);
     }
   };
 
@@ -248,9 +248,13 @@ export default function TaskDetailModal({
     setComments(task.comments || []);
   }, [task.comments]);
 
-  // Scroll to bottom when new comments arrive
+  // Scroll to latest comment when a new one is added (not on initial render)
+  const initialCommentCount = useRef(comments.length);
   useEffect(() => {
-    commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (comments.length > initialCommentCount.current) {
+      commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    initialCommentCount.current = comments.length;
   }, [comments.length]);
 
   const handleSendComment = async () => {
@@ -280,7 +284,7 @@ export default function TaskDetailModal({
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
     >
       <div className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)]">
         {/* Close button — top right */}
@@ -306,31 +310,7 @@ export default function TaskDetailModal({
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
-          {/* Task title */}
-          <h2 className="pr-10 text-xl font-semibold text-[var(--color-text-primary)]">
-            {task.title}
-          </h2>
-
-          {/* Embedded video from task field */}
-          {task.embeddedVideoUrl && (() => {
-            const embedUrl = getYouTubeEmbedUrl(task.embeddedVideoUrl);
-            const finalUrl = embedUrl || task.embeddedVideoUrl;
-            return (
-              <div className="overflow-hidden rounded-[var(--radius-md)]">
-                <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-                  <iframe
-                    src={finalUrl}
-                    className="absolute inset-0 h-full w-full rounded-[var(--radius-md)]"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    title={task.title}
-                  />
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Tags row */}
+          {/* Status bar: tags + due date at top */}
           <div className="flex flex-wrap items-center gap-2">
             {isCompleted ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-success)] px-3 py-1 text-xs font-medium text-white">
@@ -357,7 +337,7 @@ export default function TaskDetailModal({
 
             {task.dueDate && (
               <span className="inline-flex items-center rounded-full bg-[var(--color-bg-secondary)] px-3 py-1 text-xs font-medium text-[var(--color-text-primary)]">
-                {formatDateLabel(task.dueDate)}
+                Due {formatDateLabel(task.dueDate)}
               </span>
             )}
 
@@ -367,6 +347,30 @@ export default function TaskDetailModal({
               </span>
             )}
           </div>
+
+          {/* Embedded video from task field */}
+          {task.embeddedVideoUrl && (() => {
+            const embedUrl = getYouTubeEmbedUrl(task.embeddedVideoUrl);
+            const finalUrl = embedUrl || task.embeddedVideoUrl;
+            return (
+              <div className="overflow-hidden rounded-[var(--radius-md)]">
+                <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+                  <iframe
+                    src={finalUrl}
+                    className="absolute inset-0 h-full w-full rounded-[var(--radius-md)]"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={task.title}
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Task title */}
+          <h2 className="pr-10 text-xl font-semibold text-[var(--color-text-primary)]">
+            {task.title}
+          </h2>
 
           {/* Confirmation messages */}
           {stuckConfirmed && (
@@ -496,7 +500,7 @@ export default function TaskDetailModal({
               {/* I'm Stuck button */}
               <button
                 onClick={handleStuck}
-                disabled={stuckLoading || stuckConfirmed}
+                disabled={stuckConfirmed}
                 title="Tell your coach you need help with this task"
                 className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-50 outline-none ring-0"
               >
@@ -504,14 +508,14 @@ export default function TaskDetailModal({
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
                 </svg>
-                {stuckLoading ? "Sending..." : "I'm Stuck"}
+                I&apos;m Stuck
               </button>
 
               {/* Request More Time button + popover */}
               <div className="relative" ref={timePopoverRef}>
                 <button
                   onClick={() => setTimePopoverOpen((prev) => !prev)}
-                  disabled={extensionLoading || extensionConfirmed}
+                  disabled={extensionConfirmed}
                   title="Request more time for this task"
                   className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-50 outline-none ring-0"
                 >
@@ -519,7 +523,7 @@ export default function TaskDetailModal({
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                   </svg>
-                  {extensionLoading ? "Updating..." : "Request more time"}
+                  Request more time
                 </button>
 
                 {/* Time options popover */}

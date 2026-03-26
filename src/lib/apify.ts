@@ -1,4 +1,4 @@
-const APIFY_ACTOR_ID = process.env.APIFY_ACTOR_ID || 'Uwpce1RSXlrzF6WBA';
+const APIFY_ACTOR_ID = 'Uwpce1RSXlrzF6WBA';
 
 interface TranscriptSegment {
   text: string;
