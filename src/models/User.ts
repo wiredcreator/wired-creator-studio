@@ -6,6 +6,7 @@ export interface IUser extends Document {
   name: string;
   role: 'student' | 'coach' | 'admin';
   onboardingCompleted: boolean;
+  personalBaselineCompleted: boolean;
   background: string;
   neurodivergentProfile: string;
   contentGoals: string;
@@ -52,6 +53,10 @@ const UserSchema = new Schema<IUser>(
       default: 'student',
     },
     onboardingCompleted: {
+      type: Boolean,
+      default: false,
+    },
+    personalBaselineCompleted: {
       type: Boolean,
       default: false,
     },

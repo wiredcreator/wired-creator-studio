@@ -31,11 +31,16 @@ export default async function DashboardLayout({
   const userName = dbUser.name || session.user.name || 'User';
   const userRole = (dbUser?.role || session.user.role || 'student') as 'student' | 'coach' | 'admin';
   const onboardingCompleted = dbUser?.onboardingCompleted ?? false;
+  const personalBaselineCompleted = dbUser?.personalBaselineCompleted ?? false;
 
-  // Redirect to onboarding if not completed.
-  // The onboarding page lives outside this layout group, so no redirect loop.
+  // Redirect to the appropriate onboarding step if not fully completed.
+  // The onboarding pages live outside this layout group, so no redirect loop.
   if (!onboardingCompleted) {
     redirect('/onboarding');
+  }
+
+  if (!personalBaselineCompleted) {
+    redirect('/onboarding/personal-baseline');
   }
 
   return (

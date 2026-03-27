@@ -27,8 +27,14 @@ export default async function OnboardingPage({
     redirect('/login?signout=1');
   }
 
-  if (dbUser.onboardingCompleted && !forceForm) {
+  // If both onboarding steps are done, go to dashboard
+  if (dbUser.onboardingCompleted && dbUser.personalBaselineCompleted && !forceForm) {
     redirect('/dashboard');
+  }
+
+  // If Content DNA is done but Personal Baseline isn't, skip to that step
+  if (dbUser.onboardingCompleted && !dbUser.personalBaselineCompleted && !forceForm) {
+    redirect('/onboarding/personal-baseline');
   }
 
   return (

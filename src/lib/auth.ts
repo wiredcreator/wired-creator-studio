@@ -37,7 +37,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             if (!dbUser) {
               // User was deleted
-              return {};
+              return null;
             }
 
             if (dbUser.passwordChangedAt) {
@@ -46,7 +46,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               );
               if (changedAtSec > (token.iat as number)) {
                 // Password changed after token was issued — invalidate
-                return {};
+                return null;
               }
             }
 

@@ -200,10 +200,10 @@ export default function ContentDNAQuestionnaire() {
           className="text-lg max-w-md"
           style={{ color: 'var(--color-text-secondary)' }}
         >
-          We are building your personalized Tone of Voice Guide. Your coaching team will review it shortly.
+          We are building your personalized Tone of Voice Guide. One more quick step before you are in.
         </p>
         <a
-          href="/dashboard/today"
+          href="/onboarding/personal-baseline"
           className="mt-8 inline-block px-8 py-3 text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90"
           style={{
             backgroundColor: 'var(--color-accent)',
@@ -211,7 +211,7 @@ export default function ContentDNAQuestionnaire() {
             boxShadow: 'var(--shadow-md)',
           }}
         >
-          Go to Dashboard
+          Continue to Personal Baseline
         </a>
       </div>
     );
@@ -244,7 +244,7 @@ export default function ContentDNAQuestionnaire() {
         className="min-h-[400px]"
         key={currentStep}
         style={{
-          animation: `${slideDirection === 'forward' ? 'slideInRight' : 'slideInLeft'} 0.35s ease-out`,
+          animation: `${slideDirection === 'forward' ? 'slideInRight' : 'slideInLeft'} 0.35s ease-out forwards`,
         }}
       >
         {currentStep === 0 && (

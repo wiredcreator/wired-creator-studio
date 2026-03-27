@@ -283,17 +283,19 @@ export default function PersonalBaselineQuestionnaire({
         >
           Your coaching team will use this to build a system that actually fits your life. No cookie-cutter plans here.
         </p>
-        <a
-          href="/dashboard/today"
-          className="mt-8 inline-block px-8 py-3 text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90"
-          style={{
-            backgroundColor: 'var(--color-accent)',
-            borderRadius: 'var(--radius-md)',
-            boxShadow: 'var(--shadow-md)',
-          }}
-        >
-          Go to Dashboard
-        </a>
+        {!onComplete && (
+          <a
+            href="/dashboard/today"
+            className="mt-8 inline-block px-8 py-3 text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90"
+            style={{
+              backgroundColor: 'var(--color-accent)',
+              borderRadius: 'var(--radius-md)',
+              boxShadow: 'var(--shadow-md)',
+            }}
+          >
+            Go to Dashboard
+          </a>
+        )}
       </div>
     );
   }
@@ -359,9 +361,6 @@ export default function PersonalBaselineQuestionnaire({
       <div
         className="min-h-[400px]"
         key={currentStep}
-        style={{
-          animation: `${slideDirection === 'forward' ? 'slideInRight' : 'slideInLeft'} 0.35s ease-out`,
-        }}
       >
         {isReviewStep ? (
           <ReviewStep formData={formData} onEditStep={goToStep} />
@@ -517,7 +516,7 @@ function QuestionStep({
   const heading = STEP_HEADINGS[stepIndex];
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8">
       <div className="text-center mb-10">
         <h2
           className="text-3xl font-semibold mb-3"
@@ -572,7 +571,7 @@ function QuestionStep({
             rows={4}
             className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none outline-none"
             style={{
-              backgroundColor: 'var(--color-bg-primary)',
+              backgroundColor: 'var(--color-bg-card)',
               borderColor: 'var(--color-border)',
               color: 'var(--color-text-primary)',
               borderRadius: 'var(--radius-md)',

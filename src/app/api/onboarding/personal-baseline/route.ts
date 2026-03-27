@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import PersonalBaseline from '@/models/PersonalBaseline';
+import User from '@/models/User';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
 interface PersonalBaselinePayload {
@@ -55,6 +56,9 @@ export async function POST(request: NextRequest) {
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+
+    // Mark personal baseline as completed on the user
+    await User.findByIdAndUpdate(user.id, { personalBaselineCompleted: true });
 
     return NextResponse.json({
       success: true,
