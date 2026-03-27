@@ -4,6 +4,7 @@ import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import Sidebar from '@/components/Sidebar';
 import BrainDumpFAB from '@/components/BrainDumpFAB';
+import DashboardHeader from '@/components/DashboardHeader';
 
 export default async function DashboardLayout({
   children,
@@ -40,9 +41,12 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
       <Sidebar userName={userName} userRole={userRole} />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <DashboardHeader />
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
       <BrainDumpFAB />
     </div>
   );

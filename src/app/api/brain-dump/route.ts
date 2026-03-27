@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 import dbConnect from '@/lib/db';
 import CallTranscript from '@/models/CallTranscript';
@@ -134,12 +135,67 @@ export async function GET(request: NextRequest) {
     await dbConnect();
 
     const userId = user.id;
-    const filter = { userId };
-    const { page, limit, skip } = parsePagination(request.nextUrl.searchParams);
+    const searchParams = request.nextUrl.searchParams;
+    const filter: Record<string, unknown> = { userId };
+    const { page, limit, skip } = parsePagination(searchParams);
+
+    // Tag filter
+    const tagFilter = searchParams.get('tag');
+    if (tagFilter) {
+      filter.tags = tagFilter;
+    }
+
+    // Sort options: newest (default), oldest, priority
+    const sortParam = searchParams.get('sort') || 'newest';
+    let sortObj: Record<string, 1 | -1>;
+    if (sortParam === 'oldest') {
+      sortObj = { createdAt: 1 };
+    } else if (sortParam === 'priority') {
+      // Custom sort: high=0, medium=1, low=2 — we use a collation trick
+      // Since mongo doesn't natively sort enums, we'll do it in aggregation
+      // For simplicity, fetch all then sort client-side... but better:
+      // high first, then medium, then low, each sub-sorted by newest
+      sortObj = { createdAt: -1 }; // fallback, real priority sort done below
+    } else {
+      sortObj = { createdAt: -1 };
+    }
+
+    if (sortParam === 'priority') {
+      // Use aggregation for priority sorting — convert userId to ObjectId for aggregation
+      const aggFilter = { ...filter, userId: new mongoose.Types.ObjectId(userId) };
+      const pipeline = [
+        { $match: aggFilter },
+        {
+          $addFields: {
+            priorityOrder: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ['$priority', 'high'] }, then: 0 },
+                  { case: { $eq: ['$priority', 'medium'] }, then: 1 },
+                  { case: { $eq: ['$priority', 'low'] }, then: 2 },
+                ],
+                default: 1,
+              },
+            },
+          },
+        },
+        { $sort: { priorityOrder: 1 as const, createdAt: -1 as const } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { priorityOrder: 0 } },
+      ];
+
+      const [sessions, total] = await Promise.all([
+        CallTranscript.aggregate(pipeline),
+        CallTranscript.countDocuments(filter), // Mongoose .find() auto-casts userId
+      ]);
+
+      return NextResponse.json(paginationResponse(sessions, total, page, limit));
+    }
 
     const [sessions, total] = await Promise.all([
       CallTranscript.find(filter)
-        .sort({ createdAt: -1 })
+        .sort(sortObj)
         .skip(skip)
         .limit(limit)
         .lean(),

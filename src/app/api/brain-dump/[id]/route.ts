@@ -72,7 +72,7 @@ export async function PUT(
     const invalidId = validateObjectId(id);
     if (invalidId) return invalidId;
     const body = await request.json();
-    const { extractedIdeas, extractedStories, extractedThemes } = body;
+    const { extractedIdeas, extractedStories, extractedThemes, priority, tags, transcript } = body;
 
     const session = await CallTranscript.findById(id);
     if (!session) {
@@ -101,6 +101,18 @@ export async function PUT(
     }
     if (extractedThemes !== undefined) {
       session.extractedThemes = extractedThemes;
+    }
+    if (priority !== undefined) {
+      const validPriorities = ['high', 'medium', 'low'];
+      if (validPriorities.includes(priority)) {
+        session.priority = priority;
+      }
+    }
+    if (tags !== undefined && Array.isArray(tags)) {
+      session.tags = tags.map((t: string) => String(t).trim()).filter(Boolean);
+    }
+    if (transcript !== undefined) {
+      session.transcript = transcript;
     }
 
     await session.save();

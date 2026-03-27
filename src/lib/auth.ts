@@ -5,8 +5,68 @@ import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import authConfig from './auth.config';
 
+// How often (in seconds) to re-check passwordChangedAt from the DB.
+// Avoids a query on every single request.
+const PASSWORD_CHECK_INTERVAL = 5 * 60; // 5 minutes
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    async jwt({ token, user }) {
+      // Fresh login — set token fields
+      if (user) {
+        token.id = user.id as string;
+        token.role = user.role;
+        token.iat = Math.floor(Date.now() / 1000);
+        token.lastPasswordCheck = Math.floor(Date.now() / 1000);
+        return token;
+      }
+
+      // Existing token — periodically verify password hasn't changed
+      if (token.id) {
+        const now = Math.floor(Date.now() / 1000);
+        const lastCheck = (token.lastPasswordCheck as number) || 0;
+
+        if (now - lastCheck >= PASSWORD_CHECK_INTERVAL) {
+          try {
+            await dbConnect();
+            const dbUser = await User.findById(token.id)
+              .select('passwordChangedAt')
+              .lean();
+
+            if (!dbUser) {
+              // User was deleted
+              return {};
+            }
+
+            if (dbUser.passwordChangedAt) {
+              const changedAtSec = Math.floor(
+                new Date(dbUser.passwordChangedAt).getTime() / 1000
+              );
+              if (changedAtSec > (token.iat as number)) {
+                // Password changed after token was issued — invalidate
+                return {};
+              }
+            }
+
+            token.lastPasswordCheck = now;
+          } catch {
+            // DB error — don't invalidate, try again next interval
+          }
+        }
+      }
+
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id;
+        session.user.role = token.role;
+      }
+      return session;
+    },
+  },
   providers: [
     Credentials({
       name: 'credentials',

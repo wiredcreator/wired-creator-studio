@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import StatCard from "@/components/dashboard/StatCard";
 import XPStreakCard from "@/components/dashboard/XPStreakCard";
 import WeeklyProgress from "@/components/dashboard/WeeklyProgress";
-import FocusMode from "@/components/focus-mode/FocusMode";
-import NotificationBell from "@/components/NotificationBell";
 
 interface DashboardStats {
   tasks: number;
@@ -29,8 +27,6 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [xp, setXP] = useState<XPData>({ lifetimeXP: 0, currentStreak: 0, bestStreak: 0 });
   const [loading, setLoading] = useState(true);
-  const [focusModeOpen, setFocusModeOpen] = useState(false);
-
   useEffect(() => {
     async function fetchDashboard() {
       setLoading(true);
@@ -67,34 +63,16 @@ export default function DashboardPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      {focusModeOpen && <FocusMode onClose={() => setFocusModeOpen(false)} />}
       <div className="mx-auto max-w-5xl px-6 py-10 sm:px-10 sm:py-12">
-        {/* Welcome + XP Row */}
-        <div className="mb-8 flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-normal tracking-tight text-[var(--color-text-primary)]">
-              {loading ? (
-                <span className="inline-block h-9 w-64 animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-bg-secondary)]" />
-              ) : (
-                <>{getGreeting()}, {firstName} <span className="inline-block">👋</span></>
-              )}
-            </h1>
-            {/* Subtitle removed to match design */}
-          </div>
-          <div className="flex items-center gap-3">
-            <NotificationBell />
-            <button
-              style={{ borderRadius: 12, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-card)', padding: '10px 20px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', cursor: 'pointer' }}
-            >
-              {xp.lifetimeXP > 0 ? `XP Points · ${xp.lifetimeXP.toLocaleString()}` : 'XP Points'}
-            </button>
-            <button
-              onClick={() => setFocusModeOpen(true)}
-              style={{ borderRadius: 12, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-card)', padding: '10px 20px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', cursor: 'pointer' }}
-            >
-              Focus Mode
-            </button>
-          </div>
+        {/* Welcome Row */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-normal tracking-tight text-[var(--color-text-primary)]">
+            {loading ? (
+              <span className="inline-block h-9 w-64 animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-bg-secondary)]" />
+            ) : (
+              <>{getGreeting()}, {firstName} <span className="inline-block">👋</span></>
+            )}
+          </h1>
         </div>
 
         {/* Stat Cards Row */}

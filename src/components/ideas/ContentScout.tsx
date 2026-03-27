@@ -891,6 +891,7 @@ export default function ContentScout({ userId }: { userId: string }) {
   const [selectedVideo, setSelectedVideo] = useState<ScoutVideo | null>(null);
   const [sources, setSources] = useState<ScoutSource[]>([]);
   const [candidates, setCandidates] = useState<DiscoveredCandidate[]>([]);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
 
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -908,6 +909,7 @@ export default function ContentScout({ userId }: { userId: string }) {
         setNeedsSetup(false);
         setVideos(data.videos || []);
         setUniqueIdeas(data.uniqueIdeas || []);
+        setGeneratedAt(data.generatedAt || null);
       }
     } catch (err) {
       console.error('Content Scout fetch failed:', err);
@@ -1131,6 +1133,9 @@ export default function ContentScout({ userId }: { userId: string }) {
           </h3>
           <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
             Trending content from creators in your space this week
+            {generatedAt && (
+              <> &middot; Last generated: {relativeTime(generatedAt)}</>
+            )}
           </p>
         </div>
 

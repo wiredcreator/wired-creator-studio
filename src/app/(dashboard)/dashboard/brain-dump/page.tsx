@@ -24,6 +24,9 @@ interface ExtractedData {
   }[];
 }
 
+type Priority = 'high' | 'medium' | 'low';
+type SortOption = 'newest' | 'oldest' | 'priority';
+
 interface Session {
   _id: string;
   callType: string;
@@ -34,12 +37,20 @@ interface Session {
   ingestedIntoBrandBrain: boolean;
   callDate: string;
   createdAt: string;
+  priority: Priority;
+  tags: string[];
 }
 
 type View =
   | { type: 'form' }
   | { type: 'detail'; session: Session }
   | { type: 'detail-new'; sessionId: string; transcript: string; data: ExtractedData };
+
+const PRIORITY_COLORS: Record<Priority, { bg: string; text: string }> = {
+  high: { bg: 'var(--color-error)', text: '#FFFFFF' },
+  medium: { bg: 'var(--color-accent)', text: '#FFFFFF' },
+  low: { bg: 'var(--color-bg-elevated)', text: 'var(--color-text-primary)' },
+};
 
 export default function BrainDumpPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,6 +59,9 @@ export default function BrainDumpPage() {
   const [error, setError] = useState('');
   const [userId, setUserId] = useState('');
   const [view, setView] = useState<View>({ type: 'form' });
+  const [listMode, setListMode] = useState<'grid' | 'list'>('grid');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [filterTag, setFilterTag] = useState<string>('');
 
   // Form state
   const [text, setText] = useState('');
@@ -62,6 +76,17 @@ export default function BrainDumpPage() {
   const [transcriptSaveSuccess, setTranscriptSaveSuccess] = useState(false);
   const [savingIdeaIndex, setSavingIdeaIndex] = useState<number | null>(null);
   const [savedIdeaIndices, setSavedIdeaIndices] = useState<Set<number>>(new Set());
+
+  // Tag input state (detail view)
+  const [tagInput, setTagInput] = useState('');
+  const [detailTags, setDetailTags] = useState<string[]>([]);
+
+  // Priority state (detail view)
+  const [detailPriority, setDetailPriority] = useState<Priority>('medium');
+
+  // Extract more state
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extraIdeas, setExtraIdeas] = useState<{ title: string; description: string }[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -90,7 +115,8 @@ export default function BrainDumpPage() {
     }
 
     try {
-      const res = await fetch(`/api/brain-dump?userId=${userId}`);
+      const params = new URLSearchParams({ sort: sortBy });
+      const res = await fetch(`/api/brain-dump?userId=${userId}&${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setSessions(data.data || data.sessions || []);
@@ -100,11 +126,26 @@ export default function BrainDumpPage() {
     } finally {
       setIsLoadingSessions(false);
     }
-  }, [userId]);
+  }, [userId, sortBy]);
 
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  // Collect all unique tags from sessions for the filter dropdown
+  const allTags = Array.from(new Set(sessions.flatMap((s) => s.tags || []))).sort();
+
+  // Reset filter if the selected tag no longer exists
+  useEffect(() => {
+    if (filterTag && !allTags.includes(filterTag)) {
+      setFilterTag('');
+    }
+  }, [allTags, filterTag]);
+
+  // Client-side tag filtering
+  const filteredSessions = filterTag
+    ? sessions.filter((s) => (s.tags || []).includes(filterTag))
+    : sessions;
 
   // ─── Recording ──────────────────────────────────────────────────────
 
@@ -287,6 +328,10 @@ export default function BrainDumpPage() {
     setEditTranscript(session.transcript);
     setTranscriptSaveSuccess(false);
     setSavedIdeaIndices(new Set());
+    setDetailTags(session.tags || []);
+    setDetailPriority(session.priority || 'medium');
+    setTagInput('');
+    setExtraIdeas([]);
     setView({ type: 'detail', session });
   };
 
@@ -296,6 +341,7 @@ export default function BrainDumpPage() {
 
     setIsSavingTranscript(true);
     setTranscriptSaveSuccess(false);
+
     try {
       const res = await fetch(`/api/brain-dump/${sessionId}`, {
         method: 'PUT',
@@ -334,6 +380,124 @@ export default function BrainDumpPage() {
     }
   };
 
+  // ─── Priority update ────────────────────────────────────────────────
+
+  const handlePriorityChange = async (newPriority: Priority) => {
+    const sessionId = view.type === 'detail' ? view.session._id : view.type === 'detail-new' ? view.sessionId : null;
+    if (!sessionId) return;
+
+    const oldPriority = detailPriority;
+    setDetailPriority(newPriority);
+
+    try {
+      const res = await fetch(`/api/brain-dump/${sessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priority: newPriority }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      // Update session in the list too
+      setSessions((prev) =>
+        prev.map((s) => (s._id === sessionId ? { ...s, priority: newPriority } : s))
+      );
+    } catch {
+      setDetailPriority(oldPriority);
+      setError('Failed to update priority.');
+    }
+  };
+
+  // ─── Tag management ─────────────────────────────────────────────────
+
+  const persistTags = async (sessionId: string, tags: string[]) => {
+    try {
+      const res = await fetch(`/api/brain-dump/${sessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      setSessions((prev) =>
+        prev.map((s) => (s._id === sessionId ? { ...s, tags } : s))
+      );
+    } catch {
+      setError('Failed to update tags.');
+    }
+  };
+
+  const handleAddTag = () => {
+    const tag = tagInput.trim().toLowerCase();
+    if (!tag || detailTags.includes(tag)) {
+      setTagInput('');
+      return;
+    }
+    const sessionId = view.type === 'detail' ? view.session._id : view.type === 'detail-new' ? view.sessionId : null;
+    if (!sessionId) return;
+
+    const newTags = [...detailTags, tag];
+    setDetailTags(newTags);
+    setTagInput('');
+    persistTags(sessionId, newTags);
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    const sessionId = view.type === 'detail' ? view.session._id : view.type === 'detail-new' ? view.sessionId : null;
+    if (!sessionId) return;
+
+    const newTags = detailTags.filter((t) => t !== tag);
+    setDetailTags(newTags);
+    persistTags(sessionId, newTags);
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
+
+  // ─── Extract More ───────────────────────────────────────────────────
+
+  const handleExtractMore = async () => {
+    const sessionId = view.type === 'detail' ? view.session._id : view.type === 'detail-new' ? view.sessionId : null;
+    if (!sessionId) return;
+
+    setIsExtracting(true);
+    setError('');
+
+    try {
+      const res = await fetch(`/api/brain-dump/${sessionId}/extract-more`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to extract more ideas');
+      }
+
+      const data = await res.json();
+      const newIdeas = data.newIdeas.map((i: { title: string; description: string }) => ({
+        title: i.title,
+        description: i.description,
+      }));
+      setExtraIdeas((prev) => [...prev, ...newIdeas]);
+
+      // Update the session in state so the ideas list updates if they go back/forth
+      if (view.type === 'detail') {
+        const updatedSession = {
+          ...view.session,
+          extractedIdeas: [...view.session.extractedIdeas, ...newIdeas],
+          extractedThemes: data.session.extractedThemes || view.session.extractedThemes,
+        };
+        setView({ type: 'detail', session: updatedSession });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to extract more ideas.');
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
   const canSubmit = (text.trim() || attachedFile) && !isSubmitting && !isTranscribing;
 
   // ─── Detail View ────────────────────────────────────────────────────
@@ -368,6 +532,21 @@ export default function BrainDumpPage() {
       setEditTranscript(transcript);
     }
 
+    // Initialize detail state for new sessions
+    if (view.type === 'detail-new' && detailTags.length === 0 && detailPriority === 'medium' && extraIdeas.length === 0) {
+      // Already defaults
+    }
+
+    const themes =
+      view.type === 'detail'
+        ? view.session.extractedThemes
+        : view.data.themes.map((t) => t.theme);
+
+    const themeDetails =
+      view.type === 'detail-new'
+        ? view.data.themes
+        : null;
+
     return (
       <div className="flex flex-col min-h-full">
         {/* Back button */}
@@ -383,33 +562,95 @@ export default function BrainDumpPage() {
           </button>
         </div>
 
-        {/* Title & Date */}
+        {/* Title & Date & Priority */}
         <div className="px-6 sm:px-10 pb-6">
-          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)] leading-tight">
-            {sessionTitle}
-          </h1>
-          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{sessionDate}</p>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl font-semibold text-[var(--color-text-primary)] leading-tight">
+                {sessionTitle}
+              </h1>
+              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{sessionDate}</p>
+            </div>
 
-          {/* Theme Tags */}
-          {(() => {
-            const themes =
-              view.type === 'detail'
-                ? view.session.extractedThemes
-                : view.data.themes.map((t) => t.theme);
-            return themes.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {themes.map((theme, i) => (
+            {/* Priority pills */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-xs text-[var(--color-text-secondary)] mr-1">Priority</span>
+              {(['high', 'medium', 'low'] as Priority[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => handlePriorityChange(p)}
+                  className="px-3 py-1 text-xs font-medium rounded-[var(--radius-full)] transition-all outline-none ring-0 capitalize"
+                  style={{
+                    backgroundColor:
+                      detailPriority === p ? PRIORITY_COLORS[p].bg : 'var(--color-bg-secondary)',
+                    color:
+                      detailPriority === p ? PRIORITY_COLORS[p].text : 'var(--color-text-secondary)',
+                    border:
+                      detailPriority === p ? 'none' : '1px solid var(--color-border)',
+                  }}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Theme badges */}
+          {themes.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {themes.map((theme, i) => {
+                const detail = themeDetails?.[i];
+                return (
                   <span
                     key={i}
-                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-[var(--radius-full)] bg-[var(--color-accent-light)] text-[var(--color-accent)]"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-[var(--radius-full)] bg-[var(--color-accent-light)] text-[var(--color-accent)]"
+                    title={detail ? `Pillar: ${detail.contentPillar} | Occurrences: ${detail.occurrences}` : undefined}
                   >
                     {theme}
+                    {detail && (
+                      <span className="text-[10px] opacity-70">({detail.contentPillar})</span>
+                    )}
                   </span>
-                ))}
-              </div>
-            ) : null;
-          })()}
+                );
+              })}
+            </div>
+          )}
+
+          {/* Tags */}
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            {detailTags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-[var(--radius-full)] bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
+              >
+                {tag}
+                <button
+                  onClick={() => handleRemoveTag(tag)}
+                  className="ml-0.5 text-[var(--color-text-secondary)] hover:text-[var(--color-error)] transition-colors outline-none ring-0"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </span>
+            ))}
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleTagKeyDown}
+              placeholder="Add tag..."
+              className="px-2.5 py-1 text-xs rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none ring-0 w-24"
+            />
+          </div>
         </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mx-6 sm:mx-10 mb-4 rounded-[var(--radius-md)] bg-[var(--color-error-light)] border border-[var(--color-error)] px-4 py-3">
+            <p className="text-sm text-[var(--color-error)]">{error}</p>
+          </div>
+        )}
 
         {/* Side-by-side layout */}
         <div className="flex-1 px-6 sm:px-10 pb-10">
@@ -442,14 +683,38 @@ export default function BrainDumpPage() {
 
             {/* RIGHT — Content Ideas */}
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-secondary)] mb-3">
-                Content Ideas
-              </h2>
-              {ideas.length > 0 ? (
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
+                  Content Ideas
+                </h2>
+                <button
+                  onClick={handleExtractMore}
+                  disabled={isExtracting}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 outline-none ring-0"
+                >
+                  {isExtracting ? (
+                    <>
+                      <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+                        <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-75" />
+                      </svg>
+                      Extracting...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
+                      </svg>
+                      Extract More Ideas
+                    </>
+                  )}
+                </button>
+              </div>
+              {ideas.length > 0 || extraIdeas.length > 0 ? (
                 <div className="space-y-3">
                   {ideas.map((idea, i) => (
                     <div
-                      key={i}
+                      key={`orig-${i}`}
                       className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4"
                     >
                       <h3 className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug">
@@ -470,7 +735,7 @@ export default function BrainDumpPage() {
                           <button
                             onClick={() => handleSaveIdea(idea, i)}
                             disabled={savingIdeaIndex === i}
-                            className="px-3 py-1.5 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[var(--color-bg-dark)] hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50"
+                            className="px-3 py-1.5 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 outline-none ring-0"
                           >
                             {savingIdeaIndex === i ? 'Saving...' : 'Save Idea'}
                           </button>
@@ -478,6 +743,53 @@ export default function BrainDumpPage() {
                       </div>
                     </div>
                   ))}
+
+                  {/* Extra ideas from "Extract More" */}
+                  {extraIdeas.length > 0 && (
+                    <>
+                      <div className="flex items-center gap-2 pt-2">
+                        <div className="flex-1 h-px bg-[var(--color-border)]" />
+                        <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-medium">
+                          Newly extracted
+                        </span>
+                        <div className="flex-1 h-px bg-[var(--color-border)]" />
+                      </div>
+                      {extraIdeas.map((idea, i) => {
+                        const globalIdx = ideas.length + i;
+                        return (
+                          <div
+                            key={`extra-${i}`}
+                            className="rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-bg-card)] p-4"
+                          >
+                            <h3 className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug">
+                              {idea.title}
+                            </h3>
+                            <p className="mt-1.5 text-xs text-[var(--color-text-secondary)] leading-relaxed">
+                              {idea.description}
+                            </p>
+                            <div className="mt-3">
+                              {savedIdeaIndices.has(globalIdx) ? (
+                                <span className="inline-flex items-center gap-1 text-xs text-[var(--color-success)]">
+                                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                  </svg>
+                                  Saved
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => handleSaveIdea(idea, globalIdx)}
+                                  disabled={savingIdeaIndex === globalIdx}
+                                  className="px-3 py-1.5 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 outline-none ring-0"
+                                >
+                                  {savingIdeaIndex === globalIdx ? 'Saving...' : 'Save Idea'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 text-center">
@@ -657,9 +969,68 @@ export default function BrainDumpPage() {
       {/* Previously saved sessions */}
       <div className="px-6 sm:px-10 pb-10 flex-1">
         <div className="max-w-4xl">
-          <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
-            Previously saved sessions
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+              Previously saved sessions
+            </h2>
+            <div className="flex items-center gap-3">
+              {/* Sort dropdown */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="text-xs rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-primary)] px-2.5 py-1.5 outline-none ring-0 cursor-pointer"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="priority">Priority</option>
+              </select>
+
+              {/* Tag filter dropdown */}
+              {allTags.length > 0 && (
+                <select
+                  value={filterTag}
+                  onChange={(e) => setFilterTag(e.target.value)}
+                  className="text-xs rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-primary)] px-2.5 py-1.5 outline-none ring-0 cursor-pointer"
+                >
+                  <option value="">All tags</option>
+                  {allTags.map((tag) => (
+                    <option key={tag} value={tag}>
+                      {tag}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <div className="flex items-center gap-1">
+                {/* Grid view button */}
+                <button
+                  onClick={() => setListMode('grid')}
+                  className="p-1.5 rounded-[var(--radius-md)] outline-none ring-0 transition-colors"
+                  style={{
+                    color: listMode === 'grid' ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                  }}
+                  title="Grid view"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+                  </svg>
+                </button>
+                {/* List view button */}
+                <button
+                  onClick={() => setListMode('list')}
+                  className="p-1.5 rounded-[var(--radius-md)] outline-none ring-0 transition-colors"
+                  style={{
+                    color: listMode === 'list' ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                  }}
+                  title="List view"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
 
           {isLoadingSessions && (
             <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] py-8">
@@ -671,17 +1042,19 @@ export default function BrainDumpPage() {
             </div>
           )}
 
-          {!isLoadingSessions && sessions.length === 0 && (
+          {!isLoadingSessions && filteredSessions.length === 0 && (
             <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8 text-center">
               <p className="text-sm text-[var(--color-text-secondary)]">
-                No sessions yet. Submit your first brain dump above to get started.
+                {filterTag
+                  ? `No sessions with tag "${filterTag}".`
+                  : 'No sessions yet. Submit your first brain dump above to get started.'}
               </p>
             </div>
           )}
 
-          {!isLoadingSessions && sessions.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {sessions.map((session) => {
+          {!isLoadingSessions && filteredSessions.length > 0 && (
+            <div className={listMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'flex flex-col gap-3'}>
+              {filteredSessions.map((session) => {
                 const date = new Date(session.callDate || session.createdAt);
                 const formattedDate = date.toLocaleDateString('en-US', {
                   month: 'short',
@@ -699,6 +1072,79 @@ export default function BrainDumpPage() {
                 const ideasCount = session.extractedIdeas?.length || 0;
                 const pillar =
                   session.extractedThemes.length > 0 ? session.extractedThemes[0] : null;
+                const priority = session.priority || 'medium';
+                const tags = session.tags || [];
+
+                if (listMode === 'list') {
+                  return (
+                    <div
+                      key={session._id}
+                      onClick={() => openSession(session)}
+                      className="group rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 cursor-pointer transition-all hover:border-[var(--color-accent)] hover:shadow-[var(--shadow-md)]"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug truncate">
+                              {title}
+                            </h3>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span
+                                className="text-[10px] font-medium uppercase px-2 py-0.5 rounded-[var(--radius-full)]"
+                                style={{
+                                  backgroundColor: PRIORITY_COLORS[priority].bg,
+                                  color: PRIORITY_COLORS[priority].text,
+                                }}
+                              >
+                                {priority}
+                              </span>
+                              <span className="text-[11px] text-[var(--color-text-primary)] bg-[var(--color-bg-secondary)] px-2 py-0.5 rounded-[var(--radius-full)]">
+                                {formattedDate}
+                              </span>
+                              {ideasCount > 0 && (
+                                <span className="text-[11px] text-white bg-[var(--color-accent)] px-2 py-0.5 rounded-[var(--radius-full)]">
+                                  {ideasCount} idea{ideasCount !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {pillar && (
+                                <span className="text-[11px] text-[var(--color-text-primary)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] px-2 py-0.5 rounded-[var(--radius-full)]">
+                                  {pillar}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed truncate mt-1">
+                            {transcriptSnippet}
+                          </p>
+                          {tags.length > 0 && (
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              {tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="text-[10px] text-[var(--color-text-primary)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] px-1.5 py-0.5 rounded-[var(--radius-full)]"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSession(session._id);
+                          }}
+                          className="flex-shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-error)] transition-colors opacity-0 group-hover:opacity-100"
+                          title="Delete session"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div
@@ -727,6 +1173,15 @@ export default function BrainDumpPage() {
                       {transcriptSnippet}
                     </p>
                     <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className="text-[10px] font-medium uppercase px-2 py-0.5 rounded-[var(--radius-full)]"
+                        style={{
+                          backgroundColor: PRIORITY_COLORS[priority].bg,
+                          color: PRIORITY_COLORS[priority].text,
+                        }}
+                      >
+                        {priority}
+                      </span>
                       <span className="text-[11px] text-[var(--color-text-primary)] bg-[var(--color-bg-secondary)] px-2 py-0.5 rounded-[var(--radius-full)]">
                         {formattedDate}
                       </span>
@@ -740,6 +1195,14 @@ export default function BrainDumpPage() {
                           {pillar}
                         </span>
                       )}
+                      {tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[10px] text-[var(--color-text-primary)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] px-1.5 py-0.5 rounded-[var(--radius-full)]"
+                        >
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 );

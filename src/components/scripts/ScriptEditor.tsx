@@ -35,8 +35,10 @@ export interface ScriptEditorData {
   ideaId?: {
     _id: string;
     title: string;
+    contentPillar?: string;
   };
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface ScriptEditorProps {
@@ -64,6 +66,17 @@ interface ScriptEditorProps {
 // ---------------------------------------------------------------------------
 
 type ViewMode = 'full' | 'sections' | 'bullets' | 'teleprompter';
+
+function countWords(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
+}
+
+function estimateReadTime(wordCount: number): number {
+  // 150 words per minute for speaking pace
+  return Math.ceil(wordCount / 150);
+}
 
 function generateSectionId(): string {
   return `section_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -132,6 +145,15 @@ export default function ScriptEditor({
   const [sectionDragIndex, setSectionDragIndex] = useState<number | null>(null);
   const [sectionOverIndex, setSectionOverIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showInfoSidebar, setShowInfoSidebar] = useState(true);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [duplicateSuccess, setDuplicateSuccess] = useState(false);
+
+  // Teleprompter state
+  const [teleprompterSlide, setTeleprompterSlide] = useState(0);
+  const [teleprompterDarkMode, setTeleprompterDarkMode] = useState(true);
+  const [teleprompterFontSize, setTeleprompterFontSize] = useState(28);
+  const [teleprompterCopied, setTeleprompterCopied] = useState(false);
 
   const markChanged = () => {
     if (!hasChanges) setHasChanges(true);
@@ -294,6 +316,34 @@ export default function ScriptEditor({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleDuplicateToIdeas = async () => {
+    setIsDuplicating(true);
+    try {
+      const res = await fetch('/api/ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          description: fullScript.slice(0, 500),
+          source: 'manual',
+          status: 'saved',
+          contentPillar: script.ideaId?.contentPillar || '',
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to duplicate');
+      setDuplicateSuccess(true);
+      setTimeout(() => setDuplicateSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to duplicate idea:', err);
+      alert('Failed to duplicate to ideas. Please try again.');
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
+  const wordCount = countWords(fullScript);
+  const readTime = estimateReadTime(wordCount);
+
   // Browser-level protection: warn before closing/refreshing with unsaved changes
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -321,6 +371,58 @@ export default function ScriptEditor({
     }
     onClose();
   }, [hasChanges, onClose, onSave, buildUpdates]);
+
+  // --- Teleprompter helpers ---
+  const teleprompterSlides = (() => {
+    // Prefer sections if available
+    if (sections.length > 0) {
+      return sections.map((s) => ({
+        title: s.title,
+        content: s.content,
+      }));
+    }
+    // Fall back to splitting teleprompterVersion (or fullScript) by double newlines
+    const text = teleprompterVersion || fullScript || '';
+    const parts = text.split(/\n\s*\n/).filter((p) => p.trim());
+    if (parts.length === 0) return [{ title: '', content: 'No script content yet.' }];
+    return parts.map((p, i) => ({ title: `Part ${i + 1}`, content: p.trim() }));
+  })();
+
+  const totalSlides = teleprompterSlides.length;
+
+  const goToSlide = useCallback((dir: 'prev' | 'next') => {
+    setTeleprompterSlide((prev) => {
+      if (dir === 'prev') return Math.max(0, prev - 1);
+      return Math.min(totalSlides - 1, prev + 1);
+    });
+  }, [totalSlides]);
+
+  // Reset slide index when entering teleprompter or when slides change
+  useEffect(() => {
+    if (viewMode === 'teleprompter') {
+      setTeleprompterSlide((prev) => Math.min(prev, Math.max(0, totalSlides - 1)));
+    }
+  }, [viewMode, totalSlides]);
+
+  // Keyboard navigation for teleprompter
+  useEffect(() => {
+    if (viewMode !== 'teleprompter') return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goToSlide('prev'); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); goToSlide('next'); }
+      if (e.key === 'Escape') { e.preventDefault(); setViewMode('full'); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [viewMode, goToSlide]);
+
+  const handleCopyScript = useCallback(() => {
+    const text = teleprompterVersion || fullScript || '';
+    navigator.clipboard.writeText(text).then(() => {
+      setTeleprompterCopied(true);
+      setTimeout(() => setTeleprompterCopied(false), 2000);
+    });
+  }, [teleprompterVersion, fullScript]);
 
   return (
     <div className="animate-fadeIn">
@@ -373,6 +475,11 @@ export default function ScriptEditor({
           </select>
         </div>
       </div>
+
+      {/* Main content + sidebar layout */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Main content */}
+        <div className="flex-1 min-w-0">
 
       {/* Thumbnail upload section */}
       <div className="mb-5">
@@ -637,17 +744,247 @@ export default function ScriptEditor({
         )}
 
         {viewMode === 'teleprompter' && (
-          <div className="p-6">
-            <textarea
-              value={teleprompterVersion}
-              onChange={(e) => { setTeleprompterVersion(e.target.value); markChanged(); }}
-              className="min-h-[500px] w-full resize-y rounded-[var(--radius-lg)] border-none bg-[var(--color-bg-dark)] p-8 font-mono text-2xl font-medium leading-[1.8] tracking-wide text-[var(--color-text-inverse)] outline-none"
-              placeholder="Teleprompter text..."
-              style={{ caretColor: 'var(--color-accent)' }}
-            />
+          <div className="p-6 text-center text-sm text-[var(--color-text-muted)]">
+            Teleprompter is open in full-screen mode.
+            <button
+              type="button"
+              onClick={() => setViewMode('full')}
+              className="ml-2 text-[var(--color-accent)] underline outline-none ring-0"
+            >
+              Exit teleprompter
+            </button>
           </div>
         )}
       </div>
+
+      {/* ---- Full-screen teleprompter overlay ---- */}
+      {viewMode === 'teleprompter' && (
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col"
+          style={{
+            backgroundColor: teleprompterDarkMode ? '#030712' : '#ffffff',
+            color: teleprompterDarkMode ? '#ffffff' : '#111827',
+          }}
+        >
+          {/* Top toolbar */}
+          <div
+            className="flex items-center justify-between px-5 py-3"
+            style={{
+              backgroundColor: teleprompterDarkMode ? '#111827' : '#f3f4f6',
+              borderBottom: `1px solid ${teleprompterDarkMode ? '#1f2937' : '#e5e7eb'}`,
+            }}
+          >
+            {/* Left: exit + title */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setViewMode('full')}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium outline-none ring-0 transition-colors"
+                style={{
+                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                  color: teleprompterDarkMode ? '#d1d5db' : '#374151',
+                }}
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+                Exit
+              </button>
+              <span
+                className="text-sm font-medium truncate max-w-[200px]"
+                style={{ color: teleprompterDarkMode ? '#9ca3af' : '#6b7280' }}
+              >
+                {title || 'Teleprompter'}
+              </span>
+            </div>
+
+            {/* Center: font size controls */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setTeleprompterFontSize((s) => Math.max(18, s - 2))}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold outline-none ring-0 transition-colors"
+                style={{
+                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                  color: teleprompterDarkMode ? '#d1d5db' : '#374151',
+                }}
+                title="Decrease font size"
+              >
+                -
+              </button>
+              <span
+                className="min-w-[48px] text-center text-xs font-medium tabular-nums"
+                style={{ color: teleprompterDarkMode ? '#9ca3af' : '#6b7280' }}
+              >
+                {teleprompterFontSize}px
+              </span>
+              <button
+                type="button"
+                onClick={() => setTeleprompterFontSize((s) => Math.min(48, s + 2))}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold outline-none ring-0 transition-colors"
+                style={{
+                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                  color: teleprompterDarkMode ? '#d1d5db' : '#374151',
+                }}
+                title="Increase font size"
+              >
+                +
+              </button>
+            </div>
+
+            {/* Right: dark/light toggle + copy */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setTeleprompterDarkMode((d) => !d)}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium outline-none ring-0 transition-colors"
+                style={{
+                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                  color: teleprompterDarkMode ? '#d1d5db' : '#374151',
+                }}
+                title={teleprompterDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {teleprompterDarkMode ? (
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+                  </svg>
+                )}
+                {teleprompterDarkMode ? 'Light' : 'Dark'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCopyScript}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium outline-none ring-0 transition-colors"
+                style={{
+                  backgroundColor: teleprompterCopied
+                    ? (teleprompterDarkMode ? '#065f46' : '#d1fae5')
+                    : (teleprompterDarkMode ? '#1f2937' : '#e5e7eb'),
+                  color: teleprompterCopied
+                    ? (teleprompterDarkMode ? '#6ee7b7' : '#065f46')
+                    : (teleprompterDarkMode ? '#d1d5db' : '#374151'),
+                }}
+                title="Copy full script to clipboard"
+              >
+                {teleprompterCopied ? (
+                  <>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9.75a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+                    </svg>
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Slide content area -- click left/right halves to navigate */}
+          <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+            {/* Left click zone */}
+            <button
+              type="button"
+              onClick={() => goToSlide('prev')}
+              className="absolute inset-y-0 left-0 z-10 w-1/3 cursor-w-resize outline-none ring-0"
+              style={{ background: 'transparent' }}
+              aria-label="Previous slide"
+              disabled={teleprompterSlide === 0}
+            />
+            {/* Right click zone */}
+            <button
+              type="button"
+              onClick={() => goToSlide('next')}
+              className="absolute inset-y-0 right-0 z-10 w-1/3 cursor-e-resize outline-none ring-0"
+              style={{ background: 'transparent' }}
+              aria-label="Next slide"
+              disabled={teleprompterSlide >= totalSlides - 1}
+            />
+
+            {/* Slide text */}
+            <div className="z-0 flex max-h-full w-full max-w-4xl flex-col items-center justify-center px-8 py-12 text-center overflow-y-auto">
+              {teleprompterSlides[teleprompterSlide]?.title && (
+                <h2
+                  className="mb-6 font-semibold tracking-tight"
+                  style={{
+                    fontSize: `${Math.min(teleprompterFontSize + 8, 56)}px`,
+                    lineHeight: 1.2,
+                    color: teleprompterDarkMode ? '#a78bfa' : '#7c3aed',
+                  }}
+                >
+                  {teleprompterSlides[teleprompterSlide].title}
+                </h2>
+              )}
+              <p
+                className="whitespace-pre-wrap leading-relaxed"
+                style={{
+                  fontSize: `${teleprompterFontSize}px`,
+                  lineHeight: 1.7,
+                }}
+              >
+                {teleprompterSlides[teleprompterSlide]?.content}
+              </p>
+            </div>
+          </div>
+
+          {/* Bottom bar: slide indicator + arrow buttons */}
+          <div
+            className="flex items-center justify-center gap-4 px-5 py-3"
+            style={{
+              backgroundColor: teleprompterDarkMode ? '#111827' : '#f3f4f6',
+              borderTop: `1px solid ${teleprompterDarkMode ? '#1f2937' : '#e5e7eb'}`,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => goToSlide('prev')}
+              disabled={teleprompterSlide === 0}
+              className="flex h-9 w-9 items-center justify-center rounded-lg outline-none ring-0 transition-colors disabled:opacity-30"
+              style={{
+                backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                color: teleprompterDarkMode ? '#d1d5db' : '#374151',
+              }}
+              aria-label="Previous slide"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+
+            <span
+              className="min-w-[60px] text-center text-sm font-medium tabular-nums"
+              style={{ color: teleprompterDarkMode ? '#9ca3af' : '#6b7280' }}
+            >
+              {teleprompterSlide + 1} / {totalSlides}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => goToSlide('next')}
+              disabled={teleprompterSlide >= totalSlides - 1}
+              className="flex h-9 w-9 items-center justify-center rounded-lg outline-none ring-0 transition-colors disabled:opacity-30"
+              style={{
+                backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                color: teleprompterDarkMode ? '#d1d5db' : '#374151',
+              }}
+              aria-label="Next slide"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Unsaved changes indicator */}
       {hasChanges && (
@@ -816,6 +1153,116 @@ export default function ScriptEditor({
           </div>
         </div>
       )}
+
+        </div>{/* end main content */}
+
+        {/* Script Info Sidebar */}
+        <div className="w-full lg:w-72 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowInfoSidebar(!showInfoSidebar)}
+            className="mb-3 flex w-full items-center justify-between rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-[var(--color-bg-tertiary)] lg:hidden"
+          >
+            Script Info
+            <svg className={`h-4 w-4 transition-transform ${showInfoSidebar ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          <div className={`${showInfoSidebar ? 'block' : 'hidden lg:block'}`}>
+            <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 space-y-5">
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Script Info</h3>
+
+              {/* Content Pillar */}
+              {script.ideaId && typeof script.ideaId === 'object' && script.ideaId.contentPillar && (
+                <div>
+                  <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Content Pillar</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, backgroundColor: 'rgba(74,144,217,0.1)', padding: '3px 12px', fontSize: 12, fontWeight: 500, color: '#4A90D9' }}>
+                    {script.ideaId.contentPillar}
+                  </span>
+                </div>
+              )}
+
+              {/* Source Idea */}
+              {script.ideaId && typeof script.ideaId === 'object' && (
+                <div>
+                  <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Based On</span>
+                  <p className="text-sm text-[var(--color-accent)]">{script.ideaId.title}</p>
+                </div>
+              )}
+
+              {/* Word Count */}
+              <div>
+                <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Word Count</span>
+                <p className="text-sm font-medium text-[var(--color-text-primary)]">{wordCount.toLocaleString()} words</p>
+              </div>
+
+              {/* Estimated Read Time */}
+              <div>
+                <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Est. Read Time</span>
+                <p className="text-sm font-medium text-[var(--color-text-primary)]">{readTime} min</p>
+              </div>
+
+              {/* Status */}
+              <div>
+                <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Status</span>
+                <span className={`text-sm font-medium ${STATUS_COLORS[status]}`}>
+                  {STATUS_OPTIONS.find((o) => o.value === status)?.label || status}
+                </span>
+              </div>
+
+              {/* Created */}
+              <div>
+                <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Created</span>
+                <p className="text-sm text-[var(--color-text-secondary)]">{formatDate(script.createdAt)}</p>
+              </div>
+
+              {/* Last Modified */}
+              {script.updatedAt && (
+                <div>
+                  <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Last Modified</span>
+                  <p className="text-sm text-[var(--color-text-secondary)]">{formatDate(script.updatedAt)}</p>
+                </div>
+              )}
+
+              {/* Divider */}
+              <div className="border-t border-[var(--color-border)]" />
+
+              {/* Duplicate to Ideas */}
+              <button
+                type="button"
+                onClick={handleDuplicateToIdeas}
+                disabled={isDuplicating}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-4 py-2.5 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isDuplicating ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Duplicating...
+                  </>
+                ) : duplicateSuccess ? (
+                  <>
+                    <svg className="h-4 w-4 text-[var(--color-success)]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                    <span className="text-[var(--color-success)]">Duplicated!</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                    </svg>
+                    Duplicate to Ideas
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>{/* end flex layout */}
     </div>
   );
 }

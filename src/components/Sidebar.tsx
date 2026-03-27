@@ -12,6 +12,7 @@ interface SidebarProps {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", exact: true },
+  { href: "/dashboard/focus", label: "Focus Mode" },
   { href: "/dashboard/ideas", label: "Ideas" },
   { href: "/dashboard/scripts", label: "Scripts" },
   { href: "/dashboard/today", label: "Tasks" },
@@ -24,7 +25,7 @@ const ACCENT = { light: '#4A90D9', dark: '#D4A843' };
 const TEXT_SEC = { light: '#555770', dark: '#8B8D9E' };
 const TEXT_PRI = { light: '#1A1A2E', dark: '#E4E4E7' };
 
-export default function Sidebar({ userRole = "student" }: SidebarProps) {
+export default function Sidebar({ userName, userRole = "student" }: SidebarProps) {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
   const t = resolvedTheme === 'light' ? 'light' : 'dark';
@@ -53,7 +54,7 @@ export default function Sidebar({ userRole = "student" }: SidebarProps) {
   };
 
   return (
-    <aside style={{ width: 200, display: 'flex', flexDirection: 'column', height: '100vh', padding: '24px 16px' }}>
+    <aside style={{ width: 200, display: 'flex', flexDirection: 'column', height: '100vh', padding: '24px 16px', overflowY: 'auto' }}>
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 8, paddingRight: 8, marginBottom: 32 }}>
         <div style={{ width: 32, height: 32, borderRadius: 12, backgroundColor: ACCENT[t], display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }}>
@@ -88,7 +89,7 @@ export default function Sidebar({ userRole = "student" }: SidebarProps) {
       </nav>
 
       {/* Bottom section */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 8, flexShrink: 0 }}>
         {(userRole === 'coach' || userRole === 'admin') && (
           <Link
             href="/admin"
@@ -107,6 +108,28 @@ export default function Sidebar({ userRole = "student" }: SidebarProps) {
         >
           Settings
         </Link>
+        {userName && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 8px 4px', marginTop: 4 }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              backgroundColor: ACCENT[t],
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
+              fontSize: 13,
+              fontWeight: 600,
+              flexShrink: 0,
+            }}>
+              {userName.charAt(0).toUpperCase()}
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 500, color: TEXT_PRI[t], overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {userName}
+            </span>
+          </div>
+        )}
       </div>
     </aside>
   );
