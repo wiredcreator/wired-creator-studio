@@ -17,8 +17,15 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const { page, limit, skip } = parsePagination(searchParams);
 
+    // Coaches/admins can look up any student's voice storming sessions via ?userId=
+    let targetUserId = user.id;
+    const requestedUserId = searchParams.get('userId');
+    if (requestedUserId && (user.role === 'coach' || user.role === 'admin')) {
+      targetUserId = requestedUserId;
+    }
+
     // Build filter
-    const filter: Record<string, unknown> = { userId: user.id };
+    const filter: Record<string, unknown> = { userId: targetUserId };
 
     // Search
     const search = searchParams.get('search');

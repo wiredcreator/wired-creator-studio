@@ -5,6 +5,7 @@ import User from '@/models/User';
 import ContentDNAResponse from '@/models/ContentDNAResponse';
 import VoiceStormingTranscript from '@/models/VoiceStormingTranscript';
 import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib/ai/client';
+import { trackAIUsage } from '@/lib/ai/usage-tracker';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
 export async function GET() {
@@ -49,6 +50,7 @@ export async function GET() {
 
     const client = getAnthropicClient();
 
+    const startMs = Date.now();
     const response = await client.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1024,
@@ -71,6 +73,8 @@ Make the prompts conversational, specific to their niche, and easy to riff on. E
         },
       ],
     });
+
+    trackAIUsage({ userId: authResult.id, feature: 'voice_storming_prompts', response, durationMs: Date.now() - startMs });
 
     const textBlock = response.content.find((b) => b.type === 'text');
     if (!textBlock || textBlock.type !== 'text') {

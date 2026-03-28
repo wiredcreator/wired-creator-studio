@@ -18,8 +18,15 @@ export async function GET(request: NextRequest) {
     const source = request.nextUrl.searchParams.get('source');
     const pillar = request.nextUrl.searchParams.get('contentPillar');
 
+    // Coaches/admins can look up any student's ideas via ?userId=
+    let targetUserId = user.id;
+    const requestedUserId = request.nextUrl.searchParams.get('userId');
+    if (requestedUserId && (user.role === 'coach' || user.role === 'admin')) {
+      targetUserId = requestedUserId;
+    }
+
     // Build query filter
-    const filter: Record<string, unknown> = { userId: user.id };
+    const filter: Record<string, unknown> = { userId: targetUserId };
     if (status) filter.status = status;
     if (source) filter.source = source;
     if (pillar) filter.contentPillar = pillar;

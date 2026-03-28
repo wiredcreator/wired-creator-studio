@@ -26,7 +26,76 @@ interface ToneOfVoiceGuideData {
 interface BrandBrainData {
   _id: string;
   toneOfVoiceGuide?: ToneOfVoiceGuideData | null;
+  contentPillars?: Array<{
+    title: string;
+    description: string;
+    keywords?: string[];
+  }>;
+  industryData?: {
+    field?: string;
+    keywords?: string[];
+    competitors?: string[];
+  };
+  equipmentProfile?: {
+    camera?: string;
+    location?: string;
+    constraints?: string;
+  };
 }
+
+// --- Tab data interfaces ---
+interface IdeaItem {
+  _id: string;
+  title: string;
+  description: string;
+  status: string;
+  contentPillar: string;
+  source: string;
+  tags: string[];
+  createdAt: string;
+}
+
+interface ScriptItem {
+  _id: string;
+  title: string;
+  status: string;
+  fullScript: string;
+  bulletPoints: string[];
+  ideaId?: { _id: string; title: string; status: string; contentPillar: string } | null;
+  createdAt: string;
+}
+
+interface BrainDumpItem {
+  _id: string;
+  source: string;
+  callType: string;
+  extractedIdeas: Array<{ title: string; description: string }>;
+  extractedStories: Array<{ summary: string; fullText: string }>;
+  extractedThemes: string[];
+  priority: string;
+  tags: string[];
+  createdAt: string;
+}
+
+interface VoiceStormItem {
+  _id: string;
+  title?: string;
+  sessionType: string;
+  extractedInsights: Array<{ type: string; content: string; contentPillar: string }>;
+  duration: number;
+  createdAt: string;
+}
+
+type TabKey = "tasks" | "ideas" | "scripts" | "brainDumps" | "voiceStorming" | "brandBrain";
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "tasks", label: "Tasks" },
+  { key: "ideas", label: "Ideas" },
+  { key: "scripts", label: "Scripts" },
+  { key: "brainDumps", label: "Brain Dumps" },
+  { key: "voiceStorming", label: "Voice Storming" },
+  { key: "brandBrain", label: "Brand Brain" },
+];
 
 const TASK_TYPES = [
   { value: "watch_module", label: "Watch Module" },
@@ -40,9 +109,85 @@ const TASK_TYPES = [
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// --- Status badge helpers ---
+function ideaStatusColor(status: string): string {
+  switch (status) {
+    case "approved": return "bg-emerald-600 text-white";
+    case "saved": return "bg-sky-600 text-white";
+    case "scripted": return "bg-violet-600 text-white";
+    case "filmed": return "bg-amber-600 text-white";
+    case "published": return "bg-emerald-700 text-white";
+    case "rejected": return "bg-red-600 text-white";
+    case "suggested":
+    default: return "bg-[var(--color-bg-tertiary)] text-white";
+  }
+}
+
+function scriptStatusColor(status: string): string {
+  switch (status) {
+    case "draft": return "bg-[var(--color-bg-tertiary)] text-white";
+    case "review": return "bg-sky-600 text-white";
+    case "approved": return "bg-emerald-600 text-white";
+    case "filming": return "bg-amber-600 text-white";
+    case "completed": return "bg-violet-600 text-white";
+    case "published": return "bg-emerald-700 text-white";
+    default: return "bg-[var(--color-bg-tertiary)] text-white";
+  }
+}
+
+function priorityColor(priority: string): string {
+  switch (priority) {
+    case "high": return "bg-red-600 text-white";
+    case "medium": return "bg-amber-600 text-white";
+    case "low":
+    default: return "bg-[var(--color-bg-tertiary)] text-white";
+  }
+}
+
+function sessionTypeLabel(type: string): string {
+  switch (type) {
+    case "freeform": return "Freeform";
+    case "guided": return "Guided";
+    case "idea_specific": return "Idea Specific";
+    default: return type;
+  }
+}
+
+function formatDuration(seconds: number): string {
+  if (!seconds) return "";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+// --- Skeleton loader ---
+function LoadingSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }, (_, i) => (
+        <div
+          key={i}
+          className="h-20 animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-bg-card)]"
+        />
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] p-12 text-center">
+      <p className="text-sm text-[var(--color-text-muted)]">{message}</p>
+    </div>
+  );
+}
+
 export default function StudentDetailPage() {
   const params = useParams();
   const id = params.id as string;
+
+  // --- Active tab ---
+  const [activeTab, setActiveTab] = useState<TabKey>("tasks");
 
   const [student, setStudent] = useState<StudentInfo | null>(null);
   const [tasks, setTasks] = useState<TaskData[]>([]);
@@ -80,6 +225,27 @@ export default function StudentDetailPage() {
     embeddedVideoUrl: "",
   });
 
+  // --- Tab data states ---
+  const [ideas, setIdeas] = useState<IdeaItem[]>([]);
+  const [ideasLoading, setIdeasLoading] = useState(false);
+  const [ideasLoaded, setIdeasLoaded] = useState(false);
+
+  const [scripts, setScripts] = useState<ScriptItem[]>([]);
+  const [scriptsLoading, setScriptsLoading] = useState(false);
+  const [scriptsLoaded, setScriptsLoaded] = useState(false);
+
+  const [brainDumps, setBrainDumps] = useState<BrainDumpItem[]>([]);
+  const [brainDumpsLoading, setBrainDumpsLoading] = useState(false);
+  const [brainDumpsLoaded, setBrainDumpsLoaded] = useState(false);
+
+  const [voiceStorms, setVoiceStorms] = useState<VoiceStormItem[]>([]);
+  const [voiceStormsLoading, setVoiceStormsLoading] = useState(false);
+  const [voiceStormsLoaded, setVoiceStormsLoaded] = useState(false);
+
+  const [brandBrain, setBrandBrain] = useState<BrandBrainData | null>(null);
+  const [brandBrainLoading, setBrandBrainLoading] = useState(false);
+  const [brandBrainLoaded, setBrandBrainLoaded] = useState(false);
+
   // Fetch coach session
   useEffect(() => {
     async function getSession() {
@@ -110,12 +276,11 @@ export default function StudentDetailPage() {
     }
   }, [id, selectedWeek]);
 
-  // Fetch student info and tasks
+  // Fetch student info
   useEffect(() => {
     async function fetchStudent() {
       try {
         setLoading(true);
-        // Try to fetch student info (use signup endpoint as user query)
         const res = await fetch(`/api/users?userId=${id}`);
         if (res.ok) {
           const data = await res.json();
@@ -131,9 +296,9 @@ export default function StudentDetailPage() {
     fetchStudent();
   }, [id]);
 
-  // Fetch Brand Brain (includes populated toneOfVoiceGuide)
+  // Fetch Brand Brain for TOV review (always needed for the alert card)
   useEffect(() => {
-    async function fetchBrandBrain() {
+    async function fetchBrandBrainForTov() {
       try {
         const res = await fetch(`/api/brand-brain?userId=${id}`);
         if (res.ok) {
@@ -146,8 +311,83 @@ export default function StudentDetailPage() {
         // Brand Brain may not exist yet
       }
     }
-    fetchBrandBrain();
+    fetchBrandBrainForTov();
   }, [id]);
+
+  // Lazy load tab data
+  useEffect(() => {
+    if (activeTab === "ideas" && !ideasLoaded) {
+      setIdeasLoading(true);
+      fetch(`/api/ideas?userId=${id}&limit=100`)
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (data?.data) setIdeas(data.data);
+          else if (Array.isArray(data)) setIdeas(data);
+          setIdeasLoaded(true);
+        })
+        .catch(() => {})
+        .finally(() => setIdeasLoading(false));
+    }
+  }, [activeTab, id, ideasLoaded]);
+
+  useEffect(() => {
+    if (activeTab === "scripts" && !scriptsLoaded) {
+      setScriptsLoading(true);
+      fetch(`/api/scripts?userId=${id}&limit=100`)
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (data?.data) setScripts(data.data);
+          else if (Array.isArray(data)) setScripts(data);
+          setScriptsLoaded(true);
+        })
+        .catch(() => {})
+        .finally(() => setScriptsLoading(false));
+    }
+  }, [activeTab, id, scriptsLoaded]);
+
+  useEffect(() => {
+    if (activeTab === "brainDumps" && !brainDumpsLoaded) {
+      setBrainDumpsLoading(true);
+      fetch(`/api/brain-dump?userId=${id}&limit=100`)
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (data?.data) setBrainDumps(data.data);
+          else if (Array.isArray(data)) setBrainDumps(data);
+          setBrainDumpsLoaded(true);
+        })
+        .catch(() => {})
+        .finally(() => setBrainDumpsLoading(false));
+    }
+  }, [activeTab, id, brainDumpsLoaded]);
+
+  useEffect(() => {
+    if (activeTab === "voiceStorming" && !voiceStormsLoaded) {
+      setVoiceStormsLoading(true);
+      fetch(`/api/voice-storming?userId=${id}&limit=100`)
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (data?.data) setVoiceStorms(data.data);
+          else if (Array.isArray(data)) setVoiceStorms(data);
+          setVoiceStormsLoaded(true);
+        })
+        .catch(() => {})
+        .finally(() => setVoiceStormsLoading(false));
+    }
+  }, [activeTab, id, voiceStormsLoaded]);
+
+  useEffect(() => {
+    if (activeTab === "brandBrain" && !brandBrainLoaded) {
+      setBrandBrainLoading(true);
+      fetch(`/api/brand-brain?userId=${id}`)
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (data) setBrandBrain(data);
+          setBrandBrainLoaded(true);
+        })
+        .catch(() => {})
+        .finally(() => setBrandBrainLoading(false));
+    }
+  }, [activeTab, id, brandBrainLoaded]);
 
   // Tone of Voice review actions
   const handleTovStatusChange = async (newStatus: TovStatus) => {
@@ -353,6 +593,9 @@ export default function StudentDetailPage() {
   ).length;
   const totalThisWeek = tasks.length;
 
+  // Suppress unused warning for handleAddComment — used by TaskCard internally
+  void handleAddComment;
+
   return (
     <PageWrapper
       title={student?.name || "Student Profile"}
@@ -527,449 +770,813 @@ export default function StudentDetailPage() {
           </div>
         )}
 
-        {/* Week selector */}
-        <div>
-          <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
-            12-Week Plan
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((week) => (
+        {/* Tab Switcher */}
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-1">
+          <div className="flex flex-wrap gap-1">
+            {TABS.map((tab) => (
               <button
-                key={week}
-                onClick={() => setSelectedWeek(week)}
-                className={`rounded-[var(--radius-md)] px-3 py-1.5 text-sm font-medium transition-colors ${
-                  selectedWeek === week
-                    ? "bg-[var(--color-accent)] text-[var(--color-bg-dark)]"
-                    : "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-light)] hover:text-[var(--color-accent)]"
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium transition-colors ${
+                  activeTab === tab.key
+                    ? "bg-[var(--color-accent)] text-white"
+                    : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                 }`}
               >
-                W{week}
+                {tab.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Add task button */}
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-            Week {selectedWeek} Tasks
-          </h3>
-          <button
-            onClick={() => {
-              setNewTask((prev) => ({ ...prev, weekNumber: selectedWeek }));
-              setShowAddForm(!showAddForm);
-            }}
-            className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)]"
-          >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 4.5v15m7.5-7.5h-15"
-              />
-            </svg>
-            Assign Task
-          </button>
-        </div>
-
-        {/* Add task form */}
-        {showAddForm && (
-          <form
-            onSubmit={handleCreateTask}
-            className="animate-fadeIn rounded-[var(--radius-lg)] border border-[var(--color-accent)] bg-[var(--color-accent-subtle)] p-5 shadow-[var(--shadow-sm)]"
-          >
-            <h4 className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">
-              New Task for Week {newTask.weekNumber}
-            </h4>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              {/* Title */}
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newTask.title}
-                  onChange={(e) =>
-                    setNewTask((prev) => ({ ...prev, title: e.target.value }))
-                  }
-                  placeholder="e.g., Watch Module 3: Scripting Basics"
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
-                />
-              </div>
-
-              {/* Description */}
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  Description
-                </label>
-                <textarea
-                  value={newTask.description}
-                  onChange={(e) =>
-                    setNewTask((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  placeholder="Optional details..."
-                  rows={2}
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none resize-none"
-                />
-              </div>
-
-              {/* Type */}
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  Task Type
-                </label>
-                <select
-                  value={newTask.type}
-                  onChange={(e) =>
-                    setNewTask((prev) => ({ ...prev, type: e.target.value }))
-                  }
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
-                >
-                  {TASK_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Due Date */}
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  Due Date *
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={newTask.dueDate}
-                  onChange={(e) =>
-                    setNewTask((prev) => ({ ...prev, dueDate: e.target.value }))
-                  }
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
-                />
-              </div>
-
-              {/* Day of Week */}
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  Day of Week
-                </label>
-                <select
-                  value={newTask.dayOfWeek}
-                  onChange={(e) =>
-                    setNewTask((prev) => ({
-                      ...prev,
-                      dayOfWeek: parseInt(e.target.value, 10),
-                    }))
-                  }
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
-                >
-                  {DAY_NAMES.map((name, i) => (
-                    <option key={i} value={i}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Order */}
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  Sort Order
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={newTask.order}
-                  onChange={(e) =>
-                    setNewTask((prev) => ({
-                      ...prev,
-                      order: parseInt(e.target.value, 10) || 0,
-                    }))
-                  }
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
-                />
-              </div>
-
-              {/* Video URL */}
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  Video URL (optional)
-                </label>
-                <input
-                  type="url"
-                  value={newTask.embeddedVideoUrl}
-                  onChange={(e) =>
-                    setNewTask((prev) => ({
-                      ...prev,
-                      embeddedVideoUrl: e.target.value,
-                    }))
-                  }
-                  placeholder="https://www.youtube.com/embed/..."
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
-                />
+        {/* ========== TASKS TAB ========== */}
+        {activeTab === "tasks" && (
+          <div className="space-y-6">
+            {/* Week selector */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
+                12-Week Plan
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((week) => (
+                  <button
+                    key={week}
+                    onClick={() => setSelectedWeek(week)}
+                    className={`rounded-[var(--radius-md)] px-3 py-1.5 text-sm font-medium transition-colors ${
+                      selectedWeek === week
+                        ? "bg-[var(--color-accent)] text-[var(--color-bg-dark)]"
+                        : "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-light)] hover:text-[var(--color-accent)]"
+                    }`}
+                  >
+                    W{week}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Form actions */}
-            <div className="mt-4 flex items-center justify-end gap-3">
+            {/* Add task button */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                Week {selectedWeek} Tasks
+              </h3>
               <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+                onClick={() => {
+                  setNewTask((prev) => ({ ...prev, weekNumber: selectedWeek }));
+                  setShowAddForm(!showAddForm);
+                }}
+                className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)]"
               >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
-              >
-                {submitting ? "Creating..." : "Create Task"}
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 4.5v15m7.5-7.5h-15"
+                  />
+                </svg>
+                Assign Task
               </button>
             </div>
-          </form>
-        )}
 
-        {/* Tasks by day */}
-        {loading && (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-20 animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-bg-card)]"
-              />
-            ))}
-          </div>
-        )}
-
-        {!loading && tasks.length === 0 && (
-          <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] p-12 text-center">
-            <p className="text-sm text-[var(--color-text-muted)]">
-              No tasks assigned for Week {selectedWeek} yet. Use the button
-              above to assign tasks.
-            </p>
-          </div>
-        )}
-
-        {!loading &&
-          DAY_NAMES.map((dayName, dayIndex) => {
-            const dayTasks = tasksByDay[dayIndex];
-            if (!dayTasks || dayTasks.length === 0) return null;
-
-            return (
-              <div key={dayIndex}>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                  {dayName}
+            {/* Add task form */}
+            {showAddForm && (
+              <form
+                onSubmit={handleCreateTask}
+                className="animate-fadeIn rounded-[var(--radius-lg)] border border-[var(--color-accent)] bg-[var(--color-accent-subtle)] p-5 shadow-[var(--shadow-sm)]"
+              >
+                <h4 className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">
+                  New Task for Week {newTask.weekNumber}
                 </h4>
-                <div className="space-y-3">
-                  {dayTasks.map((task) => {
-                    if (editingTask === task._id) {
-                      return (
-                        <div
-                          key={task._id}
-                          className="animate-fadeIn rounded-[var(--radius-lg)] border border-[var(--color-accent)] bg-[var(--color-accent-subtle)] p-4"
-                        >
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="sm:col-span-2">
-                              <input
-                                type="text"
-                                value={editForm.title}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    title: e.target.value,
-                                  }))
-                                }
-                                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
-                              />
-                            </div>
-                            <div className="sm:col-span-2">
-                              <textarea
-                                value={editForm.description}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    description: e.target.value,
-                                  }))
-                                }
-                                rows={2}
-                                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none resize-none"
-                              />
-                            </div>
-                            <select
-                              value={editForm.type}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  type: e.target.value,
-                                }))
-                              }
-                              className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
-                            >
-                              {TASK_TYPES.map((t) => (
-                                <option key={t.value} value={t.value}>
-                                  {t.label}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="date"
-                              value={editForm.dueDate}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  dueDate: e.target.value,
-                                }))
-                              }
-                              className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
-                            />
-                            <select
-                              value={editForm.dayOfWeek}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  dayOfWeek: parseInt(e.target.value, 10),
-                                }))
-                              }
-                              className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
-                            >
-                              {DAY_NAMES.map((name, i) => (
-                                <option key={i} value={i}>
-                                  {name}
-                                </option>
-                              ))}
-                            </select>
-                            <div className="sm:col-span-2">
-                              <input
-                                type="url"
-                                value={editForm.embeddedVideoUrl}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    embeddedVideoUrl: e.target.value,
-                                  }))
-                                }
-                                placeholder="Video URL (optional)"
-                                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
-                              />
-                            </div>
-                          </div>
-                          <div className="mt-3 flex justify-end gap-2">
-                            <button
-                              onClick={() => setEditingTask(null)}
-                              className="rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={() => handleSaveEdit(task._id)}
-                              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg-dark)] hover:bg-[var(--color-accent-hover)]"
-                            >
-                              Save
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    }
 
-                    return (
-                      <div key={task._id} className="group relative">
-                        <TaskCard
-                          task={task}
-                          onStatusChange={handleStatusChange}
-                          onClick={() => {}}
-                        />
-                        {/* Admin action buttons */}
-                        <div className="absolute right-3 top-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          <button
-                            onClick={() => handleStartEdit(task)}
-                            className="rounded-[var(--radius-sm)] bg-[var(--color-bg-secondary)] p-1.5 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
-                            title="Edit task"
-                          >
-                            <svg
-                              className="h-3.5 w-3.5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              strokeWidth={1.5}
-                              stroke="currentColor"
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Title */}
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                      Title *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newTask.title}
+                      onChange={(e) =>
+                        setNewTask((prev) => ({ ...prev, title: e.target.value }))
+                      }
+                      placeholder="e.g., Watch Module 3: Scripting Basics"
+                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                      Description
+                    </label>
+                    <textarea
+                      value={newTask.description}
+                      onChange={(e) =>
+                        setNewTask((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                      placeholder="Optional details..."
+                      rows={2}
+                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none resize-none"
+                    />
+                  </div>
+
+                  {/* Type */}
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                      Task Type
+                    </label>
+                    <select
+                      value={newTask.type}
+                      onChange={(e) =>
+                        setNewTask((prev) => ({ ...prev, type: e.target.value }))
+                      }
+                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+                    >
+                      {TASK_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Due Date */}
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                      Due Date *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={newTask.dueDate}
+                      onChange={(e) =>
+                        setNewTask((prev) => ({ ...prev, dueDate: e.target.value }))
+                      }
+                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Day of Week */}
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                      Day of Week
+                    </label>
+                    <select
+                      value={newTask.dayOfWeek}
+                      onChange={(e) =>
+                        setNewTask((prev) => ({
+                          ...prev,
+                          dayOfWeek: parseInt(e.target.value, 10),
+                        }))
+                      }
+                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+                    >
+                      {DAY_NAMES.map((name, i) => (
+                        <option key={i} value={i}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Order */}
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                      Sort Order
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={newTask.order}
+                      onChange={(e) =>
+                        setNewTask((prev) => ({
+                          ...prev,
+                          order: parseInt(e.target.value, 10) || 0,
+                        }))
+                      }
+                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Video URL */}
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                      Video URL (optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={newTask.embeddedVideoUrl}
+                      onChange={(e) =>
+                        setNewTask((prev) => ({
+                          ...prev,
+                          embeddedVideoUrl: e.target.value,
+                        }))
+                      }
+                      placeholder="https://www.youtube.com/embed/..."
+                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Form actions */}
+                <div className="mt-4 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddForm(false)}
+                    className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
+                  >
+                    {submitting ? "Creating..." : "Create Task"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Tasks by day */}
+            {loading && <LoadingSkeleton />}
+
+            {!loading && tasks.length === 0 && (
+              <EmptyState message={`No tasks assigned for Week ${selectedWeek} yet. Use the button above to assign tasks.`} />
+            )}
+
+            {!loading &&
+              DAY_NAMES.map((dayName, dayIndex) => {
+                const dayTasks = tasksByDay[dayIndex];
+                if (!dayTasks || dayTasks.length === 0) return null;
+
+                return (
+                  <div key={dayIndex}>
+                    <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                      {dayName}
+                    </h4>
+                    <div className="space-y-3">
+                      {dayTasks.map((task) => {
+                        if (editingTask === task._id) {
+                          return (
+                            <div
+                              key={task._id}
+                              className="animate-fadeIn rounded-[var(--radius-lg)] border border-[var(--color-accent)] bg-[var(--color-accent-subtle)] p-4"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
-                              />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTask(task._id)}
-                            className="rounded-[var(--radius-sm)] bg-[var(--color-bg-secondary)] p-1.5 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-error)]"
-                            title="Delete task"
-                          >
-                            <svg
-                              className="h-3.5 w-3.5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              strokeWidth={1.5}
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-                              />
-                            </svg>
-                          </button>
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="sm:col-span-2">
+                                  <input
+                                    type="text"
+                                    value={editForm.title}
+                                    onChange={(e) =>
+                                      setEditForm((prev) => ({
+                                        ...prev,
+                                        title: e.target.value,
+                                      }))
+                                    }
+                                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+                                  />
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <textarea
+                                    value={editForm.description}
+                                    onChange={(e) =>
+                                      setEditForm((prev) => ({
+                                        ...prev,
+                                        description: e.target.value,
+                                      }))
+                                    }
+                                    rows={2}
+                                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none resize-none"
+                                  />
+                                </div>
+                                <select
+                                  value={editForm.type}
+                                  onChange={(e) =>
+                                    setEditForm((prev) => ({
+                                      ...prev,
+                                      type: e.target.value,
+                                    }))
+                                  }
+                                  className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+                                >
+                                  {TASK_TYPES.map((t) => (
+                                    <option key={t.value} value={t.value}>
+                                      {t.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="date"
+                                  value={editForm.dueDate}
+                                  onChange={(e) =>
+                                    setEditForm((prev) => ({
+                                      ...prev,
+                                      dueDate: e.target.value,
+                                    }))
+                                  }
+                                  className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+                                />
+                                <select
+                                  value={editForm.dayOfWeek}
+                                  onChange={(e) =>
+                                    setEditForm((prev) => ({
+                                      ...prev,
+                                      dayOfWeek: parseInt(e.target.value, 10),
+                                    }))
+                                  }
+                                  className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+                                >
+                                  {DAY_NAMES.map((name, i) => (
+                                    <option key={i} value={i}>
+                                      {name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <div className="sm:col-span-2">
+                                  <input
+                                    type="url"
+                                    value={editForm.embeddedVideoUrl}
+                                    onChange={(e) =>
+                                      setEditForm((prev) => ({
+                                        ...prev,
+                                        embeddedVideoUrl: e.target.value,
+                                      }))
+                                    }
+                                    placeholder="Video URL (optional)"
+                                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
+                                  />
+                                </div>
+                              </div>
+                              <div className="mt-3 flex justify-end gap-2">
+                                <button
+                                  onClick={() => setEditingTask(null)}
+                                  className="rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleSaveEdit(task._id)}
+                                  className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg-dark)] hover:bg-[var(--color-accent-hover)]"
+                                >
+                                  Save
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={task._id} className="group relative">
+                            <TaskCard
+                              task={task}
+                              onStatusChange={handleStatusChange}
+                              onClick={() => {}}
+                            />
+                            {/* Admin action buttons */}
+                            <div className="absolute right-3 top-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                onClick={() => handleStartEdit(task)}
+                                className="rounded-[var(--radius-sm)] bg-[var(--color-bg-secondary)] p-1.5 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
+                                title="Edit task"
+                              >
+                                <svg
+                                  className="h-3.5 w-3.5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={1.5}
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+                                  />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTask(task._id)}
+                                className="rounded-[var(--radius-sm)] bg-[var(--color-bg-secondary)] p-1.5 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-error)]"
+                                title="Delete task"
+                              >
+                                <svg
+                                  className="h-3.5 w-3.5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={1.5}
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+
+        {/* ========== IDEAS TAB ========== */}
+        {activeTab === "ideas" && (
+          <div className="space-y-4">
+            {ideasLoading && <LoadingSkeleton />}
+            {!ideasLoading && ideas.length === 0 && (
+              <EmptyState message="This student has no content ideas yet." />
+            )}
+            {!ideasLoading && ideas.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {ideas.map((idea) => (
+                  <div
+                    key={idea._id}
+                    className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 shadow-[var(--shadow-sm)]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <h4 className="text-sm font-semibold text-[var(--color-text-primary)] line-clamp-2">
+                        {idea.title}
+                      </h4>
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${ideaStatusColor(idea.status)}`}
+                      >
+                        {idea.status}
+                      </span>
+                    </div>
+                    {idea.description && (
+                      <p className="mt-2 text-xs text-[var(--color-text-muted)] line-clamp-2">
+                        {idea.description}
+                      </p>
+                    )}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {idea.contentPillar && (
+                        <span className="rounded-full bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-xs text-white">
+                          {idea.contentPillar}
+                        </span>
+                      )}
+                      <span className="text-xs text-[var(--color-text-muted)]">
+                        {new Date(idea.createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ========== SCRIPTS TAB ========== */}
+        {activeTab === "scripts" && (
+          <div className="space-y-4">
+            {scriptsLoading && <LoadingSkeleton />}
+            {!scriptsLoading && scripts.length === 0 && (
+              <EmptyState message="This student has no scripts yet." />
+            )}
+            {!scriptsLoading && scripts.length > 0 && (
+              <div className="space-y-3">
+                {scripts.map((script) => {
+                  const wordCount = script.fullScript
+                    ? script.fullScript.split(/\s+/).filter(Boolean).length
+                    : 0;
+                  const bulletCount = script.bulletPoints?.length || 0;
+
+                  return (
+                    <div
+                      key={script._id}
+                      className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 shadow-[var(--shadow-sm)]"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-semibold text-[var(--color-text-primary)] line-clamp-1">
+                            {script.title}
+                          </h4>
+                          {script.ideaId && (
+                            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+                              Idea: {script.ideaId.title}
+                            </p>
+                          )}
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${scriptStatusColor(script.status)}`}
+                        >
+                          {script.status}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-muted)]">
+                        {wordCount > 0 && <span>{wordCount.toLocaleString()} words</span>}
+                        {bulletCount > 0 && <span>{bulletCount} bullet points</span>}
+                        <span>
+                          {new Date(script.createdAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ========== BRAIN DUMPS TAB ========== */}
+        {activeTab === "brainDumps" && (
+          <div className="space-y-4">
+            {brainDumpsLoading && <LoadingSkeleton />}
+            {!brainDumpsLoading && brainDumps.length === 0 && (
+              <EmptyState message="This student has no brain dump sessions yet." />
+            )}
+            {!brainDumpsLoading && brainDumps.length > 0 && (
+              <div className="space-y-3">
+                {brainDumps.map((dump) => (
+                  <div
+                    key={dump._id}
+                    className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 shadow-[var(--shadow-sm)]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-xs text-white">
+                            {dump.source === "manual" ? "Manual Paste" : dump.source === "fathom" ? "Fathom" : dump.source}
+                          </span>
+                          <span className="rounded-full bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-xs text-white">
+                            {dump.callType.replace(/_/g, " ")}
+                          </span>
+                          {dump.priority && (
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${priorityColor(dump.priority)}`}>
+                              {dump.priority}
+                            </span>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                      <span className="shrink-0 text-xs text-[var(--color-text-muted)]">
+                        {new Date(dump.createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-muted)]">
+                      {dump.extractedIdeas?.length > 0 && (
+                        <span>{dump.extractedIdeas.length} idea{dump.extractedIdeas.length !== 1 ? "s" : ""}</span>
+                      )}
+                      {dump.extractedStories?.length > 0 && (
+                        <span>{dump.extractedStories.length} stor{dump.extractedStories.length !== 1 ? "ies" : "y"}</span>
+                      )}
+                      {dump.extractedThemes?.length > 0 && (
+                        <span>{dump.extractedThemes.length} theme{dump.extractedThemes.length !== 1 ? "s" : ""}</span>
+                      )}
+                    </div>
+                    {dump.tags && dump.tags.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {dump.tags.map((tag, i) => (
+                          <span
+                            key={i}
+                            className="rounded-full bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-xs text-white"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            );
-          })}
+            )}
+          </div>
+        )}
 
-        {/* Quick links to other sections */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          {[
-            {
-              title: "Brand Brain",
-              description: "View and edit this student's AI context.",
-            },
-            {
-              title: "Content Pipeline",
-              description: "Ideas, scripts, and published content.",
-            },
-            {
-              title: "Voice Storms",
-              description: "All recorded voice sessions.",
-            },
-          ].map((section) => (
-            <div
-              key={section.title}
-              className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]"
-            >
-              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                {section.title}
-              </h3>
-              <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                {section.description}
-              </p>
-            </div>
-          ))}
-        </div>
+        {/* ========== VOICE STORMING TAB ========== */}
+        {activeTab === "voiceStorming" && (
+          <div className="space-y-4">
+            {voiceStormsLoading && <LoadingSkeleton />}
+            {!voiceStormsLoading && voiceStorms.length === 0 && (
+              <EmptyState message="This student has no voice storming sessions yet." />
+            )}
+            {!voiceStormsLoading && voiceStorms.length > 0 && (
+              <div className="space-y-3">
+                {voiceStorms.map((session) => {
+                  const insightCount = session.extractedInsights?.length || 0;
+                  return (
+                    <div
+                      key={session._id}
+                      className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 shadow-[var(--shadow-sm)]"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-semibold text-[var(--color-text-primary)] line-clamp-1">
+                            {session.title || "Untitled Session"}
+                          </h4>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span className="rounded-full bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-xs text-white">
+                              {sessionTypeLabel(session.sessionType)}
+                            </span>
+                            {session.duration > 0 && (
+                              <span className="text-xs text-[var(--color-text-muted)]">
+                                {formatDuration(session.duration)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-xs text-[var(--color-text-muted)]">
+                          {new Date(session.createdAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                      {insightCount > 0 && (
+                        <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+                          {insightCount} extracted insight{insightCount !== 1 ? "s" : ""}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ========== BRAND BRAIN TAB ========== */}
+        {activeTab === "brandBrain" && (
+          <div className="space-y-6">
+            {brandBrainLoading && <LoadingSkeleton />}
+            {!brandBrainLoading && !brandBrain && (
+              <EmptyState message="This student has not set up their Brand Brain yet." />
+            )}
+            {!brandBrainLoading && brandBrain && (
+              <>
+                {/* Content Pillars */}
+                <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                  <h3 className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">
+                    Content Pillars
+                  </h3>
+                  {brandBrain.contentPillars && brandBrain.contentPillars.length > 0 ? (
+                    <div className="space-y-3">
+                      {brandBrain.contentPillars.map((pillar, i) => (
+                        <div
+                          key={i}
+                          className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3"
+                        >
+                          <h4 className="text-sm font-medium text-[var(--color-text-primary)]">
+                            {pillar.title}
+                          </h4>
+                          {pillar.description && (
+                            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                              {pillar.description}
+                            </p>
+                          )}
+                          {pillar.keywords && pillar.keywords.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {pillar.keywords.map((kw, j) => (
+                                <span
+                                  key={j}
+                                  className="rounded-full bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-xs text-white"
+                                >
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[var(--color-text-muted)]">No content pillars defined yet.</p>
+                  )}
+                </div>
+
+                {/* Industry Data */}
+                {brandBrain.industryData && (brandBrain.industryData.field || (brandBrain.industryData.keywords && brandBrain.industryData.keywords.length > 0)) && (
+                  <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                    <h3 className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">
+                      Industry Data
+                    </h3>
+                    <div className="space-y-2">
+                      {brandBrain.industryData.field && (
+                        <div>
+                          <span className="text-xs font-medium text-[var(--color-text-secondary)]">Field: </span>
+                          <span className="text-sm text-[var(--color-text-primary)]">{brandBrain.industryData.field}</span>
+                        </div>
+                      )}
+                      {brandBrain.industryData.keywords && brandBrain.industryData.keywords.length > 0 && (
+                        <div>
+                          <span className="text-xs font-medium text-[var(--color-text-secondary)]">Keywords: </span>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {brandBrain.industryData.keywords.map((kw, i) => (
+                              <span
+                                key={i}
+                                className="rounded-full bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-xs text-white"
+                              >
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {brandBrain.industryData.competitors && brandBrain.industryData.competitors.length > 0 && (
+                        <div>
+                          <span className="text-xs font-medium text-[var(--color-text-secondary)]">Competitors: </span>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {brandBrain.industryData.competitors.map((c, i) => (
+                              <span
+                                key={i}
+                                className="rounded-full bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-xs text-white"
+                              >
+                                {c}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Equipment Profile */}
+                {brandBrain.equipmentProfile && (brandBrain.equipmentProfile.camera || brandBrain.equipmentProfile.location || brandBrain.equipmentProfile.constraints) && (
+                  <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                    <h3 className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">
+                      Equipment Profile
+                    </h3>
+                    <div className="space-y-2">
+                      {brandBrain.equipmentProfile.camera && (
+                        <div>
+                          <span className="text-xs font-medium text-[var(--color-text-secondary)]">Camera: </span>
+                          <span className="text-sm text-[var(--color-text-primary)]">{brandBrain.equipmentProfile.camera}</span>
+                        </div>
+                      )}
+                      {brandBrain.equipmentProfile.location && (
+                        <div>
+                          <span className="text-xs font-medium text-[var(--color-text-secondary)]">Location: </span>
+                          <span className="text-sm text-[var(--color-text-primary)]">{brandBrain.equipmentProfile.location}</span>
+                        </div>
+                      )}
+                      {brandBrain.equipmentProfile.constraints && (
+                        <div>
+                          <span className="text-xs font-medium text-[var(--color-text-secondary)]">Constraints: </span>
+                          <span className="text-sm text-[var(--color-text-primary)]">{brandBrain.equipmentProfile.constraints}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tone of Voice link */}
+                {tovGuide && (
+                  <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                    <h3 className="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">
+                      Tone of Voice Guide
+                    </h3>
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      Status:{" "}
+                      <span
+                        className={`font-medium ${
+                          tovGuide.status === "active"
+                            ? "text-emerald-500"
+                            : tovGuide.status === "review"
+                              ? "text-blue-500"
+                              : "text-[var(--color-warning)]"
+                        }`}
+                      >
+                        {tovGuide.status}
+                      </span>{" "}
+                      &middot; Version {tovGuide.version} &middot;{" "}
+                      {tovGuide.parameters.length} parameters
+                    </p>
+                    <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+                      Use the review card above to edit or change the Tone of Voice status.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </PageWrapper>
   );

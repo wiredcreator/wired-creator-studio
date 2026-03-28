@@ -1,5 +1,7 @@
 import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from './client';
 import { withRetry } from '@/lib/retry';
+import { trackAIUsage } from './usage-tracker';
+import type { AIFeature } from './usage-tracker';
 import {
   TONE_OF_VOICE_SYSTEM_PROMPT,
   BRAIN_DUMP_PROCESSING_PROMPT,
@@ -19,6 +21,12 @@ import type {
 import dbConnect from '@/lib/db';
 import CustomPrompt from '@/models/CustomPrompt';
 import type { CustomPromptCategory } from '@/models/CustomPrompt';
+
+// Helper to track usage with timing
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function track(userId: string, feature: AIFeature, response: any, startMs: number) {
+  trackAIUsage({ userId, feature, response, durationMs: Date.now() - startMs });
+}
 
 // ---------------------------------------------------------------------------
 // Custom Prompt Integration
@@ -85,7 +93,8 @@ interface ContentDNAInput {
  */
 export async function generateToneOfVoice(
   contentDNA: ContentDNAInput,
-  transcripts?: string[]
+  transcripts?: string[],
+  userId?: string
 ): Promise<ToneOfVoiceGuideOutput> {
   const client = getAnthropicClient();
 
@@ -136,6 +145,7 @@ export async function generateToneOfVoice(
 
   const toneSystemPrompt = await getAugmentedSystemPrompt(TONE_OF_VOICE_SYSTEM_PROMPT, 'tone_of_voice');
 
+  const startMs = Date.now();
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
@@ -144,6 +154,7 @@ export async function generateToneOfVoice(
       messages: [{ role: 'user', content: userParts.join('\n') }],
     })
   );
+  if (userId) track(userId, 'tone_of_voice', response, startMs);
 
   // Extract the text content from Claude's response
   const textBlock = response.content.find((b) => b.type === 'text');
@@ -188,7 +199,8 @@ export async function generateToneOfVoice(
  */
 export async function processBrainDump(
   transcript: string,
-  contentPillars: string[]
+  contentPillars: string[],
+  userId?: string
 ): Promise<BrainDumpOutput> {
   const client = getAnthropicClient();
 
@@ -199,6 +211,7 @@ export async function processBrainDump(
 
   const brainDumpSystemPrompt = await getAugmentedSystemPrompt(BRAIN_DUMP_PROCESSING_PROMPT, 'brain_dump_processing');
 
+  const startMs = Date.now();
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
@@ -212,6 +225,7 @@ export async function processBrainDump(
       ],
     })
   );
+  if (userId) track(userId, 'brain_dump', response, startMs);
 
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
@@ -255,7 +269,8 @@ export async function processBrainDump(
 export async function generateIdeas(
   brandBrainContext: string,
   _trendData?: unknown,
-  patternsContext?: string
+  patternsContext?: string,
+  userId?: string
 ): Promise<GeneratedIdea[]> {
   const client = getAnthropicClient();
 
@@ -268,6 +283,7 @@ export async function generateIdeas(
 
   const ideaSystemPrompt = await getAugmentedSystemPrompt(IDEA_GENERATION_SYSTEM_PROMPT, 'idea_generation');
 
+  const startMs = Date.now();
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
@@ -276,6 +292,7 @@ export async function generateIdeas(
       messages: [{ role: 'user', content: userMessage }],
     })
   );
+  if (userId) track(userId, 'idea_generation', response, startMs);
 
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
@@ -308,7 +325,8 @@ export async function generateScript(
   brandBrainContext: string,
   voiceStormTranscript?: string,
   toneOfVoiceContext?: string,
-  callToAction?: string
+  callToAction?: string,
+  userId?: string
 ): Promise<GeneratedScript> {
   const client = getAnthropicClient();
 
@@ -343,6 +361,7 @@ export async function generateScript(
 
   const scriptSystemPrompt = await getAugmentedSystemPrompt(SCRIPT_GENERATION_SYSTEM_PROMPT, 'script_generation');
 
+  const startMs = Date.now();
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
@@ -351,6 +370,7 @@ export async function generateScript(
       messages: [{ role: 'user', content: userParts.join('\n') }],
     })
   );
+  if (userId) track(userId, 'script_generation', response, startMs);
 
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
@@ -403,7 +423,8 @@ export interface VoiceStormingOutput {
 
 export async function processVoiceStorming(
   transcript: string,
-  contentPillars: string[]
+  contentPillars: string[],
+  userId?: string
 ): Promise<VoiceStormingOutput> {
   const client = getAnthropicClient();
 
@@ -414,6 +435,7 @@ export async function processVoiceStorming(
 
   const voiceStormSystemPrompt = await getAugmentedSystemPrompt(VOICE_STORMING_PROCESSING_PROMPT, 'tone_of_voice');
 
+  const startMs = Date.now();
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
@@ -427,6 +449,7 @@ export async function processVoiceStorming(
       ],
     })
   );
+  if (userId) track(userId, 'voice_storming', response, startMs);
 
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
@@ -463,11 +486,12 @@ export async function processVoiceStorming(
   return parsed;
 }
 
-export async function generateSessionTitle(transcript: string): Promise<string> {
+export async function generateSessionTitle(transcript: string, userId?: string): Promise<string> {
   const client = getAnthropicClient();
   const truncated = transcript.slice(0, 500);
 
   try {
+    const startMs = Date.now();
     const response = await client.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 50,
@@ -478,6 +502,7 @@ export async function generateSessionTitle(transcript: string): Promise<string> 
         },
       ],
     });
+    if (userId) track(userId, 'session_title', response, startMs);
 
     const textBlock = response.content.find((b) => b.type === 'text');
     if (textBlock && textBlock.type === 'text') {
@@ -506,7 +531,8 @@ export type { GeneratedSideQuest } from '@/types/ai';
  */
 export async function generateSideQuests(
   brandBrainContext: string,
-  existingQuestTitles: string[] = []
+  existingQuestTitles: string[] = [],
+  userId?: string
 ): Promise<GeneratedSideQuest[]> {
   const client = getAnthropicClient();
 
@@ -529,6 +555,7 @@ export async function generateSideQuests(
 
   const sideQuestSystemPrompt = await getAugmentedSystemPrompt(SIDE_QUEST_GENERATION_PROMPT, 'side_quest_generation');
 
+  const startMs = Date.now();
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
@@ -537,6 +564,7 @@ export async function generateSideQuests(
       messages: [{ role: 'user', content: userParts.join('\n') }],
     })
   );
+  if (userId) track(userId, 'side_quests', response, startMs);
 
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {

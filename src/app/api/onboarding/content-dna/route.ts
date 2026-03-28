@@ -186,7 +186,8 @@ export async function POST(request: NextRequest) {
               contentSamples,
               creatorExamples,
             },
-            [] // No transcripts available yet — will be improved after scraping completes
+            [], // No transcripts available yet — will be improved after scraping completes
+            userId
           );
 
           await ToneOfVoiceGuide.findOneAndUpdate(

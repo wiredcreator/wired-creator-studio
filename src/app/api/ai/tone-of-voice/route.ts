@@ -97,7 +97,8 @@ export async function POST(
         contentSamples,
         creatorExamples,
       },
-      body.transcripts
+      body.transcripts,
+      authResult.id
     );
 
     // --- Persist the generated guide to MongoDB ---

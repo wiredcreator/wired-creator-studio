@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         includeTranscripts: false,
       });
 
-      const generated = await generateSideQuests(brandBrainContext, existingTitles);
+      const generated = await generateSideQuests(brandBrainContext, existingTitles, userId);
       questData = generated;
     } catch (aiError) {
       console.error('AI side quest generation failed, falling back to mock data:', aiError);

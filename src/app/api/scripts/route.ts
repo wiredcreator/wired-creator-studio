@@ -19,7 +19,12 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    const userId = user.id;
+    // Coaches/admins can look up any student's scripts via ?userId=
+    let userId = user.id;
+    const requestedUserId = request.nextUrl.searchParams.get('userId');
+    if (requestedUserId && (user.role === 'coach' || user.role === 'admin')) {
+      userId = requestedUserId;
+    }
 
     const status = request.nextUrl.searchParams.get('status');
 
@@ -108,6 +113,7 @@ export async function POST(request: NextRequest) {
       voiceStormTranscript,
       undefined,
       idea.callToAction || undefined,
+      userId,
     );
 
     // Save to DB

@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const patternsContext = await getIdeaPatterns(userId);
 
     // Generate ideas via AI (or mock data)
-    const generatedIdeas = await generateIdeas(brandBrainContext, undefined, patternsContext);
+    const generatedIdeas = await generateIdeas(brandBrainContext, undefined, patternsContext, userId);
 
     // Save all generated ideas to MongoDB
     const savedIdeas = await ContentIdea.insertMany(

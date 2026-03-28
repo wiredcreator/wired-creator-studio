@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib/ai/client';
 import { withRetry } from '@/lib/retry';
+import { trackAIUsage } from '@/lib/ai/usage-tracker';
 import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
 
 interface GeneratedScoutIdea {
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
       .filter(Boolean)
       .join('\n');
 
+    const startMs = Date.now();
     const response = await withRetry(() =>
       client.messages.create({
         model: CLAUDE_MODEL,
@@ -76,6 +78,8 @@ Return ONLY the JSON array, no other text.`,
         ],
       })
     );
+
+    trackAIUsage({ userId: user.id, feature: 'content_scout_ideas', response, durationMs: Date.now() - startMs });
 
     const textBlock = response.content.find((b) => b.type === 'text');
     if (!textBlock || textBlock.type !== 'text') {

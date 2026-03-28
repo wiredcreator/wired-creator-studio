@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib/ai/client';
 import { withRetry } from '@/lib/retry';
+import { trackAIUsage } from '@/lib/ai/usage-tracker';
 import ContentScoutSource from '@/models/ContentScoutSource';
 import ContentDNAResponse from '@/models/ContentDNAResponse';
 import BrandBrain from '@/models/BrandBrain';
@@ -251,6 +252,7 @@ export async function POST() {
     try {
       const client = getAnthropicClient();
 
+      const startMs = Date.now();
       const response = await withRetry(() =>
         client.messages.create({
           model: CLAUDE_MODEL,
@@ -276,6 +278,8 @@ Return ONLY the JSON array, no other text.`,
           ],
         })
       );
+
+      trackAIUsage({ userId, feature: 'content_scout_discover', response, durationMs: Date.now() - startMs });
 
       const textBlock = response.content.find((b) => b.type === 'text');
       if (textBlock && textBlock.type === 'text') {

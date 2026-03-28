@@ -69,7 +69,7 @@ export async function POST(
     }
 
     // Process with AI
-    const result = await processVoiceStorming(session.transcript, contentPillars);
+    const result = await processVoiceStorming(session.transcript, contentPillars, user.id);
 
     // Map to extractedInsights schema with contentPillar from AI
     const insights = [
@@ -98,7 +98,7 @@ export async function POST(
     session.extractedInsights = insights;
 
     // Generate title (independent — failure doesn't block insights)
-    const title = await generateSessionTitle(session.transcript);
+    const title = await generateSessionTitle(session.transcript, user.id);
     session.title = title;
 
     await session.save();

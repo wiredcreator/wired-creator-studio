@@ -7,6 +7,7 @@ import ContentScoutResult from '@/models/ContentScoutResult';
 import BrandBrain from '@/models/BrandBrain';
 import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib/ai/client';
 import { withRetry } from '@/lib/retry';
+import { trackAIUsage } from '@/lib/ai/usage-tracker';
 import { resolveChannelId, getChannelRSSUrl, getVideoThumbnail } from '@/lib/youtube-utils';
 import type { ICachedVideo } from '@/models/YouTubeChannelCache';
 
@@ -100,7 +101,8 @@ async function fetchChannelVideos(
 async function filterRelevantVideos(
   videos: ICachedVideo[],
   niche: string,
-  keywords: string[]
+  keywords: string[],
+  userId?: string
 ): Promise<ICachedVideo[]> {
   if (videos.length === 0 || !niche) return videos;
 
@@ -108,6 +110,7 @@ async function filterRelevantVideos(
     const client = getAnthropicClient();
     const videoList = videos.map((v, i) => `${i}. "${v.title}" (${v.channelName})`).join('\n');
 
+    const startMs = Date.now();
     const response = await withRetry(() =>
       client.messages.create({
         model: CLAUDE_MODEL,
@@ -130,6 +133,7 @@ Return ONLY the JSON array of integers, nothing else.`,
         ],
       })
     );
+    if (userId) trackAIUsage({ userId, feature: 'content_scout_scrape', response, durationMs: Date.now() - startMs });
 
     const textBlock = response.content.find((b) => b.type === 'text');
     if (!textBlock || textBlock.type !== 'text') return videos;
@@ -231,7 +235,7 @@ export async function POST() {
     const niche = brandBrain?.industryData?.field || '';
     const nicheKeywords = brandBrain?.industryData?.keywords || [];
 
-    const relevantVideos = await filterRelevantVideos(allVideos, niche, nicheKeywords);
+    const relevantVideos = await filterRelevantVideos(allVideos, niche, nicheKeywords, userId);
 
     // Sort by publishedAt desc, take top 15
     const sortedVideos = relevantVideos

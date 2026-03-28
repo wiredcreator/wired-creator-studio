@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Process the transcript with AI
-    const extracted = await processBrainDump(transcript, contentPillars);
+    const extracted = await processBrainDump(transcript, contentPillars, userId);
 
     // Save extracted ideas to ContentIdea model
     const savedIdeas = [];
@@ -134,7 +134,13 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    const userId = user.id;
+    // Coaches/admins can look up any student's brain dumps via ?userId=
+    let userId = user.id;
+    const requestedUserId = request.nextUrl.searchParams.get('userId');
+    if (requestedUserId && (user.role === 'coach' || user.role === 'admin')) {
+      userId = requestedUserId;
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const filter: Record<string, unknown> = { userId };
     const { page, limit, skip } = parsePagination(searchParams);

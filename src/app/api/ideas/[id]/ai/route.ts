@@ -3,6 +3,7 @@ import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit'
 import dbConnect from '@/lib/db';
 import ContentIdea from '@/models/ContentIdea';
 import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib/ai/client';
+import { trackAIUsage } from '@/lib/ai/usage-tracker';
 import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { validateObjectId } from '@/lib/validation';
@@ -48,6 +49,7 @@ export async function POST(
 
     switch (action) {
       case 'concept': {
+        const startMs = Date.now();
         const response = await client.messages.create({
           model: CLAUDE_MODEL,
           max_tokens: 1024,
@@ -71,6 +73,8 @@ Respond with ONLY valid JSON:
           ],
         });
 
+        trackAIUsage({ userId: user.id, feature: 'idea_concept', response, durationMs: Date.now() - startMs });
+
         const text = response.content[0].type === 'text' ? response.content[0].text : '';
         const parsed = extractJsonFromResponse(text) as Record<string, string>;
 
@@ -84,6 +88,7 @@ Respond with ONLY valid JSON:
       }
 
       case 'alternativeTitles': {
+        const startMs = Date.now();
         const response = await client.messages.create({
           model: CLAUDE_MODEL,
           max_tokens: 1024,
@@ -102,6 +107,8 @@ Respond with ONLY a JSON array of strings:
             },
           ],
         });
+
+        trackAIUsage({ userId: user.id, feature: 'idea_alternative_titles', response, durationMs: Date.now() - startMs });
 
         const text = response.content[0].type === 'text' ? response.content[0].text : '';
         const titles = extractJsonFromResponse(text) as string[];
@@ -132,6 +139,7 @@ Respond with ONLY a JSON array of strings:
           }
         }
 
+        const startMs = Date.now();
         const response = await client.messages.create({
           model: CLAUDE_MODEL,
           max_tokens: 2048,
@@ -150,6 +158,7 @@ Write the outline in markdown format using these sections: Hook, Part 1 - The Be
             },
           ],
         });
+        trackAIUsage({ userId: user.id, feature: 'idea_outline', response, durationMs: Date.now() - startMs });
 
         const text = response.content[0].type === 'text' ? response.content[0].text : '';
 

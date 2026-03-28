@@ -58,7 +58,7 @@ export async function POST(
     const augmentedTranscript = `${session.transcript}\n\n---\nIMPORTANT: The following ideas have ALREADY been extracted from this transcript. Generate DIFFERENT ideas that were not captured before. Look for subtler angles, secondary topics, contrarian takes, or spin-off ideas.\n\nAlready extracted:\n${existingIdeas}`;
 
     // Re-process with augmented context
-    const extracted = await processBrainDump(augmentedTranscript, contentPillars);
+    const extracted = await processBrainDump(augmentedTranscript, contentPillars, user.id);
 
     // Save new ideas to ContentIdea model
     const savedIdeas = [];

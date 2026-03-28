@@ -34,6 +34,9 @@ export type { ICustomPrompt, CustomPromptCategory } from './CustomPrompt';
 export { default as UserXP } from './UserXP';
 export type { IUserXP, IXPHistoryEntry } from './UserXP';
 
+export { default as AIUsageLog } from './AIUsageLog';
+export type { IAIUsageLog } from './AIUsageLog';
+
 export { default as ContentScoutSource } from './ContentScoutSource';
 export type { IContentScoutSource, ContentScoutSourceType } from './ContentScoutSource';
 
