@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import { useTheme } from '@/components/ThemeProvider';
 import FocusTimer from './FocusTimer';
 import CompleteTaskPath from './CompleteTaskPath';
 import ContentSprintPath from './ContentSprintPath';
@@ -14,10 +15,13 @@ interface FocusModeProps {
 }
 
 export default function FocusMode({ onClose }: FocusModeProps) {
+  const { resolvedTheme } = useTheme();
   const [path, setPath] = useState<FocusPath>('select');
   const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [showAmbienceTooltip, setShowAmbienceTooltip] = useState(false);
+
+  const isDark = resolvedTheme === 'dark';
 
   // Animate in on mount
   useEffect(() => {
@@ -54,7 +58,11 @@ export default function FocusMode({ onClose }: FocusModeProps) {
       className={`fixed inset-0 z-[100] flex flex-col transition-all duration-300 ${
         isVisible ? 'opacity-100' : 'opacity-0'
       }`}
-      style={{ background: 'linear-gradient(180deg, #EEF1F7 0%, #6CC7E5 50%, #2683EB 100%)' }}
+      style={{
+        background: isDark
+          ? 'linear-gradient(180deg, #0C0D12 0%, #111827 50%, #1E293B 100%)'
+          : 'linear-gradient(180deg, #EEF1F7 0%, #6CC7E5 50%, #2683EB 100%)',
+      }}
     >
       {/* Top Bar — z-20 so timer dropdown renders above content area (z-10) */}
       <div className="relative z-20 flex items-center justify-between px-6 py-4">
@@ -63,7 +71,7 @@ export default function FocusMode({ onClose }: FocusModeProps) {
           {path !== 'select' ? (
             <button
               onClick={handleBackToSelect}
-              className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[#1a3a5c] transition-colors hover:bg-white/20"
+              className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-hover)]"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
@@ -80,7 +88,7 @@ export default function FocusMode({ onClose }: FocusModeProps) {
                   <path d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <span className="text-[15px] font-semibold tracking-tight text-[#1a3a5c]">
+              <span className="text-[15px] font-semibold tracking-tight text-[var(--color-text)]">
                 studio
               </span>
             </div>
@@ -96,13 +104,13 @@ export default function FocusMode({ onClose }: FocusModeProps) {
           />
 
           {/* Divider */}
-          <div className="mx-1 h-5 w-px bg-[#1a3a5c]/20" />
+          <div className="mx-1 h-5 w-px bg-[var(--color-border)]" />
 
           {/* Play Ambience */}
           <div className="relative">
             <button
               onClick={handleAmbienceClick}
-              className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[#1a3a5c] transition-colors hover:bg-white/20"
+              className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-hover)]"
             >
               <span className="text-base">&#9835;</span>
               Play Ambience
@@ -115,12 +123,12 @@ export default function FocusMode({ onClose }: FocusModeProps) {
           </div>
 
           {/* Divider */}
-          <div className="mx-1 h-5 w-px bg-[#1a3a5c]/20" />
+          <div className="mx-1 h-5 w-px bg-[var(--color-border)]" />
 
           {/* Exit Focus Mode */}
           <button
             onClick={handleClose}
-            className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[#1a3a5c] transition-colors hover:bg-white/20"
+            className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-hover)]"
           >
             Exit Focus Mode
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -138,8 +146,8 @@ export default function FocusMode({ onClose }: FocusModeProps) {
         {path === 'brain-dump' && <BrainDumpPath />}
       </div>
 
-      {/* Cloud images along the bottom */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-48">
+      {/* Cloud images along the bottom — hidden in dark mode */}
+      <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-0 h-48 transition-opacity duration-300 ${isDark ? 'opacity-0' : 'opacity-100'}`}>
         <Image
           src="/images/clouds/left.png"
           alt=""
@@ -173,7 +181,9 @@ export default function FocusMode({ onClose }: FocusModeProps) {
 /* Path Selector                                */
 /* ──────────────────────────────────────────── */
 
-function PathSelector({ onSelect }: { onSelect: (path: FocusPath) => void }) {
+function PathSelector({ onSelect }: { onSelect: (p: FocusPath) => void }) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   const paths = [
     {
       id: 'complete-task' as FocusPath,
@@ -206,8 +216,7 @@ function PathSelector({ onSelect }: { onSelect: (path: FocusPath) => void }) {
             fontSize: 12,
             letterSpacing: '0.1em',
             textTransform: 'uppercase' as const,
-            color: '#1a3a5c',
-            opacity: 0.6,
+            color: 'var(--color-text-secondary)',
             marginBottom: 12,
             fontWeight: 500,
           }}
@@ -218,7 +227,7 @@ function PathSelector({ onSelect }: { onSelect: (path: FocusPath) => void }) {
           style={{
             fontSize: 30,
             fontWeight: 600,
-            color: '#1a3a5c',
+            color: 'var(--color-text)',
             lineHeight: 1.2,
           }}
         >
@@ -233,21 +242,21 @@ function PathSelector({ onSelect }: { onSelect: (path: FocusPath) => void }) {
             onClick={() => onSelect(p.id)}
             className="group flex flex-col items-center gap-3 text-center"
             style={{
-              backgroundColor: p.bgColor,
-              border: '1px solid rgba(255,255,255,0.45)',
+              backgroundColor: isDark ? p.bgColor : p.bgColor,
+              border: isDark ? '1px solid var(--color-border)' : '1px solid rgba(255,255,255,0.45)',
               borderRadius: 20,
               padding: '32px 24px',
               backdropFilter: 'blur(8px)',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+              boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)',
               transition: 'transform 0.2s ease, box-shadow 0.2s ease',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)';
+              e.currentTarget.style.boxShadow = isDark ? '0 8px 24px rgba(0,0,0,0.4)' : '0 8px 24px rgba(0,0,0,0.12)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0) scale(1)';
-              e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)';
+              e.currentTarget.style.boxShadow = isDark ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)';
             }}
           >
             <span className="text-4xl">{p.emoji}</span>
@@ -256,7 +265,7 @@ function PathSelector({ onSelect }: { onSelect: (path: FocusPath) => void }) {
                 style={{
                   fontSize: 16,
                   fontWeight: 600,
-                  color: '#1a3a5c',
+                  color: 'var(--color-text)',
                   marginBottom: 4,
                 }}
               >
@@ -265,8 +274,7 @@ function PathSelector({ onSelect }: { onSelect: (path: FocusPath) => void }) {
               <p
                 style={{
                   fontSize: 13,
-                  color: '#1a3a5c',
-                  opacity: 0.6,
+                  color: 'var(--color-text-secondary)',
                   lineHeight: 1.4,
                 }}
               >

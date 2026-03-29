@@ -120,7 +120,7 @@ const TaskSchema = new Schema<ITask>(
       type: Number,
       required: [true, 'Week number is required'],
       min: 1,
-      max: 12,
+      max: 16,
     },
     dayOfWeek: {
       type: Number,

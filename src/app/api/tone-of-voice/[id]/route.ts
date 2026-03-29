@@ -72,9 +72,9 @@ export async function PUT(
       );
     }
 
-    // Ownership / role check: students can update their own guide; coach/admin can update any
+    // Ownership / role check: students can update their own guide; admin can update any
     const isOwner = guide.userId.toString() === user.id;
-    const isPrivileged = user.role === 'coach' || user.role === 'admin';
+    const isPrivileged = user.role === 'admin';
     if (!isOwner && !isPrivileged) {
       return NextResponse.json(
         { error: 'Not authorized to update this guide' },
@@ -147,7 +147,7 @@ export async function DELETE(
 
     // Ownership check
     const isOwner = guide.userId.toString() === user.id;
-    const isPrivileged = user.role === 'coach' || user.role === 'admin';
+    const isPrivileged = user.role === 'admin';
     if (!isOwner && !isPrivileged) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

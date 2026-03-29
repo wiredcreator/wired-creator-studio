@@ -64,16 +64,16 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/bug-reports — List bug reports (admin/coach only)
+// GET /api/bug-reports — List bug reports (admin only)
 export async function GET() {
   try {
     const authResult = await getAuthenticatedUser();
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
 
-    if (user.role !== 'admin' && user.role !== 'coach') {
+    if (user.role !== 'admin') {
       return NextResponse.json(
-        { error: 'Forbidden — admin or coach access required' },
+        { error: 'Forbidden — admin access required' },
         { status: 403 }
       );
     }

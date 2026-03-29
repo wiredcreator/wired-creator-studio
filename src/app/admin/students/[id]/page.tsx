@@ -795,10 +795,10 @@ export default function StudentDetailPage() {
             {/* Week selector */}
             <div>
               <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
-                12-Week Plan
+                16-Week Plan
               </h3>
               <div className="flex flex-wrap gap-2">
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((week) => (
+                {Array.from({ length: 16 }, (_, i) => i + 1).map((week) => (
                   <button
                     key={week}
                     onClick={() => setSelectedWeek(week)}

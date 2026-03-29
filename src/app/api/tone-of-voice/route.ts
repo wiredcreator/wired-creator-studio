@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const requestedUserId = searchParams.get('userId');
 
-    const isPrivileged = user.role === 'coach' || user.role === 'admin';
+    const isPrivileged = user.role === 'admin';
 
     // Build query filter
     let filter: Record<string, string> = {};

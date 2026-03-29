@@ -7,7 +7,7 @@ interface TeamMember {
   _id: string;
   name: string;
   email: string;
-  role: "coach" | "admin";
+  role: "admin";
   createdAt: string;
 }
 
@@ -15,7 +15,7 @@ export default function TeamPage() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ email: "", role: "coach" as "coach" | "admin" });
+  const [addEmail, setAddEmail] = useState("");
   const [addError, setAddError] = useState("");
   const [addLoading, setAddLoading] = useState(false);
 
@@ -39,7 +39,7 @@ export default function TeamPage() {
   }, [fetchTeam]);
 
   async function handleAdd() {
-    if (!addForm.email.trim()) return;
+    if (!addEmail.trim()) return;
     setAddError("");
     setAddLoading(true);
 
@@ -47,7 +47,7 @@ export default function TeamPage() {
       const res = await fetch("/api/admin/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: addForm.email.trim(), role: addForm.role }),
+        body: JSON.stringify({ email: addEmail.trim(), role: "admin" }),
       });
 
       const data = await res.json();
@@ -58,31 +58,12 @@ export default function TeamPage() {
       }
 
       setShowAddModal(false);
-      setAddForm({ email: "", role: "coach" });
+      setAddEmail("");
       await fetchTeam();
     } catch {
       setAddError("Something went wrong");
     } finally {
       setAddLoading(false);
-    }
-  }
-
-  async function handleChangeRole(id: string, newRole: "coach" | "admin") {
-    try {
-      const res = await fetch(`/api/admin/team/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (res.ok) {
-        await fetchTeam();
-      } else {
-        const data = await res.json();
-        alert(data.error || "Failed to update role");
-      }
-    } catch {
-      alert("Something went wrong");
     }
   }
 
@@ -104,7 +85,7 @@ export default function TeamPage() {
   }
 
   return (
-    <PageWrapper title="Team" subtitle="Manage team members and their roles.">
+    <PageWrapper title="Team" subtitle="Manage team members.">
       <div className="space-y-6">
         {/* Header with add button */}
         <div className="flex items-center justify-between">
@@ -113,7 +94,7 @@ export default function TeamPage() {
           </p>
           <button
             onClick={() => {
-              setAddForm({ email: "", role: "coach" });
+              setAddEmail("");
               setAddError("");
               setShowAddModal(true);
             }}
@@ -164,14 +145,8 @@ export default function TeamPage() {
                       <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
                         {member.name}
                       </h3>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                          member.role === "admin"
-                            ? "bg-purple-500/20 text-purple-400"
-                            : "bg-blue-500/20 text-blue-400"
-                        }`}
-                      >
-                        {member.role}
+                      <span className="inline-flex items-center rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-purple-400">
+                        Admin
                       </span>
                     </div>
                     <p className="text-xs text-[var(--color-text-muted)]">
@@ -181,18 +156,6 @@ export default function TeamPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* Role toggle */}
-                  <select
-                    value={member.role}
-                    onChange={(e) =>
-                      handleChangeRole(member._id, e.target.value as "coach" | "admin")
-                    }
-                    className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] outline-none ring-0"
-                  >
-                    <option value="coach">Coach</option>
-                    <option value="admin">Admin</option>
-                  </select>
-
                   {/* Remove button */}
                   <button
                     onClick={() => handleRemove(member._id, member.name)}
@@ -227,7 +190,7 @@ export default function TeamPage() {
                 Add Team Member
               </h3>
               <p className="mb-5 text-sm text-[var(--color-text-muted)]">
-                Enter the email of an existing user to promote them.
+                Enter the email of an existing user to promote them to admin.
               </p>
 
               <div className="space-y-4">
@@ -237,33 +200,12 @@ export default function TeamPage() {
                   </label>
                   <input
                     type="email"
-                    value={addForm.email}
-                    onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                    value={addEmail}
+                    onChange={(e) => setAddEmail(e.target.value)}
                     placeholder="user@example.com"
                     className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
                     onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                   />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-[var(--color-text-primary)]">
-                    Role
-                  </label>
-                  <div className="flex gap-3">
-                    {(["coach", "admin"] as const).map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => setAddForm({ ...addForm, role: r })}
-                        className={`flex-1 rounded-[var(--radius-md)] border px-4 py-2 text-sm font-medium transition-colors ${
-                          addForm.role === r
-                            ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
-                            : "border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]"
-                        }`}
-                      >
-                        {r.charAt(0).toUpperCase() + r.slice(1)}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 {addError && (
@@ -280,7 +222,7 @@ export default function TeamPage() {
                 </button>
                 <button
                   onClick={handleAdd}
-                  disabled={addLoading || !addForm.email.trim()}
+                  disabled={addLoading || !addEmail.trim()}
                   className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
                 >
                   {addLoading ? "Adding..." : "Add to Team"}

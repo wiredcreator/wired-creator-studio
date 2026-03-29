@@ -378,7 +378,7 @@ export default function TaskDetailModal({
               <svg className="h-4 w-4 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
               </svg>
-              Your coach has been notified
+              Your team has been notified
             </div>
           )}
 
@@ -460,7 +460,7 @@ export default function TaskDetailModal({
                     handleSendComment();
                   }
                 }}
-                placeholder="Ask a question or leave a note for your coach..."
+                placeholder="Ask a question or leave a note for your team..."
                 className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
               />
               <button
@@ -487,7 +487,7 @@ export default function TaskDetailModal({
 
             {/* Privacy note */}
             <p className="text-xs text-[var(--color-text-muted)]">
-              Comments are private — only you and your coach can see them.
+              Comments are private — only you and your team can see them.
             </p>
           </div>
         </div>
@@ -501,7 +501,7 @@ export default function TaskDetailModal({
               <button
                 onClick={handleStuck}
                 disabled={stuckConfirmed}
-                title="Tell your coach you need help with this task"
+                title="Tell your team you need help with this task"
                 className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-50 outline-none ring-0"
               >
                 {/* Flag icon */}

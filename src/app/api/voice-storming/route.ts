@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const { page, limit, skip } = parsePagination(searchParams);
 
-    // Coaches/admins can look up any student's voice storming sessions via ?userId=
+    // Admins can look up any student's voice storming sessions via ?userId=
     let targetUserId = user.id;
     const requestedUserId = searchParams.get('userId');
-    if (requestedUserId && (user.role === 'coach' || user.role === 'admin')) {
+    if (requestedUserId && user.role === 'admin') {
       targetUserId = requestedUserId;
     }
 

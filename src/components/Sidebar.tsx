@@ -7,7 +7,7 @@ import { useTheme } from "./ThemeProvider";
 
 interface SidebarProps {
   userName?: string;
-  userRole?: "student" | "coach" | "admin";
+  userRole?: "student" | "admin";
 }
 
 const navItems = [
@@ -90,7 +90,7 @@ export default function Sidebar({ userName, userRole = "student" }: SidebarProps
 
       {/* Bottom section */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 8, flexShrink: 0 }}>
-        {(userRole === 'coach' || userRole === 'admin') && (
+        {userRole === 'admin' && (
           <Link
             href="/admin"
             style={pathname.startsWith("/admin") ? activeStyle : inactiveStyle}

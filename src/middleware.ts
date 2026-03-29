@@ -40,7 +40,7 @@ export default auth((req) => {
   }
 
   // Redirect non-admin users away from admin routes
-  if (isAdminRoute && isLoggedIn && userRole !== 'admin' && userRole !== 'coach') {
+  if (isAdminRoute && isLoggedIn && userRole !== 'admin') {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 

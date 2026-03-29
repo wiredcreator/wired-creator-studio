@@ -134,10 +134,10 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    // Coaches/admins can look up any student's brain dumps via ?userId=
+    // Admins can look up any student's brain dumps via ?userId=
     let userId = user.id;
     const requestedUserId = request.nextUrl.searchParams.get('userId');
-    if (requestedUserId && (user.role === 'coach' || user.role === 'admin')) {
+    if (requestedUserId && (user.role === 'admin')) {
       userId = requestedUserId;
     }
 

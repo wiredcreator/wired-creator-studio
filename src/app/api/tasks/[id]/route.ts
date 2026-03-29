@@ -31,8 +31,8 @@ export async function PUT(
       );
     }
 
-    // Ensure user owns the task or is a coach/admin
-    if (task.userId.toString() !== user.id && user.role !== 'coach' && user.role !== 'admin') {
+    // Ensure user owns the task or is an admin
+    if (task.userId.toString() !== user.id && user.role !== 'admin') {
       return NextResponse.json(
         { error: 'Not authorized to update this task' },
         { status: 403 }
@@ -116,10 +116,10 @@ export async function DELETE(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
 
-    // Only coaches and admins can delete tasks
-    if (user.role !== 'coach' && user.role !== 'admin') {
+    // Only admins can delete tasks
+    if (user.role !== 'admin') {
       return NextResponse.json(
-        { error: 'Only coaches and admins can delete tasks' },
+        { error: 'Only admins can delete tasks' },
         { status: 403 }
       );
     }

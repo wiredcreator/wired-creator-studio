@@ -22,7 +22,8 @@ export default function DashboardPage() {
   const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/tasks");
+      const today = new Date().toISOString().split('T')[0];
+      const res = await fetch(`/api/tasks?date=${today}`);
       if (!res.ok) {
         setTasks([]);
         return;
@@ -255,7 +256,7 @@ export default function DashboardPage() {
               </svg>
             </div>
             <p className="text-sm text-[var(--color-text)]">
-              No tasks yet. Your coach will set things up for you.
+              No tasks yet. Your team will set things up for you.
             </p>
           </div>
         )}

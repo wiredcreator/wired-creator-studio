@@ -13,7 +13,7 @@ export async function PUT(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
 
-    if (user.role !== 'coach' && user.role !== 'admin') {
+    if (user.role !== 'admin') {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
@@ -79,7 +79,7 @@ export async function DELETE(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
 
-    if (user.role !== 'coach' && user.role !== 'admin') {
+    if (user.role !== 'admin') {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }

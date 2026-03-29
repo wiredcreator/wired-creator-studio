@@ -49,8 +49,8 @@ export async function POST(
 
     // Fire-and-forget notification to the other party on this task
     const notifyUserId = task.userId.toString() === user.id
-      ? task.assignedBy?.toString()  // Student commented → notify coach
-      : task.userId.toString();       // Coach commented → notify student
+      ? task.assignedBy?.toString()  // Student commented → notify admin
+      : task.userId.toString();       // Admin commented → notify student
     if (notifyUserId && notifyUserId !== user.id) {
       Notification.create({
         userId: notifyUserId,

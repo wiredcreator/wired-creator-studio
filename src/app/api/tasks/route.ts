@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    // Coaches/admins can view tasks for any user via query param
+    // Admins can view tasks for any user via query param
     const queryUserId = request.nextUrl.searchParams.get('userId');
-    const userId = (user.role === 'coach' || user.role === 'admin') && queryUserId
+    const userId = user.role === 'admin' && queryUserId
       ? queryUserId
       : user.id;
 
@@ -63,17 +63,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/tasks — Create a new task (coach action)
+// POST /api/tasks — Create a new task (admin action)
 export async function POST(request: NextRequest) {
   try {
     const authResult = await getAuthenticatedUser();
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
 
-    // Only coaches and admins can create tasks
-    if (user.role !== 'coach' && user.role !== 'admin') {
+    // Only admins can create tasks
+    if (user.role !== 'admin') {
       return NextResponse.json(
-        { error: 'Only coaches and admins can create tasks' },
+        { error: 'Only admins can create tasks' },
         { status: 403 }
       );
     }
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       userId,
       type: 'task_assigned',
       title: 'New task assigned',
-      message: `Your coach assigned you: ${title}`,
+      message: `You were assigned a new task: ${title}`,
       relatedId: task._id.toString(),
       relatedType: 'task',
     }).catch(() => {});

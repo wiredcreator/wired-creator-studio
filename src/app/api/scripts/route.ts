@@ -19,10 +19,10 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    // Coaches/admins can look up any student's scripts via ?userId=
+    // Admins can look up any student's scripts via ?userId=
     let userId = user.id;
     const requestedUserId = request.nextUrl.searchParams.get('userId');
-    if (requestedUserId && (user.role === 'coach' || user.role === 'admin')) {
+    if (requestedUserId && (user.role === 'admin')) {
       userId = requestedUserId;
     }
 
@@ -114,6 +114,9 @@ export async function POST(request: NextRequest) {
       undefined,
       idea.callToAction || undefined,
       userId,
+      idea.outline || undefined,
+      idea.resources && idea.resources.length > 0 ? idea.resources : undefined,
+      idea.conceptAnswers || undefined,
     );
 
     // Save to DB

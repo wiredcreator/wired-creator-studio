@@ -29,7 +29,7 @@ export async function PUT(
       );
     }
 
-    // Ensure the user owns this Brand Brain (or is a coach/admin)
+    // Ensure the user owns this Brand Brain (or is an admin)
     if (brandBrain.userId.toString() !== user.id && user.role === 'student') {
       return NextResponse.json(
         { error: 'Not authorized to update this Brand Brain' },

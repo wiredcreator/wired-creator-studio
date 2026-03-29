@@ -9,9 +9,9 @@ export async function POST(request: NextRequest) {
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
 
-    if (user.role !== 'coach' && user.role !== 'admin') {
+    if (user.role !== 'admin') {
       return NextResponse.json(
-        { error: 'Only coaches and admins can batch-create tasks' },
+        { error: 'Only admins can batch-create tasks' },
         { status: 403 }
       );
     }

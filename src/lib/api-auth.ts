@@ -5,7 +5,7 @@ export interface AuthenticatedUser {
   id: string;
   email: string;
   name: string;
-  role: 'student' | 'coach' | 'admin';
+  role: 'student' | 'admin';
 }
 
 /**

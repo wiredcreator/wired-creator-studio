@@ -326,7 +326,10 @@ export async function generateScript(
   voiceStormTranscript?: string,
   toneOfVoiceContext?: string,
   callToAction?: string,
-  userId?: string
+  userId?: string,
+  outline?: string,
+  resources?: { type: string; name: string; content: string }[],
+  conceptAnswers?: { whoIsThisFor?: string; whatWillTheyLearn?: string; whyShouldTheyCare?: string },
 ): Promise<GeneratedScript> {
   const client = getAnthropicClient();
 
@@ -337,6 +340,30 @@ export async function generateScript(
   userParts.push(`**Title:** ${ideaTitle}`);
   if (ideaDescription) {
     userParts.push(`**Description:** ${ideaDescription}`);
+  }
+
+  if (conceptAnswers && (conceptAnswers.whoIsThisFor || conceptAnswers.whatWillTheyLearn || conceptAnswers.whyShouldTheyCare)) {
+    userParts.push('\n## Concept');
+    if (conceptAnswers.whoIsThisFor) {
+      userParts.push(`**Who is this for:** ${conceptAnswers.whoIsThisFor}`);
+    }
+    if (conceptAnswers.whatWillTheyLearn) {
+      userParts.push(`**What will they learn:** ${conceptAnswers.whatWillTheyLearn}`);
+    }
+    if (conceptAnswers.whyShouldTheyCare) {
+      userParts.push(`**Why should they care:** ${conceptAnswers.whyShouldTheyCare}`);
+    }
+  }
+
+  if (outline) {
+    userParts.push(`\n## Video Outline\n${outline}`);
+  }
+
+  if (resources && resources.length > 0) {
+    userParts.push('\n## Research & Resources');
+    for (const resource of resources) {
+      userParts.push(`### ${resource.name} (${resource.type})\n${resource.content}`);
+    }
   }
 
   if (brandBrainContext) {

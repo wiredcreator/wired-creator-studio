@@ -4,7 +4,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   name: string;
-  role: 'student' | 'coach' | 'admin';
+  role: 'student' | 'admin';
   onboardingCompleted: boolean;
   personalBaselineCompleted: boolean;
   background: string;
@@ -49,7 +49,7 @@ const UserSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['student', 'coach', 'admin'],
+      enum: ['student', 'admin'],
       default: 'student',
     },
     onboardingCompleted: {

@@ -36,7 +36,7 @@ export async function POST(
     }
 
     const isOwner = session.userId.toString() === user.id;
-    const isPrivileged = user.role === 'coach' || user.role === 'admin';
+    const isPrivileged = user.role === 'admin';
 
     if (!isOwner && !isPrivileged) {
       return NextResponse.json(

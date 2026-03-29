@@ -30,7 +30,7 @@ export async function GET(
     }
 
     const isOwner = session.userId.toString() === user.id;
-    const isPrivileged = user.role === 'coach' || user.role === 'admin';
+    const isPrivileged = user.role === 'admin';
 
     if (!isOwner && !isPrivileged) {
       return NextResponse.json(
@@ -56,7 +56,7 @@ export async function GET(
   }
 }
 
-// PUT /api/brain-dump/[id] — Update a brain dump session (coach edits)
+// PUT /api/brain-dump/[id] — Update a brain dump session (admin edits)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -83,7 +83,7 @@ export async function PUT(
     }
 
     const isOwner = session.userId.toString() === user.id;
-    const isPrivileged = user.role === 'coach' || user.role === 'admin';
+    const isPrivileged = user.role === 'admin';
 
     if (!isOwner && !isPrivileged) {
       return NextResponse.json(
@@ -152,7 +152,7 @@ export async function DELETE(
     }
 
     const isOwner = session.userId.toString() === user.id;
-    const isPrivileged = user.role === 'coach' || user.role === 'admin';
+    const isPrivileged = user.role === 'admin';
 
     if (!isOwner && !isPrivileged) {
       return NextResponse.json(

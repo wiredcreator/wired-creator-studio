@@ -29,7 +29,7 @@ export default async function DashboardLayout({
   }
 
   const userName = dbUser.name || session.user.name || 'User';
-  const userRole = (dbUser?.role || session.user.role || 'student') as 'student' | 'coach' | 'admin';
+  const userRole = (dbUser?.role || session.user.role || 'student') as 'student' | 'admin';
   const onboardingCompleted = dbUser?.onboardingCompleted ?? false;
   const personalBaselineCompleted = dbUser?.personalBaselineCompleted ?? false;
 

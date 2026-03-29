@@ -38,16 +38,7 @@ const BRAINSTORM_MESSAGES = [
   'Finding your next viral hit...',
 ];
 
-const CONTENT_PILLAR_OPTIONS = [
-  'Entrepreneurship',
-  'Content Strategy',
-  'Behind the Scenes',
-  'Growth & Marketing',
-  'Productivity',
-  'Mindset',
-  'Industry Insights',
-  'Personal Branding',
-];
+const DEFAULT_PILLAR_OPTIONS = ['General'];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -147,6 +138,9 @@ export default function IdeasPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIdea, setSelectedIdea] = useState<IdeaCardData | null>(null);
 
+  // Brand Brain pillars
+  const [brandBrainPillars, setBrandBrainPillars] = useState<string[]>([]);
+
   // Manual idea form
   const [manualTitle, setManualTitle] = useState('');
   const [manualDescription, setManualDescription] = useState('');
@@ -170,6 +164,28 @@ export default function IdeasPage() {
       }
     }
     getSession();
+  }, []);
+
+  // --- Fetch Brand Brain pillars ---
+  useEffect(() => {
+    async function fetchBrandBrain() {
+      try {
+        const res = await fetch('/api/brand-brain');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.contentPillars && Array.isArray(data.contentPillars)) {
+          const titles = data.contentPillars
+            .map((p: { title?: string }) => p.title)
+            .filter(Boolean);
+          if (titles.length > 0) {
+            setBrandBrainPillars(titles);
+          }
+        }
+      } catch {
+        // Brand Brain fetch failed — will fall back to defaults
+      }
+    }
+    fetchBrandBrain();
   }, []);
 
   // --- Fetch existing ideas on mount ---
@@ -404,7 +420,11 @@ export default function IdeasPage() {
     }
 
     if (pillarFilter) {
-      result = result.filter((i) => i.contentPillar === pillarFilter);
+      if (pillarFilter === '__uncategorized__') {
+        result = result.filter((i) => !i.contentPillar);
+      } else {
+        result = result.filter((i) => i.contentPillar === pillarFilter);
+      }
     }
 
     if (searchQuery.trim()) {
@@ -435,13 +455,17 @@ export default function IdeasPage() {
     };
   }, [ideas, suggestedIdeas]);
 
-  const existingPillars = useMemo(() => {
-    const pillars = new Set<string>();
+  // Combine Brand Brain pillars with any extra pillars found on existing ideas
+  const pillarOptions = useMemo(() => {
+    const pillarSet = new Set<string>(brandBrainPillars);
     for (const idea of ideas) {
-      if (idea.contentPillar) pillars.add(idea.contentPillar);
+      if (idea.contentPillar) pillarSet.add(idea.contentPillar);
     }
-    return Array.from(pillars).sort();
-  }, [ideas]);
+    return Array.from(pillarSet).sort();
+  }, [brandBrainPillars, ideas]);
+
+  // Final list: use Brand Brain pillars if available, otherwise minimal defaults
+  const availablePillars = pillarOptions.length > 0 ? pillarOptions : DEFAULT_PILLAR_OPTIONS;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -541,6 +565,19 @@ export default function IdeasPage() {
                   </svg>
                 </button>
               </div>
+
+              <select
+                value={manualPillar}
+                onChange={(e) => setManualPillar(e.target.value)}
+                className="w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
+              >
+                <option value="">No pillar (optional)</option>
+                {availablePillars.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
 
               <p className="text-xs text-[var(--color-text-muted)]">
                 Type your idea or click 🎙 to speak it — press ↵ Enter to save
@@ -731,20 +768,19 @@ export default function IdeasPage() {
                 placeholder="Search ideas..."
                 className="w-40 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
               />
-              {existingPillars.length > 0 && (
-                <select
-                  value={pillarFilter}
-                  onChange={(e) => setPillarFilter(e.target.value)}
-                  className="cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2 py-1.5 text-xs text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
-                >
-                  <option value="">All Pillars</option>
-                  {existingPillars.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <select
+                value={pillarFilter}
+                onChange={(e) => setPillarFilter(e.target.value)}
+                className="cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2 py-1.5 text-xs text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
+              >
+                <option value="">All Pillars</option>
+                <option value="__uncategorized__">Uncategorized</option>
+                {availablePillars.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

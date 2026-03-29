@@ -3,14 +3,14 @@ import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
-// GET /api/admin/team — List all team members (coach/admin users)
+// GET /api/admin/team — List all team members (admin users)
 export async function GET() {
   try {
     const authResult = await getAuthenticatedUser();
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
 
-    if (user.role !== 'coach' && user.role !== 'admin') {
+    if (user.role !== 'admin') {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
@@ -19,7 +19,7 @@ export async function GET() {
 
     await dbConnect();
 
-    const teamMembers = await User.find({ role: { $in: ['coach', 'admin'] } })
+    const teamMembers = await User.find({ role: 'admin' })
       .select('name email role createdAt')
       .sort({ role: 1, createdAt: -1 })
       .lean();
@@ -34,7 +34,7 @@ export async function GET() {
   }
 }
 
-// POST /api/admin/team — Promote an existing user to coach/admin
+// POST /api/admin/team — Promote an existing user to admin
 export async function POST(request: NextRequest) {
   try {
     const authResult = await getAuthenticatedUser();
@@ -60,9 +60,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (role !== 'coach' && role !== 'admin') {
+    if (role !== 'admin') {
       return NextResponse.json(
-        { error: 'Role must be "coach" or "admin"' },
+        { error: 'Role must be "admin"' },
         { status: 400 }
       );
     }

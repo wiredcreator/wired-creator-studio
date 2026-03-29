@@ -48,8 +48,8 @@ export async function PUT(
       );
     }
 
-    // Only the comment author, coach, or admin can edit
-    if (comment.userId.toString() !== user.id && user.role !== 'coach' && user.role !== 'admin') {
+    // Only the comment author or admin can edit
+    if (comment.userId.toString() !== user.id && user.role !== 'admin') {
       return NextResponse.json(
         { error: 'Not authorized to edit this comment' },
         { status: 403 }
@@ -113,8 +113,8 @@ export async function DELETE(
       );
     }
 
-    // Only the comment author, coach, or admin can delete
-    if (comment.userId.toString() !== user.id && user.role !== 'coach' && user.role !== 'admin') {
+    // Only the comment author or admin can delete
+    if (comment.userId.toString() !== user.id && user.role !== 'admin') {
       return NextResponse.json(
         { error: 'Not authorized to delete this comment' },
         { status: 403 }

@@ -10,8 +10,8 @@ export async function GET(req: NextRequest) {
     if (result instanceof NextResponse) return result; // 401
     const user = result;
 
-    // Only coaches and admins can list users
-    if (user.role !== 'coach' && user.role !== 'admin') {
+    // Only admins can list users
+    if (user.role !== 'admin') {
       return NextResponse.json(
         { error: 'Forbidden: insufficient permissions' },
         { status: 403 }

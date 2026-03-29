@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const requestedUserId = searchParams.get('userId');
 
-    // Coaches/admins can look up any student's Brand Brain
-    if (requestedUserId && (user.role === 'coach' || user.role === 'admin')) {
+    // Admins can look up any student's Brand Brain
+    if (requestedUserId && user.role === 'admin') {
       targetUserId = requestedUserId;
     }
 

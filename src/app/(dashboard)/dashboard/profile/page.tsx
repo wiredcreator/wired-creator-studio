@@ -12,7 +12,7 @@ interface ProfileData {
   _id: string;
   email: string;
   name: string;
-  role: 'student' | 'coach' | 'admin';
+  role: 'student' | 'admin';
   background: string;
   neurodivergentProfile: string;
   contentGoals: string;

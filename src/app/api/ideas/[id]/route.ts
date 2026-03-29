@@ -71,7 +71,7 @@ export async function PUT(
       );
     }
 
-    // Ensure the user owns this idea (or is a coach/admin)
+    // Ensure the user owns this idea (or is an admin)
     if (idea.userId.toString() !== user.id && user.role === 'student') {
       return NextResponse.json(
         { error: 'Not authorized to update this idea' },
@@ -157,7 +157,7 @@ export async function DELETE(
       );
     }
 
-    // Ensure the user owns this idea (or is a coach/admin)
+    // Ensure the user owns this idea (or is an admin)
     if (idea.userId.toString() !== user.id && user.role === 'student') {
       return NextResponse.json(
         { error: 'Not authorized to delete this idea' },

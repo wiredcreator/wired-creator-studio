@@ -12,7 +12,7 @@ export async function GET() {
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
 
-    if (user.role !== 'coach' && user.role !== 'admin') {
+    if (user.role !== 'admin') {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }

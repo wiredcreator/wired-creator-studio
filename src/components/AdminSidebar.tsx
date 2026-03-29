@@ -83,7 +83,7 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
           padding: '2px 6px',
           borderRadius: 6,
         }}>
-          Coach
+          Admin
         </span>
         <div style={{ marginLeft: 'auto' }}>
           <ThemeToggle />

@@ -3,7 +3,6 @@ import dbConnect from '@/lib/db';
 import Task from '@/models/Task';
 import ContentIdea from '@/models/ContentIdea';
 import Script from '@/models/Script';
-import SideQuest from '@/models/SideQuest';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
 export async function GET() {
@@ -17,18 +16,18 @@ export async function GET() {
     const userId = user.id;
 
     // Fetch all counts in parallel
-    const [taskCount, ideaCount, scriptCount, sideQuestCount] = await Promise.all([
+    const [taskCount, ideaCount, scriptCount, readyToFilmCount] = await Promise.all([
       Task.countDocuments({ userId }),
       ContentIdea.countDocuments({ userId }),
       Script.countDocuments({ userId }),
-      SideQuest.countDocuments({ userId }),
+      Script.countDocuments({ userId, status: 'approved' }),
     ]);
 
     return NextResponse.json({
       tasks: taskCount,
       ideas: ideaCount,
       scripts: scriptCount,
-      sideQuests: sideQuestCount,
+      readyToFilm: readyToFilmCount,
       userName: user.name,
     });
   } catch (error) {

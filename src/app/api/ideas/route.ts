@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
     const source = request.nextUrl.searchParams.get('source');
     const pillar = request.nextUrl.searchParams.get('contentPillar');
 
-    // Coaches/admins can look up any student's ideas via ?userId=
+    // Admins can look up any student's ideas via ?userId=
     let targetUserId = user.id;
     const requestedUserId = request.nextUrl.searchParams.get('userId');
-    if (requestedUserId && (user.role === 'coach' || user.role === 'admin')) {
+    if (requestedUserId && user.role === 'admin') {
       targetUserId = requestedUserId;
     }
 

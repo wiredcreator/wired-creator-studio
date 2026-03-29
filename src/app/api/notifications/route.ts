@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
 
-    // Only coaches and admins can create notifications for other users
+    // Only admins can create notifications for other users
     const body = await request.json();
     const { userId, type, title, message, relatedId, relatedType } = body;
 
