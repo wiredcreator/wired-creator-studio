@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import PageWrapper from '@/components/PageWrapper';
-import type { IConceptAnswers, IResource } from '@/models/ContentIdea';
+import type { IConceptAnswers, IResource, IOutlineSection } from '@/models/ContentIdea';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,6 +21,7 @@ interface IdeaData {
   alternativeTitles: string[];
   resources: IResource[];
   outline: string;
+  outlineSections?: IOutlineSection[];
   createdAt: string;
   updatedAt: string;
 }
@@ -69,6 +70,7 @@ export default function IdeaParkingLotPage() {
 
   // Outline state
   const [outline, setOutline] = useState('');
+  const [outlineSections, setOutlineSections] = useState<IOutlineSection[]>([]);
   const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
 
@@ -92,6 +94,7 @@ export default function IdeaParkingLotPage() {
       setAlternativeTitles(data.alternativeTitles || []);
       setResources(data.resources || []);
       setOutline(data.outline || '');
+      setOutlineSections(data.outlineSections || []);
     } catch {
       router.push('/dashboard/ideas');
     } finally {
@@ -218,6 +221,9 @@ export default function IdeaParkingLotPage() {
       });
       if (res.ok) {
         const data = await res.json();
+        if (data.outlineSections) {
+          setOutlineSections(data.outlineSections);
+        }
         if (data.outline) {
           setOutline(data.outline);
         }
@@ -230,14 +236,22 @@ export default function IdeaParkingLotPage() {
   };
 
   const handleSaveOutline = () => {
-    saveIdea({ outline });
+    if (outlineSections.length > 0) {
+      saveIdea({ outlineSections } as unknown as Partial<IdeaData>);
+    } else {
+      saveIdea({ outline });
+    }
   };
 
   const handleGenerateScript = async () => {
     setIsGeneratingScript(true);
     try {
       // Save outline first
-      await saveIdea({ outline });
+      if (outlineSections.length > 0) {
+        await saveIdea({ outlineSections } as unknown as Partial<IdeaData>);
+      } else {
+        await saveIdea({ outline });
+      }
 
       const res = await fetch('/api/scripts', {
         method: 'POST',
@@ -372,6 +386,8 @@ export default function IdeaParkingLotPage() {
         <OutlineStep
           outline={outline}
           setOutline={setOutline}
+          outlineSections={outlineSections}
+          setOutlineSections={setOutlineSections}
           isGeneratingOutline={isGeneratingOutline}
           isGeneratingScript={isGeneratingScript}
           onGenerateOutline={handleGenerateOutline}
@@ -785,6 +801,8 @@ function ResourcesStep({
 interface OutlineStepProps {
   outline: string;
   setOutline: (v: string) => void;
+  outlineSections: IOutlineSection[];
+  setOutlineSections: (v: IOutlineSection[]) => void;
   isGeneratingOutline: boolean;
   isGeneratingScript: boolean;
   onGenerateOutline: () => void;
@@ -796,6 +814,8 @@ interface OutlineStepProps {
 function OutlineStep({
   outline,
   setOutline,
+  outlineSections,
+  setOutlineSections,
   isGeneratingOutline,
   isGeneratingScript,
   onGenerateOutline,
@@ -804,10 +824,66 @@ function OutlineStep({
   isSaving,
 }: OutlineStepProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const hasStructuredSections = outlineSections && outlineSections.length > 0;
+  const hasContent = hasStructuredSections || outline.trim();
 
-  // Simple markdown-to-HTML renderer for outlines
+  // --- Section editing helpers ---
+  const updateSectionTitle = (sectionId: string, newTitle: string) => {
+    setOutlineSections(
+      outlineSections.map((s) =>
+        s.id === sectionId ? { ...s, title: newTitle } : s
+      )
+    );
+  };
+
+  const updateBullet = (sectionId: string, bulletIndex: number, newValue: string) => {
+    setOutlineSections(
+      outlineSections.map((s) =>
+        s.id === sectionId
+          ? { ...s, bullets: s.bullets.map((b, i) => (i === bulletIndex ? newValue : b)) }
+          : s
+      )
+    );
+  };
+
+  const addBullet = (sectionId: string) => {
+    setOutlineSections(
+      outlineSections.map((s) =>
+        s.id === sectionId ? { ...s, bullets: [...s.bullets, ''] } : s
+      )
+    );
+  };
+
+  const removeBullet = (sectionId: string, bulletIndex: number) => {
+    setOutlineSections(
+      outlineSections.map((s) =>
+        s.id === sectionId
+          ? { ...s, bullets: s.bullets.filter((_, i) => i !== bulletIndex) }
+          : s
+      )
+    );
+  };
+
+  const removeSection = (sectionId: string) => {
+    const updated = outlineSections
+      .filter((s) => s.id !== sectionId)
+      .map((s, i) => ({ ...s, order: i }));
+    setOutlineSections(updated);
+  };
+
+  const addSection = () => {
+    const newSection: IOutlineSection = {
+      id: crypto.randomUUID(),
+      title: '',
+      bullets: [''],
+      order: outlineSections.length,
+    };
+    setOutlineSections([...outlineSections, newSection]);
+  };
+
+  // Simple markdown-to-HTML renderer for legacy outlines
   const renderedOutline = useMemo(() => {
-    if (!outline.trim()) return '';
+    if (hasStructuredSections || !outline.trim()) return '';
 
     const lines = outline.split('\n');
     const htmlLines: string[] = [];
@@ -816,7 +892,6 @@ function OutlineStep({
     for (const line of lines) {
       const trimmed = line.trim();
 
-      // Close list if current line is not a list item
       if (inList && !trimmed.startsWith('- ') && !trimmed.startsWith('* ') && !trimmed.match(/^\d+\.\s/)) {
         htmlLines.push('</ul>');
         inList = false;
@@ -855,7 +930,7 @@ function OutlineStep({
     }
 
     return htmlLines.join('\n');
-  }, [outline]);
+  }, [outline, hasStructuredSections]);
 
   return (
     <div className="space-y-5">
@@ -866,7 +941,8 @@ function OutlineStep({
             Video Outline
           </label>
           <div className="flex items-center gap-2">
-            {outline.trim() && (
+            {/* Only show Edit/Preview toggle for legacy markdown outlines */}
+            {!hasStructuredSections && outline.trim() && (
               <button
                 type="button"
                 onClick={() => setIsEditing(!isEditing)}
@@ -893,7 +969,91 @@ function OutlineStep({
           </div>
         </div>
 
-        {isEditing || !outline.trim() ? (
+        {/* Structured sections view */}
+        {hasStructuredSections ? (
+          <div className="space-y-4">
+            {[...outlineSections]
+              .sort((a, b) => a.order - b.order)
+              .map((section) => (
+                <div
+                  key={section.id}
+                  className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4"
+                >
+                  {/* Section header */}
+                  <div className="mb-3 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={section.title}
+                      onChange={(e) => updateSectionTitle(section.id, e.target.value)}
+                      placeholder="Section title..."
+                      className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm font-semibold text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeSection(section.id)}
+                      title="Remove section"
+                      className="shrink-0 rounded-[var(--radius-sm)] border border-red-800 bg-[var(--color-bg-card)] p-1.5 text-red-400 transition-colors hover:bg-red-900"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Bullet points */}
+                  <div className="space-y-2">
+                    {section.bullets.map((bullet, bulletIdx) => (
+                      <div key={bulletIdx} className="flex items-start gap-2">
+                        <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-accent)]" />
+                        <input
+                          type="text"
+                          value={bullet}
+                          onChange={(e) => updateBullet(section.id, bulletIdx, e.target.value)}
+                          placeholder="Talking point..."
+                          className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeBullet(section.id, bulletIdx)}
+                          title="Remove bullet"
+                          className="shrink-0 rounded-[var(--radius-sm)] p-1.5 text-[var(--color-text-muted)] transition-colors hover:text-red-400"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add bullet button */}
+                  <button
+                    type="button"
+                    onClick={() => addBullet(section.id)}
+                    className="mt-2 flex items-center gap-1 rounded-[var(--radius-sm)] px-2 py-1 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)]"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add bullet
+                  </button>
+                </div>
+              ))}
+
+            {/* Add section button */}
+            <button
+              type="button"
+              onClick={addSection}
+              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Add Section
+            </button>
+          </div>
+        ) : isEditing || !outline.trim() ? (
+          /* Legacy markdown editing */
           <textarea
             value={outline}
             onChange={(e) => setOutline(e.target.value)}
@@ -902,6 +1062,7 @@ function OutlineStep({
             className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 font-mono text-sm leading-relaxed text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
           />
         ) : (
+          /* Legacy markdown preview */
           <div
             className="min-h-[16rem] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-5 py-4"
             dangerouslySetInnerHTML={{ __html: renderedOutline }}
@@ -909,7 +1070,7 @@ function OutlineStep({
         )}
       </div>
 
-      {/* Action buttons — matching wireframe: Save Changes, Auto-generate, Generate Script */}
+      {/* Action buttons */}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -944,7 +1105,7 @@ function OutlineStep({
         <button
           type="button"
           onClick={onGenerateScript}
-          disabled={isGeneratingScript || !outline.trim()}
+          disabled={isGeneratingScript || !hasContent}
           className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-5 py-2.5 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
         >
           {isGeneratingScript ? (
@@ -963,7 +1124,7 @@ function OutlineStep({
         </button>
       </div>
 
-      {!outline.trim() && (
+      {!hasContent && (
         <p className="text-xs text-[var(--color-text-muted)]">
           Complete your outline before generating a script. The more detail you provide, the better the script will be.
         </p>

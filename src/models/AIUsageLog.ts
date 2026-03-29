@@ -41,6 +41,8 @@ const AIUsageLogSchema = new Schema(
         'idea_concept',
         'idea_alternative_titles',
         'idea_outline',
+        'content_pillar_generation',
+        'personal_baseline_processing',
       ],
     },
     aiModel: { type: String, required: true },

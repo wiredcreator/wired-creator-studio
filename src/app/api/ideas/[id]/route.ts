@@ -120,6 +120,18 @@ export async function PUT(
     if (body.alternativeTitles !== undefined) idea.alternativeTitles = body.alternativeTitles;
     if (body.resources !== undefined) idea.resources = body.resources;
     if (body.outline !== undefined) idea.outline = body.outline;
+    if (body.outlineSections !== undefined) {
+      idea.outlineSections = body.outlineSections;
+      // Regenerate markdown from sections for backwards compatibility
+      if (Array.isArray(body.outlineSections) && body.outlineSections.length > 0) {
+        idea.outline = body.outlineSections
+          .sort((a: { order: number }, b: { order: number }) => a.order - b.order)
+          .map((s: { title: string; bullets: string[] }) =>
+            `## ${s.title}\n${(s.bullets || []).map((b: string) => `- ${b}`).join('\n')}`
+          )
+          .join('\n\n');
+      }
+    }
 
     await idea.save();
 

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import PersonalBaseline from '@/models/PersonalBaseline';
+import ContentDNAResponse from '@/models/ContentDNAResponse';
+import BrandBrain from '@/models/BrandBrain';
 import User from '@/models/User';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { processPersonalBaseline } from '@/lib/ai/generate';
 
 interface PersonalBaselinePayload {
   responses: {
@@ -59,6 +62,67 @@ export async function POST(request: NextRequest) {
 
     // Mark personal baseline as completed on the user
     await User.findByIdAndUpdate(user.id, { personalBaselineCompleted: true });
+
+    // --- Respond immediately — don't block on AI processing ---
+    const userId = user.id;
+
+    // Fire off AI profile processing in the background (non-blocking)
+    (async () => {
+      try {
+        await dbConnect();
+
+        // Build baseline responses for AI
+        const baselineResponses = body.responses.map((r) => ({
+          question: r.question,
+          answer: r.answer,
+        }));
+
+        // Fetch Content DNA responses for fuller context (if available)
+        let contentDNAResponses: { question: string; answer: string | string[] }[] | undefined;
+        try {
+          const contentDNA = await ContentDNAResponse.findOne({ userId }).lean();
+          if (contentDNA && contentDNA.responses) {
+            contentDNAResponses = contentDNA.responses.map((r: { question: string; answer: string | string[] }) => ({
+              question: r.question,
+              answer: r.answer,
+            }));
+          }
+        } catch (dnaError) {
+          console.error('[PersonalBaseline] Failed to fetch Content DNA (non-fatal):', dnaError);
+        }
+
+        // Call AI to process baseline
+        const result = await processPersonalBaseline(baselineResponses, contentDNAResponses, userId);
+
+        // Update User document with generated profile fields
+        const userUpdate: Record<string, unknown> = {
+          background: result.background,
+          neurodivergentProfile: result.neurodivergentProfile,
+          contentGoals: result.contentGoals,
+          riskFlags: result.riskFlags,
+        };
+        await User.findByIdAndUpdate(userId, { $set: userUpdate });
+
+        // If equipment info was extracted, update BrandBrain
+        if (result.equipmentProfile) {
+          try {
+            await BrandBrain.findOneAndUpdate(
+              { userId },
+              { $set: { equipmentProfile: result.equipmentProfile } }
+            );
+          } catch (bbError) {
+            console.error('[PersonalBaseline] BrandBrain equipment update failed (non-fatal):', bbError);
+          }
+        }
+
+        console.log('[PersonalBaseline] AI profile processing completed successfully in background');
+      } catch (aiError) {
+        console.error(
+          '[PersonalBaseline] AI profile processing failed (non-fatal):',
+          aiError
+        );
+      }
+    })();
 
     return NextResponse.json({
       success: true,

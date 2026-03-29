@@ -6,7 +6,7 @@ import ToneOfVoiceGuide from '@/models/ToneOfVoiceGuide';
 import YouTubeTranscriptCache from '@/models/YouTubeTranscriptCache';
 import User from '@/models/User';
 import { getAuthenticatedUser } from '@/lib/api-auth';
-import { generateToneOfVoice } from '@/lib/ai/generate';
+import { generateToneOfVoice, generateContentPillars } from '@/lib/ai/generate';
 import { extractYouTubeTranscript } from '@/lib/apify';
 
 interface ContentDNAPayload {
@@ -214,6 +214,30 @@ export async function POST(request: NextRequest) {
       }
     })();
 
+    // Fire off content pillar generation in the background (non-blocking)
+    (async () => {
+      try {
+        const pillarResponses = responses.map((r) => ({
+          question: r.question,
+          answer: r.answer,
+        }));
+
+        const generatedPillars = await generateContentPillars(pillarResponses, userId);
+
+        await BrandBrain.findOneAndUpdate(
+          { userId },
+          { $set: { contentPillars: generatedPillars } }
+        );
+
+        console.log('[Onboarding] Content pillars generated successfully in background');
+      } catch (pillarError) {
+        console.error(
+          '[Onboarding] Content pillar auto-generation failed (non-fatal):',
+          pillarError
+        );
+      }
+    })();
+
     // Fire off background channel/video scraping (non-blocking)
     (async () => {
       try {
@@ -279,6 +303,53 @@ export async function POST(request: NextRequest) {
         }
 
         console.log('[Onboarding Scrape] Background scraping complete');
+
+        // --- Re-generate Tone of Voice with scraped transcripts ---
+        try {
+          // Fetch the updated ContentDNA to get all extracted transcripts
+          const updatedDNA = await ContentDNAResponse.findById(contentDNAId).lean();
+          const scrapedTranscripts = (updatedDNA?.creatorExamples || [])
+            .map((ex) => ex.extractedTranscript)
+            .filter((t): t is string => !!t && t.trim().length > 0);
+
+          if (scrapedTranscripts.length > 0) {
+            console.log(`[Onboarding Scrape] Re-generating ToV with ${scrapedTranscripts.length} transcript(s)`);
+
+            const brandBrain = await BrandBrain.findOne({ userId })
+              .select('_id')
+              .lean();
+
+            if (brandBrain) {
+              const updatedGuide = await generateToneOfVoice(
+                {
+                  responses,
+                  contentSamples,
+                  creatorExamples: updatedDNA?.creatorExamples || creatorExamples,
+                },
+                scrapedTranscripts,
+                userId
+              );
+
+              await ToneOfVoiceGuide.findOneAndUpdate(
+                { userId },
+                {
+                  parameters: updatedGuide.parameters,
+                  status: 'draft',
+                  generatedFrom: {
+                    questionnaireId: contentDNAId,
+                    transcriptIds: [],
+                  },
+                }
+              );
+
+              console.log('[Onboarding Scrape] ToV re-generated with transcripts successfully');
+            }
+          } else {
+            console.log('[Onboarding Scrape] No transcripts scraped — skipping ToV re-generation');
+          }
+        } catch (tovRegenError) {
+          console.error('[Onboarding Scrape] ToV re-generation failed (non-fatal):', tovRegenError);
+        }
       } catch (scrapeError) {
         console.error('[Onboarding Scrape] Background scraping failed (non-fatal):', scrapeError);
       }

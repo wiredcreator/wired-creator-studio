@@ -5,7 +5,9 @@ export type CustomPromptCategory =
   | 'idea_generation'
   | 'side_quest_generation'
   | 'brain_dump_processing'
-  | 'tone_of_voice';
+  | 'tone_of_voice'
+  | 'content_pillar_generation'
+  | 'personal_baseline_processing';
 
 export interface ICustomPrompt extends Document {
   name: string;
@@ -28,6 +30,8 @@ const CustomPromptSchema = new Schema<ICustomPrompt>(
         'side_quest_generation',
         'brain_dump_processing',
         'tone_of_voice',
+        'content_pillar_generation',
+        'personal_baseline_processing',
       ],
       required: true,
     },

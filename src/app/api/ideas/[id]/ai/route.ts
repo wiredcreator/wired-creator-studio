@@ -3,6 +3,7 @@ import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit'
 import dbConnect from '@/lib/db';
 import ContentIdea from '@/models/ContentIdea';
 import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib/ai/client';
+import { randomUUID } from 'crypto';
 import { trackAIUsage } from '@/lib/ai/usage-tracker';
 import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
 import { getAuthenticatedUser } from '@/lib/api-auth';
@@ -143,7 +144,23 @@ Respond with ONLY a JSON array of strings:
         const response = await client.messages.create({
           model: CLAUDE_MODEL,
           max_tokens: 2048,
-          system: `You are a content strategist helping create a video outline. The outline MUST use the following structured markdown format with these exact section headings:\n\n## Hook\nA compelling opening that grabs attention in the first 5 seconds.\n\n## Part 1 - The Before\nSet up the problem, pain point, or current state the audience relates to.\n\n## Part 2 - The Solution\nPresent the key insight, method, or transformation.\n\n## Part 3 - The Payoff\nShow the result, proof, or call to action.\n\nEach section should have bullet points with specific talking points. Use markdown headings (##) and bullet points (-).\n\n${brandBrainContext}`,
+          system: `You are a content strategist helping create a video outline. Return a JSON array of sections. Each section has a "title" (string) and "bullets" (array of strings). Use these sections as a starting template but adapt as needed for the content:
+
+1. "Hook" — A compelling opening that grabs attention in the first 5 seconds.
+2. "Part 1 - The Before" — Set up the problem, pain point, or current state the audience relates to.
+3. "Part 2 - The Solution" — Present the key insight, method, or transformation.
+4. "Part 3 - The Payoff" — Show the result, proof, or call to action.
+
+Each section should have 2-5 bullet points with specific talking points.
+
+Respond with ONLY valid JSON — an array of objects:
+[
+  { "title": "Hook", "bullets": ["point 1", "point 2"] },
+  { "title": "Part 1 - The Before", "bullets": ["point 1", "point 2"] },
+  ...
+]
+
+${brandBrainContext}`,
           messages: [
             {
               role: 'user',
@@ -154,15 +171,36 @@ ${idea.description ? `Description: ${idea.description}` : ''}
 ${conceptParts.length > 0 ? `\nConcept:\n${conceptParts.join('\n')}` : ''}
 ${resourceParts.length > 0 ? `\nResources provided by the creator:\n${resourceParts.join('\n\n')}` : ''}
 
-Write the outline in markdown format using these sections: Hook, Part 1 - The Before, Part 2 - The Solution, Part 3 - The Payoff. Include bullet points under each section with specific talking points. The outline should guide the script generation that follows.`,
+Return the outline as a JSON array of sections with titles and bullet points. The outline should guide the script generation that follows.`,
             },
           ],
         });
         trackAIUsage({ userId: user.id, feature: 'idea_outline', response, durationMs: Date.now() - startMs });
 
         const text = response.content[0].type === 'text' ? response.content[0].text : '';
+        const parsed = extractJsonFromResponse(text) as Array<{ title: string; bullets: string[] }>;
 
-        return NextResponse.json({ outline: text });
+        // Build structured sections with IDs and order
+        const outlineSections = Array.isArray(parsed)
+          ? parsed.map((section, index) => ({
+              id: randomUUID(),
+              title: section.title || `Section ${index + 1}`,
+              bullets: Array.isArray(section.bullets) ? section.bullets : [],
+              order: index,
+            }))
+          : [];
+
+        // Generate markdown for backwards compatibility
+        const outlineMarkdown = outlineSections
+          .map((s) => `## ${s.title}\n${s.bullets.map((b) => `- ${b}`).join('\n')}`)
+          .join('\n\n');
+
+        // Save both formats to the idea
+        idea.outlineSections = outlineSections;
+        idea.outline = outlineMarkdown;
+        await idea.save();
+
+        return NextResponse.json({ outline: outlineMarkdown, outlineSections });
       }
 
       default:

@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     const body = await request.json();
-    const { transcript, callType } = body;
+    const { transcript, callType, destination } = body;
 
     if (!transcript) {
       return NextResponse.json(
@@ -39,7 +39,16 @@ export async function POST(request: NextRequest) {
       ? callType
       : 'brain_dump';
 
-    // Save the transcript
+    // Resolve destination: 'ideas' | 'brand_brain' | 'both' (default)
+    const validDestinations = ['ideas', 'brand_brain', 'both'];
+    const resolvedDestination = validDestinations.includes(destination)
+      ? destination
+      : 'both';
+
+    const shouldExtractIdeas = resolvedDestination === 'ideas' || resolvedDestination === 'both';
+    const shouldSaveToBrandBrain = resolvedDestination === 'brand_brain' || resolvedDestination === 'both';
+
+    // Save the transcript record (always — so it shows in brain dump history)
     const callTranscript = await CallTranscript.create({
       userId,
       source: 'manual',
@@ -52,56 +61,63 @@ export async function POST(request: NextRequest) {
       ingestedIntoBrandBrain: false,
     });
 
-    // Fetch the user's content pillars from Brand Brain
-    let contentPillars: string[] = [];
-    const brandBrain = await BrandBrain.findOne({ userId }).lean();
-    if (brandBrain && brandBrain.contentPillars) {
-      contentPillars = brandBrain.contentPillars.map(
-        (p: { title: string }) => p.title
-      );
-    }
-
-    // Process the transcript with AI
-    const extracted = await processBrainDump(transcript, contentPillars, userId);
-
-    // Save extracted ideas to ContentIdea model
+    let extracted = { contentIdeas: [] as { title: string; description: string; contentPillar?: string }[], stories: [] as { summary: string; fullText: string }[], themes: [] as { theme: string }[] };
     const savedIdeas = [];
-    for (const idea of extracted.contentIdeas) {
-      const contentIdea = await ContentIdea.create({
-        userId,
+
+    if (shouldExtractIdeas) {
+      // Fetch the user's content pillars from Brand Brain
+      let contentPillars: string[] = [];
+      const brandBrain = await BrandBrain.findOne({ userId }).lean();
+      if (brandBrain && brandBrain.contentPillars) {
+        contentPillars = brandBrain.contentPillars.map(
+          (p: { title: string }) => p.title
+        );
+      }
+
+      // Process the transcript with AI
+      extracted = await processBrainDump(transcript, contentPillars, userId);
+
+      // Save extracted ideas to ContentIdea model
+      for (const idea of extracted.contentIdeas) {
+        const contentIdea = await ContentIdea.create({
+          userId,
+          title: idea.title,
+          description: idea.description,
+          status: 'suggested',
+          source: 'brain_dump',
+          contentPillar: idea.contentPillar,
+          tags: [],
+        });
+        savedIdeas.push(contentIdea);
+      }
+
+      // Update the CallTranscript with extracted data
+      callTranscript.extractedIdeas = extracted.contentIdeas.map((idea) => ({
         title: idea.title,
         description: idea.description,
-        status: 'suggested',
-        source: 'brain_dump',
-        contentPillar: idea.contentPillar,
-        tags: [],
-      });
-      savedIdeas.push(contentIdea);
+      }));
+      callTranscript.extractedStories = extracted.stories.map((story) => ({
+        summary: story.summary,
+        fullText: story.fullText,
+      }));
+      callTranscript.extractedThemes = extracted.themes.map((t) => t.theme);
     }
-
-    // Update the CallTranscript with extracted data
-    callTranscript.extractedIdeas = extracted.contentIdeas.map((idea) => ({
-      title: idea.title,
-      description: idea.description,
-    }));
-    callTranscript.extractedStories = extracted.stories.map((story) => ({
-      summary: story.summary,
-      fullText: story.fullText,
-    }));
-    callTranscript.extractedThemes = extracted.themes.map((t) => t.theme);
-    callTranscript.ingestedIntoBrandBrain = true;
-    await callTranscript.save();
 
     // --- Write back to Brand Brain ---
-    try {
-      await BrandBrain.findOneAndUpdate(
-        { userId },
-        { $addToSet: { callTranscripts: callTranscript._id } }
-      );
-    } catch (bbError) {
-      // Non-fatal: brain dump processing succeeded even if Brand Brain link fails
-      console.error('[BrainDump] Brand Brain write-back failed (non-fatal):', bbError);
+    if (shouldSaveToBrandBrain) {
+      callTranscript.ingestedIntoBrandBrain = true;
+      try {
+        await BrandBrain.findOneAndUpdate(
+          { userId },
+          { $addToSet: { callTranscripts: callTranscript._id } }
+        );
+      } catch (bbError) {
+        // Non-fatal: brain dump processing succeeded even if Brand Brain link fails
+        console.error('[BrainDump] Brand Brain write-back failed (non-fatal):', bbError);
+      }
     }
+
+    await callTranscript.save();
 
     // Fire-and-forget XP award
     awardXP(userId, 'brain_dump', { sessionId: callTranscript._id.toString() }).catch((err) =>
@@ -113,6 +129,7 @@ export async function POST(request: NextRequest) {
         session: callTranscript,
         extracted,
         savedIdeas,
+        destination: resolvedDestination,
       },
       { status: 201 }
     );

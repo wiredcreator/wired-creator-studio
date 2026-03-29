@@ -35,7 +35,9 @@ export type AIFeature =
   | 'voice_storming_prompts'
   | 'idea_concept'
   | 'idea_alternative_titles'
-  | 'idea_outline';
+  | 'idea_outline'
+  | 'content_pillar_generation'
+  | 'personal_baseline_processing';
 
 interface AnthropicResponse {
   model: string;

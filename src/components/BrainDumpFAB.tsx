@@ -32,6 +32,7 @@ export default function BrainDumpFAB() {
   const [showRouting, setShowRouting] = useState(false);
   const [savedContent, setSavedContent] = useState('');
   const [routingSaving, setRoutingSaving] = useState(false);
+  const [pendingMode, setPendingMode] = useState<Mode>(null);
   const [error, setError] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +77,7 @@ export default function BrainDumpFAB() {
     setShowRouting(false);
     setSavedContent('');
     setRoutingSaving(false);
+    setPendingMode(null);
     setRecordingTime(0);
   }, [isRecording]);
 
@@ -190,117 +192,74 @@ export default function BrainDumpFAB() {
     }
   };
 
-  // ─── Save Handlers ──────────────────────────────────────────────────
+  // ─── Save Handlers (capture content, then show routing) ────────────
 
-  const saveVoiceStorm = async () => {
+  const prepareVoiceStorm = () => {
     if (!voiceTranscript.trim()) return;
-    setSaving(true);
-    setError('');
-    try {
-      const res = await fetch('/api/voice-storming', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transcript: voiceTranscript.trim(),
-          sessionType: 'freeform',
-          duration: recordingTime,
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to save');
-      const data = await res.json();
-      const newId = data._id ?? data.data?._id;
-      // Process in background
-      if (newId) {
-        fetch(`/api/voice-storming/${newId}/process`, { method: 'POST' }).catch(() => {});
-      }
-      setSavedContent(voiceTranscript.trim());
-      setShowRouting(true);
-    } catch {
-      setError('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+    setSavedContent(voiceTranscript.trim());
+    setPendingMode('voice');
+    setShowRouting(true);
   };
 
-  const saveWriteDump = async () => {
+  const prepareWriteDump = () => {
     if (!writeText.trim()) return;
-    setSaving(true);
-    setError('');
-    try {
-      const res = await fetch('/api/brain-dump', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transcript: writeText.trim(),
-          callType: 'brain_dump',
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to save');
-      setSavedContent(writeText.trim());
-      setShowRouting(true);
-    } catch {
-      setError('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+    setSavedContent(writeText.trim());
+    setPendingMode('write');
+    setShowRouting(true);
   };
 
-  const saveUpload = async () => {
+  const prepareUpload = () => {
     if (!uploadText.trim()) return;
-    setSaving(true);
-    setError('');
-    try {
-      const res = await fetch('/api/brain-dump', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transcript: uploadText.trim(),
-          callType: 'brain_dump',
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to save');
-      setSavedContent(uploadText.trim());
-      setShowRouting(true);
-    } catch {
-      setError('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+    setSavedContent(uploadText.trim());
+    setPendingMode('upload');
+    setShowRouting(true);
   };
 
-  // ─── Routing Handlers ────────────────────────────────────────────────
+  // ─── Routing Handlers — submit to API with chosen destination ──────
 
-  const handleRouteToIdea = async () => {
+  const handleRouteSubmit = async (destination: 'ideas' | 'brand_brain' | 'both') => {
     setRoutingSaving(true);
     setError('');
     try {
-      const title = savedContent.slice(0, 50).replace(/\n/g, ' ').trim();
-      const res = await fetch('/api/ideas', {
+      if (pendingMode === 'voice') {
+        // Save voice storming session first
+        const vsRes = await fetch('/api/voice-storming', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transcript: savedContent,
+            sessionType: 'freeform',
+            duration: recordingTime,
+          }),
+        });
+        if (!vsRes.ok) throw new Error('Failed to save voice storming');
+        const vsData = await vsRes.json();
+        const newId = vsData._id ?? vsData.data?._id;
+        if (newId) {
+          fetch(`/api/voice-storming/${newId}/process`, { method: 'POST' }).catch(() => {});
+        }
+      }
+
+      // Submit brain dump with chosen destination
+      const res = await fetch('/api/brain-dump', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title,
-          description: savedContent,
-          status: 'suggested',
-          source: 'brain_dump',
+          transcript: savedContent,
+          callType: 'brain_dump',
+          destination,
         }),
       });
-      if (!res.ok) throw new Error('Failed to create idea');
+      if (!res.ok) throw new Error('Failed to save');
+
       setSaved(true);
       setShowRouting(false);
       setTimeout(() => handleClose(), 1500);
     } catch {
-      setError('Failed to create idea. Please try again.');
+      setError('Failed to save. Please try again.');
     } finally {
       setRoutingSaving(false);
     }
-  };
-
-  const handleRouteToBrandBrain = () => {
-    // Content already saved to brain dump which processes into Brand Brain
-    setSaved(true);
-    setShowRouting(false);
-    setTimeout(() => handleClose(), 1500);
   };
 
   // ─── Render ─────────────────────────────────────────────────────────
@@ -314,21 +273,31 @@ export default function BrainDumpFAB() {
           <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
             <div>
               <p className="text-[14px] font-semibold text-[var(--color-text-primary)]">
-                {mode === null && 'Brain Dump'}
-                {mode === 'voice' && 'Voice Storm'}
-                {mode === 'write' && 'Quick Write'}
-                {mode === 'upload' && 'Upload Document'}
+                {showRouting && !saved && 'Almost there'}
+                {!showRouting && mode === null && 'Brain Dump'}
+                {!showRouting && mode === 'voice' && 'Voice Storm'}
+                {!showRouting && mode === 'write' && 'Quick Write'}
+                {!showRouting && mode === 'upload' && 'Upload Document'}
               </p>
               <p className="text-[12px] text-[var(--color-text-secondary)] mt-0.5">
-                {mode === null && 'Capture your thoughts without leaving this page.'}
-                {mode === 'voice' && 'Record and we\'ll transcribe it.'}
-                {mode === 'write' && 'Type out your thoughts.'}
-                {mode === 'upload' && 'Upload a document to extract ideas.'}
+                {showRouting && !saved && 'Choose where to send your brain dump.'}
+                {!showRouting && mode === null && 'Capture your thoughts without leaving this page.'}
+                {!showRouting && mode === 'voice' && 'Record and we\'ll transcribe it.'}
+                {!showRouting && mode === 'write' && 'Type out your thoughts.'}
+                {!showRouting && mode === 'upload' && 'Upload a document to extract ideas.'}
               </p>
             </div>
-            {mode !== null && !isRecording && !showRouting && (
+            {mode !== null && !isRecording && !saved && (
               <button
                 onClick={() => {
+                  if (showRouting && !routingSaving) {
+                    // Go back to the input mode
+                    setShowRouting(false);
+                    setSavedContent('');
+                    setPendingMode(null);
+                    setError('');
+                    return;
+                  }
                   setMode(null);
                   setVoiceTranscript('');
                   setWriteText('');
@@ -338,6 +307,7 @@ export default function BrainDumpFAB() {
                   setSaved(false);
                   setShowRouting(false);
                   setSavedContent('');
+                  setPendingMode(null);
                   setRecordingTime(0);
                 }}
                 className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
@@ -364,29 +334,49 @@ export default function BrainDumpFAB() {
 
           {/* Routing prompt — "Where should this go?" */}
           {showRouting && !saved && (
-            <div className="px-5 py-6 space-y-4">
+            <div className="px-5 py-5 space-y-3">
               <p className="text-sm font-medium text-[var(--color-text-primary)] text-center">
                 Where should this go?
               </p>
 
               {error && <p className="text-xs text-[var(--color-error)] text-center">{error}</p>}
 
-              <div className="flex gap-3">
+              <div className="space-y-2">
                 <button
-                  onClick={handleRouteToIdea}
+                  onClick={() => handleRouteSubmit('ideas')}
                   disabled={routingSaving}
-                  className="flex-1 py-2.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[var(--color-bg-dark)] text-sm font-medium hover:opacity-90 disabled:bg-[#555] disabled:text-[#999] transition-opacity"
+                  className="w-full text-left px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] hover:border-[var(--color-accent)] disabled:opacity-50 transition-colors"
                 >
-                  {routingSaving ? 'Saving...' : 'Idea Draft'}
+                  <p className="text-[13px] font-medium text-[var(--color-text-primary)]">Extract Ideas</p>
+                  <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">AI pulls out content ideas from your dump</p>
                 </button>
                 <button
-                  onClick={handleRouteToBrandBrain}
+                  onClick={() => handleRouteSubmit('brand_brain')}
                   disabled={routingSaving}
-                  className="flex-1 py-2.5 rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm font-medium hover:bg-[var(--color-hover)] disabled:opacity-50 transition-colors"
+                  className="w-full text-left px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] hover:border-[var(--color-accent)] disabled:opacity-50 transition-colors"
                 >
-                  Brand Brain
+                  <p className="text-[13px] font-medium text-[var(--color-text-primary)]">Save to Brand Brain</p>
+                  <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">Store as raw context for your brand voice</p>
+                </button>
+                <button
+                  onClick={() => handleRouteSubmit('both')}
+                  disabled={routingSaving}
+                  className="w-full text-left px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-hover)] disabled:opacity-50 transition-colors"
+                >
+                  <p className="text-[13px] font-medium text-[var(--color-text-primary)]">Both</p>
+                  <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">Extract ideas and save to Brand Brain</p>
                 </button>
               </div>
+
+              {routingSaving && (
+                <div className="flex items-center justify-center gap-2 text-sm text-[var(--color-accent)]">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Processing...
+                </div>
+              )}
             </div>
           )}
 
@@ -510,11 +500,11 @@ export default function BrainDumpFAB() {
               {voiceTranscript && !isRecording && (
                 <div className="flex gap-2">
                   <button
-                    onClick={saveVoiceStorm}
+                    onClick={prepareVoiceStorm}
                     disabled={saving || transcribing}
                     className="flex-1 py-2.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[var(--color-bg-dark)] text-sm font-medium hover:opacity-90 disabled:bg-[#555] disabled:text-[#999] transition-opacity"
                   >
-                    {saving ? 'Saving...' : 'Save & Process'}
+                    Next
                   </button>
                   <button
                     onClick={() => {
@@ -552,11 +542,11 @@ export default function BrainDumpFAB() {
 
               <div className="flex gap-2">
                 <button
-                  onClick={saveWriteDump}
+                  onClick={prepareWriteDump}
                   disabled={saving || !writeText.trim()}
                   className="flex-1 py-2.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[var(--color-bg-dark)] text-sm font-medium hover:opacity-90 disabled:bg-[#555] disabled:text-[#999] transition-opacity"
                 >
-                  {saving ? 'Saving...' : 'Save & Process'}
+                  Next
                 </button>
                 <button
                   onClick={() => {
@@ -648,11 +638,11 @@ export default function BrainDumpFAB() {
               {/* Save button */}
               {uploadText && !parsing && (
                 <button
-                  onClick={saveUpload}
+                  onClick={prepareUpload}
                   disabled={saving || !uploadText.trim()}
                   className="w-full py-2.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[var(--color-bg-dark)] text-sm font-medium hover:opacity-90 disabled:bg-[#555] disabled:text-[#999] transition-opacity"
                 >
-                  {saving ? 'Saving...' : 'Save & Process'}
+                  Next
                 </button>
               )}
             </div>

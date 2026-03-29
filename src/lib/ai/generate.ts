@@ -9,6 +9,8 @@ import {
   SCRIPT_GENERATION_SYSTEM_PROMPT,
   VOICE_STORMING_PROCESSING_PROMPT,
   SIDE_QUEST_GENERATION_PROMPT,
+  CONTENT_PILLAR_GENERATION_PROMPT,
+  PERSONAL_BASELINE_PROCESSING_PROMPT,
 } from './prompts';
 import type {
   ToneOfVoiceGuideOutput,
@@ -184,6 +186,85 @@ export async function generateToneOfVoice(
     summary: parsed.summary,
     generatedAt: new Date(),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Content Pillar Generation
+// ---------------------------------------------------------------------------
+
+/**
+ * Calls Claude to analyse Content DNA questionnaire responses and returns
+ * 3-5 content pillars, each with a title, description, and keywords.
+ */
+export async function generateContentPillars(
+  contentDNAResponses: { question: string; answer: string | string[] }[],
+  userId?: string
+): Promise<{ title: string; description: string; keywords: string[] }[]> {
+  const client = getAnthropicClient();
+
+  // Build the user message from questionnaire responses
+  const userParts: string[] = [];
+  userParts.push('## Questionnaire Responses');
+  for (const r of contentDNAResponses) {
+    const answer = Array.isArray(r.answer) ? r.answer.join(', ') : r.answer;
+    userParts.push(`**${r.question}**\n${answer}\n`);
+  }
+  userParts.push(
+    '\nPlease analyze the above responses and generate content pillars for this creator.'
+  );
+
+  const pillarSystemPrompt = await getAugmentedSystemPrompt(
+    CONTENT_PILLAR_GENERATION_PROMPT,
+    'content_pillar_generation'
+  );
+
+  const startMs = Date.now();
+  const response = await withRetry(() =>
+    client.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 2048,
+      system: pillarSystemPrompt,
+      messages: [{ role: 'user', content: userParts.join('\n') }],
+    })
+  );
+  if (userId) track(userId, 'content_pillar_generation', response, startMs);
+
+  const textBlock = response.content.find((b) => b.type === 'text');
+  if (!textBlock || textBlock.type !== 'text') {
+    throw new Error('Claude returned an unexpected response format.');
+  }
+
+  let parsed: { title: string; description: string; keywords: string[] }[];
+  try {
+    parsed = extractJsonFromResponse(textBlock.text) as {
+      title: string;
+      description: string;
+      keywords: string[];
+    }[];
+  } catch {
+    throw new Error(
+      'Failed to parse Claude response as JSON. The model may have returned malformed output.'
+    );
+  }
+
+  // Validate minimal structure
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error(
+      'Claude returned JSON but it does not match the expected content pillars shape.'
+    );
+  }
+
+  for (const pillar of parsed) {
+    if (
+      typeof pillar.title !== 'string' ||
+      typeof pillar.description !== 'string' ||
+      !Array.isArray(pillar.keywords)
+    ) {
+      throw new Error('One or more generated pillars have invalid structure.');
+    }
+  }
+
+  return parsed;
 }
 
 // ---------------------------------------------------------------------------
@@ -616,6 +697,100 @@ export async function generateSideQuests(
     ) {
       throw new Error('One or more generated quests have invalid structure.');
     }
+  }
+
+  return parsed;
+}
+
+// ---------------------------------------------------------------------------
+// Personal Baseline Processing
+// ---------------------------------------------------------------------------
+
+export interface PersonalBaselineOutput {
+  background: string;
+  neurodivergentProfile: string;
+  contentGoals: string;
+  riskFlags: string[];
+  equipmentProfile?: { camera: string; location: string; constraints: string };
+}
+
+/**
+ * Calls Claude to analyse Personal Baseline survey responses (and optionally
+ * Content DNA responses) and returns structured student profile fields and
+ * risk flags for the coaching team.
+ */
+export async function processPersonalBaseline(
+  baselineResponses: { question: string; answer: string | string[] }[],
+  contentDNAResponses?: { question: string; answer: string | string[] }[],
+  userId?: string
+): Promise<PersonalBaselineOutput> {
+  const client = getAnthropicClient();
+
+  // Build the user message with all available context
+  const userParts: string[] = [];
+
+  userParts.push('## Personal Baseline Survey Responses');
+  for (const r of baselineResponses) {
+    const answer = Array.isArray(r.answer) ? r.answer.join(', ') : r.answer;
+    if (answer.trim()) {
+      userParts.push(`**${r.question}**\n${answer}\n`);
+    }
+  }
+
+  if (contentDNAResponses && contentDNAResponses.length > 0) {
+    userParts.push('\n## Content DNA Questionnaire Responses (additional context)');
+    for (const r of contentDNAResponses) {
+      const answer = Array.isArray(r.answer) ? r.answer.join(', ') : r.answer;
+      if (answer.trim()) {
+        userParts.push(`**${r.question}**\n${answer}\n`);
+      }
+    }
+  }
+
+  userParts.push(
+    '\nPlease analyze the above survey responses and generate a structured student profile with risk flags.'
+  );
+
+  const systemPrompt = await getAugmentedSystemPrompt(
+    PERSONAL_BASELINE_PROCESSING_PROMPT,
+    'personal_baseline_processing'
+  );
+
+  const startMs = Date.now();
+  const response = await withRetry(() =>
+    client.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 2048,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userParts.join('\n') }],
+    })
+  );
+  if (userId) track(userId, 'personal_baseline_processing', response, startMs);
+
+  const textBlock = response.content.find((b) => b.type === 'text');
+  if (!textBlock || textBlock.type !== 'text') {
+    throw new Error('Claude returned an unexpected response format.');
+  }
+
+  let parsed: PersonalBaselineOutput;
+  try {
+    parsed = extractJsonFromResponse(textBlock.text) as PersonalBaselineOutput;
+  } catch {
+    throw new Error(
+      'Failed to parse Claude response as JSON. The model may have returned malformed output.'
+    );
+  }
+
+  // Validate minimal structure
+  if (
+    typeof parsed.background !== 'string' ||
+    typeof parsed.neurodivergentProfile !== 'string' ||
+    typeof parsed.contentGoals !== 'string' ||
+    !Array.isArray(parsed.riskFlags)
+  ) {
+    throw new Error(
+      'Claude returned JSON but it does not match the expected PersonalBaselineOutput shape.'
+    );
   }
 
   return parsed;
