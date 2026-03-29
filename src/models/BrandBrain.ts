@@ -78,6 +78,24 @@ const BrandBrainSnapshotSchema = new Schema<IBrandBrainSnapshot>(
   { _id: false }
 );
 
+// --- Side Quest Insight Sub-document ---
+export interface ISideQuestInsight {
+  questTitle: string;
+  questType: string;
+  response: string;
+  savedAt: Date;
+}
+
+const SideQuestInsightSchema = new Schema<ISideQuestInsight>(
+  {
+    questTitle: { type: String, required: true },
+    questType: { type: String, required: true },
+    response: { type: String, required: true },
+    savedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 // --- Brand Brain Document ---
 export interface IBrandBrain extends Document {
   userId: Types.ObjectId;
@@ -89,6 +107,7 @@ export interface IBrandBrain extends Document {
   callTranscripts: Types.ObjectId[];
   approvedIdeas: Types.ObjectId[];
   contentDNAResponse?: Types.ObjectId;
+  sideQuestInsights: ISideQuestInsight[];
   version: number;
   previousVersions: IBrandBrainSnapshot[];
   createdAt: Date;
@@ -129,6 +148,7 @@ const BrandBrainSchema = new Schema<IBrandBrain>(
       type: Schema.Types.ObjectId,
       ref: 'ContentDNAResponse',
     },
+    sideQuestInsights: [SideQuestInsightSchema],
     version: { type: Number, default: 1 },
     previousVersions: [BrandBrainSnapshotSchema],
   },

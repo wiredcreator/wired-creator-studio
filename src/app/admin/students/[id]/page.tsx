@@ -12,6 +12,14 @@ interface StudentInfo {
   name: string;
   email: string;
   createdAt: string;
+  background?: string;
+  neurodivergentProfile?: string;
+  contentGoals?: string;
+  riskFlags?: string[];
+  city?: string;
+  state?: string;
+  timezone?: string;
+  onboardingCompleted?: boolean;
 }
 
 type TovStatus = "draft" | "review" | "active";
@@ -284,7 +292,8 @@ export default function StudentDetailPage() {
         const res = await fetch(`/api/users?userId=${id}`);
         if (res.ok) {
           const data = await res.json();
-          if (data) setStudent(data);
+          if (data?.user) setStudent(data.user);
+          else if (data) setStudent(data);
         }
       } catch {
         // Ignore
@@ -767,6 +776,127 @@ export default function StudentDetailPage() {
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {/* Student Profile Cards */}
+        {student && (
+          <div className="grid gap-4 lg:grid-cols-3">
+            {/* Student Profile Card */}
+            <div className="lg:col-span-2 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
+              <h3 className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">
+                Student Profile
+              </h3>
+              <div className="space-y-4">
+                {/* Background */}
+                <div>
+                  <p className="mb-1 text-xs font-medium text-[var(--color-text-muted)]">Background</p>
+                  {student.background ? (
+                    <p className="text-sm leading-relaxed text-[var(--color-text-primary)]">{student.background}</p>
+                  ) : (
+                    <p className="text-sm italic text-[var(--color-text-muted)]">Not yet generated</p>
+                  )}
+                </div>
+
+                {/* Neurodivergent Profile */}
+                <div>
+                  <p className="mb-1 text-xs font-medium text-[var(--color-text-muted)]">Neurodivergent Profile</p>
+                  {student.neurodivergentProfile ? (
+                    <p className="text-sm leading-relaxed text-[var(--color-text-primary)]">{student.neurodivergentProfile}</p>
+                  ) : (
+                    <p className="text-sm italic text-[var(--color-text-muted)]">Not yet generated</p>
+                  )}
+                </div>
+
+                {/* Content Goals */}
+                <div>
+                  <p className="mb-1 text-xs font-medium text-[var(--color-text-muted)]">Content Goals</p>
+                  {student.contentGoals ? (
+                    <p className="text-sm leading-relaxed text-[var(--color-text-primary)]">{student.contentGoals}</p>
+                  ) : (
+                    <p className="text-sm italic text-[var(--color-text-muted)]">Not yet generated</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right column: Risk Flags + Details */}
+            <div className="space-y-4">
+              {/* Risk Flags Card */}
+              <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
+                  Risk Flags
+                </h3>
+                {student.riskFlags && student.riskFlags.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {student.riskFlags.map((flag, i) => (
+                      <span
+                        key={i}
+                        className="rounded-full bg-amber-600 px-3 py-1 text-xs font-medium text-white"
+                      >
+                        {flag}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm italic text-[var(--color-text-muted)]">No risk flags</p>
+                )}
+              </div>
+
+              {/* Details Card */}
+              <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
+                  Details
+                </h3>
+                <div className="space-y-2">
+                  {/* Location */}
+                  <div>
+                    <p className="text-xs font-medium text-[var(--color-text-muted)]">Location</p>
+                    {student.city || student.state ? (
+                      <p className="text-sm text-[var(--color-text-primary)]">
+                        {[student.city, student.state].filter(Boolean).join(", ")}
+                      </p>
+                    ) : (
+                      <p className="text-sm italic text-[var(--color-text-muted)]">Not provided</p>
+                    )}
+                  </div>
+
+                  {/* Timezone */}
+                  <div>
+                    <p className="text-xs font-medium text-[var(--color-text-muted)]">Timezone</p>
+                    <p className="text-sm text-[var(--color-text-primary)]">
+                      {student.timezone || "Not set"}
+                    </p>
+                  </div>
+
+                  {/* Join Date */}
+                  <div>
+                    <p className="text-xs font-medium text-[var(--color-text-muted)]">Joined</p>
+                    <p className="text-sm text-[var(--color-text-primary)]">
+                      {student.createdAt
+                        ? new Date(student.createdAt).toLocaleDateString("en-US", {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        : "Unknown"}
+                    </p>
+                  </div>
+
+                  {/* Onboarding Status */}
+                  <div>
+                    <p className="text-xs font-medium text-[var(--color-text-muted)]">Onboarding</p>
+                    <p className="text-sm text-[var(--color-text-primary)]">
+                      {student.onboardingCompleted ? (
+                        <span className="text-emerald-500">Completed</span>
+                      ) : (
+                        <span className="text-amber-500">In Progress</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

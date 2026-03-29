@@ -24,6 +24,7 @@ const DEFAULT_OPTIONS: Required<BrandBrainContextOptions> = {
   includeApprovedIdeas: true,
   includeContentDNA: true,
   maxApprovedIdeas: 10,
+  includeSideQuestInsights: true,
 };
 
 /**
@@ -225,6 +226,21 @@ export async function assembleBrandBrainContext(
       }
     } catch {
       // Transcript fetching is best-effort
+    }
+  }
+
+  // --- Side Quest Insights ---
+  if (options.includeSideQuestInsights && brandBrain.sideQuestInsights?.length > 0) {
+    sections.push('\n## Side Quest Insights');
+    for (const insight of brandBrain.sideQuestInsights) {
+      const typeLabel =
+        insight.questType === 'voice_storm_prompt'
+          ? 'Voice Storm'
+          : insight.questType === 'research_task'
+            ? 'Research'
+            : 'Exercise';
+      sections.push(`\n### ${insight.questTitle} (${typeLabel})`);
+      sections.push(truncateText(insight.response, 1000));
     }
   }
 

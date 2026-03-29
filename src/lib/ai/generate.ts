@@ -697,6 +697,16 @@ export async function generateSideQuests(
     ) {
       throw new Error('One or more generated quests have invalid structure.');
     }
+    // Default xpReward to 15 if the AI didn't include it or it's out of range
+    if (typeof quest.xpReward !== 'number' || quest.xpReward < 5 || quest.xpReward > 25) {
+      quest.xpReward = 15;
+    }
+    // Default estimatedMinutes to 10 if missing, clamp between 5-60
+    if (typeof quest.estimatedMinutes !== 'number' || isNaN(quest.estimatedMinutes)) {
+      quest.estimatedMinutes = 10;
+    } else {
+      quest.estimatedMinutes = Math.max(5, Math.min(60, Math.round(quest.estimatedMinutes)));
+    }
   }
 
   return parsed;

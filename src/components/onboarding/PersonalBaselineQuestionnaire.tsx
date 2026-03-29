@@ -11,6 +11,7 @@ interface BaselineQuestion {
 }
 
 const STEP_LABELS = [
+  'Your Location',
   'Your Schedule',
   'Your Patterns',
   'Your Motivation',
@@ -19,8 +20,40 @@ const STEP_LABELS = [
   'Review',
 ] as const;
 
+const US_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN',
+  'IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH',
+  'NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT',
+  'VT','VA','WA','WV','WI','WY',
+] as const;
+
+const STATE_NAMES: Record<string, string> = {
+  AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',
+  CT:'Connecticut',DE:'Delaware',DC:'District of Columbia',FL:'Florida',GA:'Georgia',
+  HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',
+  LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',
+  MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',
+  NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',
+  OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',
+  SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',
+  WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',
+};
+
 const QUESTIONS: BaselineQuestion[][] = [
-  // Step 1: Your Schedule (Q1-Q3)
+  // Step 1: Your Location (city + state)
+  [
+    {
+      id: 'location-city',
+      question: 'What city do you live in?',
+      helper: 'This helps us tailor your schedule and content timing to your local area.',
+    },
+    {
+      id: 'location-state',
+      question: 'What state are you in?',
+      helper: 'We use this to set your timezone automatically.',
+    },
+  ],
+  // Step 2: Your Schedule (Q1-Q3)
   [
     {
       id: 'typical-day',
@@ -481,6 +514,10 @@ export default function PersonalBaselineQuestionnaire({
 
 const STEP_HEADINGS: { title: string; subtitle: string }[] = [
   {
+    title: 'Your Location',
+    subtitle: 'Where in the world are you based?',
+  },
+  {
     title: 'Your Schedule',
     subtitle: 'Help us understand the shape of your days.',
   },
@@ -529,8 +566,8 @@ function QuestionStep({
         </p>
       </div>
 
-      {/* Purpose banner - only on first step */}
-      {stepIndex === 0 && (
+      {/* Purpose banner - only on schedule step */}
+      {stepIndex === 1 && (
         <div
           className="px-5 py-4 text-sm leading-relaxed"
           style={{
@@ -564,21 +601,62 @@ function QuestionStep({
           <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
             {q.helper}
           </p>
-          <textarea
-            id={q.id}
-            value={formData[q.id]}
-            onChange={(e) => onChange(q.id, e.target.value)}
-            rows={4}
-            className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none outline-none"
-            style={{
-              backgroundColor: 'var(--color-bg-card)',
-              borderColor: 'var(--color-border)',
-              color: 'var(--color-text-primary)',
-              borderRadius: 'var(--radius-md)',
-            }}
-            onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
-            onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
-          />
+          {q.id === 'location-state' ? (
+            <select
+              id={q.id}
+              value={formData[q.id]}
+              onChange={(e) => onChange(q.id, e.target.value)}
+              className="w-full px-4 py-3 text-base border transition-colors duration-200 outline-none"
+              style={{
+                backgroundColor: 'var(--color-bg-card)',
+                borderColor: 'var(--color-border)',
+                color: formData[q.id] ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+                borderRadius: 'var(--radius-md)',
+              }}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
+            >
+              <option value="">Select your state</option>
+              {US_STATES.map((abbr) => (
+                <option key={abbr} value={abbr}>
+                  {STATE_NAMES[abbr]} ({abbr})
+                </option>
+              ))}
+            </select>
+          ) : q.id === 'location-city' ? (
+            <input
+              id={q.id}
+              type="text"
+              value={formData[q.id]}
+              onChange={(e) => onChange(q.id, e.target.value)}
+              placeholder="e.g. Austin"
+              className="w-full px-4 py-3 text-base border transition-colors duration-200 outline-none"
+              style={{
+                backgroundColor: 'var(--color-bg-card)',
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text-primary)',
+                borderRadius: 'var(--radius-md)',
+              }}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
+            />
+          ) : (
+            <textarea
+              id={q.id}
+              value={formData[q.id]}
+              onChange={(e) => onChange(q.id, e.target.value)}
+              rows={4}
+              className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none outline-none"
+              style={{
+                backgroundColor: 'var(--color-bg-card)',
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text-primary)',
+                borderRadius: 'var(--radius-md)',
+              }}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
+            />
+          )}
         </div>
       ))}
     </div>

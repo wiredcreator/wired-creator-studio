@@ -37,6 +37,9 @@ export type { IUserXP, IXPHistoryEntry } from './UserXP';
 export { default as AIUsageLog } from './AIUsageLog';
 export type { IAIUsageLog } from './AIUsageLog';
 
+export { default as XPConfig } from './XPConfig';
+export type { IXPConfig } from './XPConfig';
+
 export { default as ContentScoutSource } from './ContentScoutSource';
 export type { IContentScoutSource, ContentScoutSourceType } from './ContentScoutSource';
 

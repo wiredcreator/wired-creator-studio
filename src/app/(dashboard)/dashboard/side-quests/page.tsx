@@ -81,6 +81,13 @@ export default function SideQuestsPage() {
     }
   };
 
+  // --- Save to Brand Brain (optimistic) ---
+  const handleSaveToBrain = (id: string) => {
+    setQuests((prev) =>
+      prev.map((q) => (q._id === id ? { ...q, savedToBrandBrain: true } : q))
+    );
+  };
+
   // --- Complete a quest (optimistic) ---
   const handleComplete = async (id: string, response?: string) => {
     // Save previous state for rollback
@@ -192,6 +199,7 @@ export default function SideQuestsPage() {
                 key={quest._id}
                 quest={quest}
                 onComplete={handleComplete}
+                onSaveToBrain={handleSaveToBrain}
               />
             ))}
           </div>

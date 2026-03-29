@@ -13,15 +13,19 @@ export interface SideQuestCardData {
   description: string;
   type: SideQuestType;
   prompt: string;
+  xpReward?: number;
+  estimatedMinutes?: number;
   response?: string;
   completed: boolean;
   completedAt?: string;
+  savedToBrandBrain?: boolean;
   createdAt: string;
 }
 
 interface SideQuestCardProps {
   quest: SideQuestCardData;
   onComplete: (id: string, response?: string) => void;
+  onSaveToBrain?: (id: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -62,12 +66,31 @@ const TYPE_ICONS: Record<SideQuestType, React.ReactNode> = {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function SideQuestCard({ quest, onComplete }: SideQuestCardProps) {
+export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: SideQuestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [response, setResponse] = useState(quest.response || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(quest.savedToBrandBrain || false);
 
   const needsResponse = quest.type === 'research_task' || quest.type === 'content_exercise';
+
+  const handleSaveToBrain = async () => {
+    if (saved || isSaving) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/side-quests/${quest._id}/save-to-brain`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      setSaved(true);
+      onSaveToBrain?.(quest._id);
+    } catch (err) {
+      console.error('Failed to save to Brand Brain:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleComplete = async () => {
     setIsSubmitting(true);
@@ -96,11 +119,57 @@ export default function SideQuestCard({ quest, onComplete }: SideQuestCardProps)
               <span className="inline-flex items-center rounded-[var(--radius-full)] border px-2 py-0.5 text-xs font-medium" style={TYPE_STYLES[quest.type]}>
                 {TYPE_LABELS[quest.type]}
               </span>
+              {quest.xpReward != null && (
+                <span className="inline-flex items-center gap-1 rounded-[var(--radius-full)] bg-[#3a3a2a] px-2 py-0.5 text-xs font-medium text-[#a0a060]">
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  +{quest.xpReward} XP
+                </span>
+              )}
             </div>
             {quest.response && (
               <p className="mt-2 text-xs text-[var(--color-text-muted)] line-clamp-2">
                 {quest.response}
               </p>
+            )}
+
+            {/* Save to Brand Brain button — only for quests with a response */}
+            {quest.response && (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={handleSaveToBrain}
+                  disabled={saved || isSaving}
+                  className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: saved ? 'var(--color-success-light)' : 'var(--color-bg-secondary)',
+                    color: saved ? 'var(--color-success)' : 'var(--color-text-secondary)',
+                    borderColor: saved ? 'var(--color-success)' : 'var(--color-border)',
+                  }}
+                >
+                  {isSaving ? (
+                    <>
+                      <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Saving...
+                    </>
+                  ) : saved ? (
+                    <>
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                      Saved to Brand Brain
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                      </svg>
+                      Save to Brand Brain
+                    </>
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -143,6 +212,21 @@ export default function SideQuestCard({ quest, onComplete }: SideQuestCardProps)
               <span className="inline-flex items-center rounded-[var(--radius-full)] border px-2.5 py-0.5 text-xs font-medium" style={TYPE_STYLES[quest.type]}>
                 {TYPE_LABELS[quest.type]}
               </span>
+
+              {quest.xpReward != null && (
+                <span className="inline-flex items-center gap-1 rounded-[var(--radius-full)] px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: 'rgba(234,179,8,0.15)', color: '#EAB308', borderColor: 'rgba(234,179,8,0.3)' }}>
+                  +{quest.xpReward} XP
+                </span>
+              )}
+
+              {quest.estimatedMinutes != null && (
+                <span className="inline-flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                  ~{quest.estimatedMinutes} min
+                </span>
+              )}
 
               {!isExpanded && (
                 <span className="ml-auto inline-flex items-center gap-1 text-xs text-[var(--color-accent)]">

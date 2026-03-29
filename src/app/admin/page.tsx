@@ -19,6 +19,7 @@ interface StudentWithStats {
   todayTasks: number;
   todayCompleted: number;
   stuckTasks: number;
+  riskFlags: string[];
 }
 
 interface AdminStats {
@@ -224,6 +225,23 @@ export default function AdminDashboardPage() {
                             <p className="text-xs text-[var(--color-text-muted)] truncate">
                               {student.email}
                             </p>
+                            {student.riskFlags && student.riskFlags.length > 0 && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1">
+                                {student.riskFlags.slice(0, 3).map((flag) => (
+                                  <span
+                                    key={flag}
+                                    className="inline-block rounded-full bg-[#78350f] px-2 py-0.5 text-[10px] font-medium leading-tight text-[#fbbf24]"
+                                  >
+                                    {flag}
+                                  </span>
+                                ))}
+                                {student.riskFlags.length > 3 && (
+                                  <span className="text-[10px] font-medium text-[var(--color-text-muted)]">
+                                    +{student.riskFlags.length - 3} more
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                           {student.stuckTasks > 0 && (
                             <span className="ml-1 inline-flex items-center rounded-full bg-[var(--color-warning-bg,#fef3c7)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-warning,#d97706)]">

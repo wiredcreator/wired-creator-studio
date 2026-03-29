@@ -17,6 +17,7 @@ const navItems = [
   { href: "/admin/program", label: "Program Board" },
   { href: "/admin/my-tasks", label: "My Tasks" },
   { href: "/admin/team", label: "Team" },
+  { href: "/admin/settings", label: "Settings" },
 ];
 
 const bottomItems = [

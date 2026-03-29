@@ -29,6 +29,29 @@ function validatePayload(data: PersonalBaselinePayload): string | null {
   return null;
 }
 
+const STATE_TO_TIMEZONE: Record<string, string> = {
+  CT: 'America/New_York', DE: 'America/New_York', DC: 'America/New_York',
+  FL: 'America/New_York', GA: 'America/New_York', IN: 'America/Indiana/Indianapolis',
+  KY: 'America/New_York', ME: 'America/New_York', MD: 'America/New_York',
+  MA: 'America/New_York', MI: 'America/New_York', NH: 'America/New_York',
+  NJ: 'America/New_York', NY: 'America/New_York', NC: 'America/New_York',
+  OH: 'America/New_York', PA: 'America/New_York', RI: 'America/New_York',
+  SC: 'America/New_York', TN: 'America/New_York', VT: 'America/New_York',
+  VA: 'America/New_York', WV: 'America/New_York',
+  AL: 'America/Chicago', AR: 'America/Chicago', IL: 'America/Chicago',
+  IA: 'America/Chicago', KS: 'America/Chicago', LA: 'America/Chicago',
+  MN: 'America/Chicago', MS: 'America/Chicago', MO: 'America/Chicago',
+  NE: 'America/Chicago', ND: 'America/Chicago', OK: 'America/Chicago',
+  SD: 'America/Chicago', TX: 'America/Chicago', WI: 'America/Chicago',
+  AZ: 'America/Phoenix', CO: 'America/Denver', ID: 'America/Boise',
+  MT: 'America/Denver', NM: 'America/Denver', UT: 'America/Denver',
+  WY: 'America/Denver',
+  CA: 'America/Los_Angeles', WA: 'America/Los_Angeles', OR: 'America/Los_Angeles',
+  NV: 'America/Los_Angeles',
+  AK: 'America/Anchorage',
+  HI: 'Pacific/Honolulu',
+};
+
 export async function POST(request: NextRequest) {
   try {
     const authResult = await getAuthenticatedUser();
@@ -60,8 +83,20 @@ export async function POST(request: NextRequest) {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    // Mark personal baseline as completed on the user
-    await User.findByIdAndUpdate(user.id, { personalBaselineCompleted: true });
+    // Extract city and state from responses and derive timezone
+    const cityResponse = body.responses.find((r) => r.questionId === 'location-city');
+    const stateResponse = body.responses.find((r) => r.questionId === 'location-state');
+    const city = cityResponse?.answer?.trim() || '';
+    const stateAbbr = stateResponse?.answer?.trim().toUpperCase() || '';
+    const derivedTimezone = STATE_TO_TIMEZONE[stateAbbr] || 'America/New_York';
+
+    // Mark personal baseline as completed on the user + save location/timezone
+    await User.findByIdAndUpdate(user.id, {
+      personalBaselineCompleted: true,
+      city,
+      state: stateAbbr,
+      timezone: derivedTimezone,
+    });
 
     // --- Respond immediately — don't block on AI processing ---
     const userId = user.id;

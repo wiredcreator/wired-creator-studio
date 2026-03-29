@@ -11,6 +11,8 @@ export interface IUser extends Document {
   neurodivergentProfile: string;
   contentGoals: string;
   riskFlags: string[];
+  city: string;
+  state: string;
   timezone: string;
   avatarUrl: string;
   profileImage: string;
@@ -76,6 +78,14 @@ const UserSchema = new Schema<IUser>(
     riskFlags: {
       type: [String],
       default: [],
+    },
+    city: {
+      type: String,
+      default: '',
+    },
+    state: {
+      type: String,
+      default: '',
     },
     timezone: {
       type: String,

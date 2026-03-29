@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ScriptStatus } from '@/models/Script';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -137,6 +138,7 @@ export default function ScriptEditor({
   const [showFeedback, setShowFeedback] = useState(false);
   const [showRevertConfirm, setShowRevertConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  useUnsavedChanges(hasChanges);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const [sections, setSections] = useState<ScriptSection[]>(

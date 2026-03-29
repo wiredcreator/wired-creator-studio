@@ -10,9 +10,12 @@ export interface ISideQuest extends Document {
   description: string;
   type: SideQuestType;
   prompt: string;
+  xpReward: number;
+  estimatedMinutes: number;
   response?: string;
   completed: boolean;
   completedAt?: Date;
+  savedToBrandBrain: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,9 +35,12 @@ const SideQuestSchema = new Schema<ISideQuest>(
       required: true,
     },
     prompt: { type: String, required: true },
+    xpReward: { type: Number, default: 15 },
+    estimatedMinutes: { type: Number, default: 10 },
     response: { type: String },
     completed: { type: Boolean, default: false },
     completedAt: { type: Date },
+    savedToBrandBrain: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

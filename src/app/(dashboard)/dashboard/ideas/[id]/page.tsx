@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import PageWrapper from '@/components/PageWrapper';
 import type { IConceptAnswers, IResource, IOutlineSection } from '@/models/ContentIdea';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +75,10 @@ export default function IdeaParkingLotPage() {
   const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
 
+  // Unsaved changes tracking
+  const [hasChanges, setHasChanges] = useState(false);
+  useUnsavedChanges(hasChanges);
+
   // --- Fetch idea on mount ---
   const fetchIdea = useCallback(async () => {
     try {
@@ -106,8 +111,13 @@ export default function IdeaParkingLotPage() {
     fetchIdea();
   }, [fetchIdea]);
 
+  const markChanged = () => {
+    if (!hasChanges) setHasChanges(true);
+  };
+
   // --- Save helpers ---
   const showSaved = () => {
+    setHasChanges(false);
     setSaveMessage('Changes saved');
     setTimeout(() => setSaveMessage(''), 2000);
   };
@@ -363,6 +373,7 @@ export default function IdeaParkingLotPage() {
           onGenerateTitles={handleGenerateTitles}
           onSave={handleSaveConcept}
           isSaving={isSaving}
+          onMarkChanged={markChanged}
         />
       )}
 
@@ -394,6 +405,7 @@ export default function IdeaParkingLotPage() {
           onSave={handleSaveOutline}
           onGenerateScript={handleGenerateScript}
           isSaving={isSaving}
+          onMarkChanged={markChanged}
         />
       )}
     </PageWrapper>
@@ -419,6 +431,7 @@ interface ConceptStepProps {
   onGenerateTitles: () => void;
   onSave: () => void;
   isSaving: boolean;
+  onMarkChanged: () => void;
 }
 
 function ConceptStep({
@@ -436,6 +449,7 @@ function ConceptStep({
   onGenerateTitles,
   onSave,
   isSaving,
+  onMarkChanged,
 }: ConceptStepProps) {
   const conceptQuestions = [
     {
@@ -467,7 +481,7 @@ function ConceptStep({
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => { setTitle(e.target.value); onMarkChanged(); }}
             className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-base font-medium text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
             placeholder="Enter your video title..."
           />
@@ -508,9 +522,10 @@ function ConceptStep({
                 </label>
                 <textarea
                   value={conceptAnswers[q.key]}
-                  onChange={(e) =>
-                    setConceptAnswers({ ...conceptAnswers, [q.key]: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setConceptAnswers({ ...conceptAnswers, [q.key]: e.target.value });
+                    onMarkChanged();
+                  }}
                   rows={3}
                   placeholder={q.placeholder}
                   className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
@@ -528,7 +543,7 @@ function ConceptStep({
           <input
             type="text"
             value={callToAction}
-            onChange={(e) => setCallToAction(e.target.value)}
+            onChange={(e) => { setCallToAction(e.target.value); onMarkChanged(); }}
             placeholder="e.g. Sign up for my free webinar this month..."
             className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
           />
@@ -809,6 +824,7 @@ interface OutlineStepProps {
   onSave: () => void;
   onGenerateScript: () => void;
   isSaving: boolean;
+  onMarkChanged: () => void;
 }
 
 function OutlineStep({
@@ -822,6 +838,7 @@ function OutlineStep({
   onSave,
   onGenerateScript,
   isSaving,
+  onMarkChanged,
 }: OutlineStepProps) {
   const [isEditing, setIsEditing] = useState(false);
   const hasStructuredSections = outlineSections && outlineSections.length > 0;
@@ -834,6 +851,7 @@ function OutlineStep({
         s.id === sectionId ? { ...s, title: newTitle } : s
       )
     );
+    onMarkChanged();
   };
 
   const updateBullet = (sectionId: string, bulletIndex: number, newValue: string) => {
@@ -844,6 +862,7 @@ function OutlineStep({
           : s
       )
     );
+    onMarkChanged();
   };
 
   const addBullet = (sectionId: string) => {
@@ -852,6 +871,7 @@ function OutlineStep({
         s.id === sectionId ? { ...s, bullets: [...s.bullets, ''] } : s
       )
     );
+    onMarkChanged();
   };
 
   const removeBullet = (sectionId: string, bulletIndex: number) => {
@@ -862,6 +882,7 @@ function OutlineStep({
           : s
       )
     );
+    onMarkChanged();
   };
 
   const removeSection = (sectionId: string) => {
@@ -869,6 +890,7 @@ function OutlineStep({
       .filter((s) => s.id !== sectionId)
       .map((s, i) => ({ ...s, order: i }));
     setOutlineSections(updated);
+    onMarkChanged();
   };
 
   const addSection = () => {
@@ -879,6 +901,7 @@ function OutlineStep({
       order: outlineSections.length,
     };
     setOutlineSections([...outlineSections, newSection]);
+    onMarkChanged();
   };
 
   // Simple markdown-to-HTML renderer for legacy outlines
@@ -1056,7 +1079,7 @@ function OutlineStep({
           /* Legacy markdown editing */
           <textarea
             value={outline}
-            onChange={(e) => setOutline(e.target.value)}
+            onChange={(e) => { setOutline(e.target.value); onMarkChanged(); }}
             rows={16}
             placeholder="Your video outline will appear here. Click 'Auto-generate' to create one from your concept and resources, or write your own."
             className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 font-mono text-sm leading-relaxed text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"

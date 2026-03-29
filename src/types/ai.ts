@@ -135,6 +135,8 @@ export interface GeneratedSideQuest {
   description: string;
   type: 'voice_storm_prompt' | 'research_task' | 'content_exercise';
   prompt: string;
+  xpReward: number;
+  estimatedMinutes: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -153,4 +155,5 @@ export interface BrandBrainContextOptions {
   includeApprovedIdeas?: boolean;
   includeContentDNA?: boolean;
   maxApprovedIdeas?: number;
+  includeSideQuestInsights?: boolean;
 }

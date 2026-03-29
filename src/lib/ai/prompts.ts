@@ -414,6 +414,18 @@ The Brand Brain context includes a **Creator Profile**. Use it to make every que
 - Do NOT repeat any quest titles from the exclusion list.
 - Vary the difficulty — one should be quick (5-10 min), one medium (15-20 min), one deeper (30+ min).
 
+## XP Reward
+Each quest must include an "xpReward" field — an integer between 5 and 25 representing how many experience points the student earns for completing it. Assign XP based on estimated effort and complexity:
+- Quick quests (5-10 min): 5-10 XP
+- Medium quests (15-20 min): 11-18 XP
+- Deeper quests (30+ min): 19-25 XP
+
+## Estimated Duration
+Each quest must include an "estimatedMinutes" field — an integer representing how many minutes the quest should take. Use these guidelines:
+- Voice storm prompts: typically 5-15 minutes
+- Research tasks: typically 15-30 minutes
+- Content exercises: typically 10-20 minutes
+
 ## Output Format
 Respond ONLY with a valid JSON array of exactly 3 objects:
 
@@ -422,18 +434,24 @@ Respond ONLY with a valid JSON array of exactly 3 objects:
     "title": "Voice Storm: ...",
     "description": "Short enticing summary",
     "type": "voice_storm_prompt",
-    "prompt": "Detailed step-by-step instructions..."
+    "prompt": "Detailed step-by-step instructions...",
+    "xpReward": 10,
+    "estimatedMinutes": 10
   },
   {
     "title": "Research: ...",
     "description": "Short enticing summary",
     "type": "research_task",
-    "prompt": "Detailed step-by-step instructions..."
+    "prompt": "Detailed step-by-step instructions...",
+    "xpReward": 15,
+    "estimatedMinutes": 20
   },
   {
     "title": "Exercise: ...",
     "description": "Short enticing summary",
     "type": "content_exercise",
-    "prompt": "Detailed step-by-step instructions..."
+    "prompt": "Detailed step-by-step instructions...",
+    "xpReward": 20,
+    "estimatedMinutes": 15
   }
 ]`;

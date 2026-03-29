@@ -29,15 +29,20 @@ function isYesterday(a: Date, b: Date): boolean {
  *   - If lastActiveDate is yesterday: increment currentStreak
  *   - If lastActiveDate is older or null: reset currentStreak to 1
  * Updates bestStreak if currentStreak exceeds it.
+ *
+ * @param pointsOverride - If provided, uses this value instead of looking up
+ *                         the action in the config. Used for side quests where
+ *                         the AI assigns a specific XP reward.
  */
 export async function awardXP(
   userId: string,
   action: string,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
+  pointsOverride?: number
 ): Promise<IUserXP> {
   await dbConnect();
 
-  const points = getXPForAction(action);
+  const points = pointsOverride ?? await getXPForAction(action);
   const now = new Date();
 
   // Find or create the UserXP document

@@ -23,7 +23,7 @@ export async function GET() {
 
     // Fetch all students
     const students = await User.find({ role: 'student' })
-      .select('name email createdAt onboardingCompleted personalBaselineCompleted')
+      .select('name email createdAt onboardingCompleted personalBaselineCompleted riskFlags')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -147,6 +147,7 @@ export async function GET() {
         createdAt: student.createdAt,
         onboardingCompleted: student.onboardingCompleted,
         personalBaselineCompleted: student.personalBaselineCompleted,
+        riskFlags: student.riskFlags || [],
         lifetimeXP: xp?.lifetimeXP || 0,
         currentStreak: xp?.currentStreak || 0,
         lastActiveDate: xp?.lastActiveDate || null,
