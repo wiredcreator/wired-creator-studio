@@ -16,6 +16,7 @@ const navItems = [
   { href: "/admin/ai-usage", label: "AI Usage" },
   { href: "/admin/program", label: "Program Board" },
   { href: "/admin/my-tasks", label: "My Tasks" },
+  { href: "/admin/team", label: "Team" },
 ];
 
 const bottomItems = [
