@@ -63,3 +63,35 @@ export async function sendVerificationEmail(to: string, verificationToken: strin
 
   return true;
 }
+
+export async function sendLoginLinkEmail(
+  to: string,
+  name: string,
+  token: string
+): Promise<boolean> {
+  const resend = getResendClient();
+  const loginUrl = `${process.env.NEXTAUTH_URL}/verify?token=${token}`;
+
+  if (!resend) {
+    console.log('[Auth] RESEND_API_KEY not set — login link URL:', loginUrl);
+    return false;
+  }
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: 'Log in to Wired Creator Studio',
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <h2 style="color: #1a1a2e; margin-bottom: 16px;">Welcome back${name ? `, ${name}` : ''}!</h2>
+        <p style="color: #444; line-height: 1.6;">Click below to log in to your Wired Creator Studio account.</p>
+        <p style="margin: 24px 0;">
+          <a href="${loginUrl}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">Log In to Wired Creator</a>
+        </p>
+        <p style="color: #888; font-size: 14px; line-height: 1.5;">This link expires in 15 minutes. If you didn't request this, you can safely ignore this email.</p>
+      </div>
+    `,
+  });
+
+  return true;
+}

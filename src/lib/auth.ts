@@ -73,8 +73,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        userId: { label: 'User ID', type: 'text' },
+        magicLinkVerified: { label: 'Magic Link Verified', type: 'text' },
       },
       async authorize(credentials) {
+        // Mode 1: Magic link verification (internal only)
+        if (credentials.magicLinkVerified === 'true' && credentials.userId) {
+          await dbConnect();
+          const user = await User.findById(credentials.userId as string);
+          if (!user) return null;
+          return {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          };
+        }
+
+        // Mode 2: Password-based login
         if (!credentials?.email || !credentials?.password) {
           return null;
         }

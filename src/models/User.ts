@@ -16,6 +16,9 @@ export interface IUser extends Document {
   timezone: string;
   avatarUrl: string;
   profileImage: string;
+  magicLinkToken?: string;
+  magicLinkExpires?: Date;
+  stripeCustomerId: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   // Auth security fields
@@ -42,7 +45,7 @@ const UserSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: false,
       minlength: [8, 'Password must be at least 8 characters'],
     },
     name: {
@@ -99,6 +102,9 @@ const UserSchema = new Schema<IUser>(
       type: String,
       default: '',
     },
+    magicLinkToken: { type: String, default: null },
+    magicLinkExpires: { type: Date, default: null },
+    stripeCustomerId: { type: String, default: '' },
     resetPasswordToken: {
       type: String,
     },

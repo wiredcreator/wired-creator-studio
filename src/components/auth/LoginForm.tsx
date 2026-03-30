@@ -104,15 +104,6 @@ export default function LoginForm() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
-        Don&apos;t have an account?{' '}
-        <a
-          href="/signup"
-          className="font-medium text-blue-600 hover:text-blue-700 transition-colors"
-        >
-          Create one
-        </a>
-      </p>
     </div>
   );
 }

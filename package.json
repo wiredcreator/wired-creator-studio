@@ -19,7 +19,8 @@
     "openai": "^6.32.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "resend": "^6.9.4"
+    "resend": "^6.9.4",
+    "stripe": "^21.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
