@@ -32,10 +32,14 @@ export async function POST(req: NextRequest) {
     if (!isAdmin) {
       const stripeResult = await checkPaidCustomer(normalizedEmail);
       if (!stripeResult.isPaid) {
+        console.log(`[MagicLink] Rejected: ${normalizedEmail} — ${stripeResult.reason}`);
         return NextResponse.json({ message: RESPONSE_MESSAGE });
       }
+      console.log(`[MagicLink] Verified: ${normalizedEmail} — ${stripeResult.reason} (${stripeResult.customerId})`);
       customerName = stripeResult.customerName || '';
       customerId = stripeResult.customerId || '';
+    } else {
+      console.log(`[MagicLink] Admin bypass: ${normalizedEmail} skipped Stripe check`);
     }
 
     // Generate token
