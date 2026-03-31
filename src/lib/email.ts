@@ -156,7 +156,6 @@ export async function sendPasswordResetEmail(to: string, resetToken: string): Pr
     subject: 'Reset Your Wired Creator Password',
     html,
     text: `Reset your Wired Creator password\n\nYou requested a password reset. Visit this link to choose a new password:\n\n${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, you can safely ignore this email.`,
-    click_tracking: false,
   });
 
   return true;
@@ -186,7 +185,6 @@ export async function sendVerificationEmail(to: string, verificationToken: strin
     subject: 'Verify Your Wired Creator Email',
     html,
     text: `Welcome to Wired Creator!\n\nPlease verify your email address by visiting this link:\n\n${verifyUrl}\n\nThis link expires in 24 hours.`,
-    click_tracking: false,
   });
 
   return true;
@@ -222,7 +220,6 @@ export async function sendLoginLinkEmail(
     subject: 'Log in to Wired Creator Studio',
     html,
     text: `${greeting}\n\nLog in to your Wired Creator Studio account by visiting this link:\n\n${loginUrl}\n\nThis link expires in 15 minutes and can only be used once. If you didn't request this, you can safely ignore this email.`,
-    click_tracking: false,
   });
 
   return true;
