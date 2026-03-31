@@ -214,7 +214,8 @@ export async function sendLoginLinkEmail(
     footer: 'This link expires in 15 minutes and can only be used once. If you didn\'t request this, you can safely ignore this email.',
   });
 
-  await resend.emails.send({
+  console.log('[Email] Sending login link to:', to, '| baseUrl:', getBaseUrl());
+  const result = await resend.emails.send({
     from: FROM_EMAIL,
     to,
     subject: 'Log in to Wired Creator Studio',
@@ -222,5 +223,10 @@ export async function sendLoginLinkEmail(
     text: `${greeting}\n\nLog in to your Wired Creator Studio account by visiting this link:\n\n${loginUrl}\n\nThis link expires in 15 minutes and can only be used once. If you didn't request this, you can safely ignore this email.`,
   });
 
+  if (result.error) {
+    console.error('[Email] Resend API error:', result.error);
+    return false;
+  }
+  console.log('[Email] Sent successfully, id:', result.data?.id);
   return true;
 }

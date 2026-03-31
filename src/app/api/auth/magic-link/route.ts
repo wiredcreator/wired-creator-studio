@@ -20,11 +20,13 @@ export async function POST(req: NextRequest) {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+    console.log('[MagicLink] Request for:', normalizedEmail);
     await dbConnect();
 
     // Check if existing admin (skip Stripe)
     const existingUser = await User.findOne({ email: normalizedEmail });
     const isAdmin = existingUser?.role === 'admin';
+    console.log('[MagicLink] Existing user:', !!existingUser, '| isAdmin:', isAdmin);
 
     // Check Stripe (skipped for admins)
     let customerName = '';
@@ -32,14 +34,16 @@ export async function POST(req: NextRequest) {
     let stripeReason = '';
     if (!isAdmin) {
       const stripeResult = await checkPaidCustomer(normalizedEmail);
+      console.log('[MagicLink] Stripe check:', { isPaid: stripeResult.isPaid, reason: stripeResult.reason });
       if (!stripeResult.isPaid) {
+        console.log('[MagicLink] Rejected: Stripe check failed');
         return NextResponse.json({ message: RESPONSE_MESSAGE });
       }
       customerName = stripeResult.customerName || '';
       customerId = stripeResult.customerId || '';
       stripeReason = stripeResult.reason || '';
     } else {
-      // Admin bypass: skip Stripe check
+      console.log('[MagicLink] Admin bypass: skipping Stripe check');
     }
 
     // Infer subscription tier from Stripe reason
@@ -68,7 +72,9 @@ export async function POST(req: NextRequest) {
         }
       }
       await existingUser.save();
-      await sendLoginLinkEmail(normalizedEmail, existingUser.name, plainToken);
+      console.log('[MagicLink] Token saved for existing user, sending email...');
+      const emailSent = await sendLoginLinkEmail(normalizedEmail, existingUser.name, plainToken);
+      console.log('[MagicLink] Email sent:', emailSent);
     } else {
       // Auto-create new user
       const randomPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
@@ -86,7 +92,9 @@ export async function POST(req: NextRequest) {
         onboardingCompleted: false,
         personalBaselineCompleted: false,
       });
-      await sendLoginLinkEmail(normalizedEmail, newUser.name, plainToken);
+      console.log('[MagicLink] New user created, sending email...');
+      const emailSent = await sendLoginLinkEmail(normalizedEmail, newUser.name, plainToken);
+      console.log('[MagicLink] Email sent:', emailSent);
     }
 
     return NextResponse.json({ message: RESPONSE_MESSAGE });
