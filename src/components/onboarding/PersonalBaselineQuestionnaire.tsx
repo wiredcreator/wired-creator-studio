@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 // --- Question definitions ---
 
@@ -171,6 +171,38 @@ const QUESTIONS: BaselineQuestion[][] = [
 ];
 
 const TOTAL_STEPS = STEP_LABELS.length; // 5 question steps + 1 review
+const DRAFT_KEY = 'wc-personal-baseline-draft';
+const DRAFT_STEP_KEY = 'wc-personal-baseline-step';
+
+function saveDraftToStorage(data: BaselineFormData, step: number) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+    localStorage.setItem(DRAFT_STEP_KEY, String(step));
+  } catch {
+    // Storage full or unavailable
+  }
+}
+
+function loadDraftFromStorage(): { data: BaselineFormData; step: number } | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as BaselineFormData;
+    const step = parseInt(localStorage.getItem(DRAFT_STEP_KEY) || '0', 10);
+    return { data, step };
+  } catch {
+    return null;
+  }
+}
+
+function clearDraftFromStorage() {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(DRAFT_STEP_KEY);
+  } catch {
+    // Silently ignore
+  }
+}
 
 // --- Form data type ---
 type BaselineFormData = Record<string, string>;
@@ -196,25 +228,71 @@ export default function PersonalBaselineQuestionnaire({
   onComplete,
   existingData,
 }: PersonalBaselineQuestionnaireProps) {
-  const [currentStep, setCurrentStep] = useState(0);
+  const hasDbData = existingData && existingData.length > 0;
+
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (hasDbData) return 0;
+    const draft = loadDraftFromStorage();
+    return draft ? draft.step : 0;
+  });
   const [formData, setFormData] = useState<BaselineFormData>(() => {
     const initial = getInitialFormData();
+    // First layer: restore localStorage draft
+    const draft = loadDraftFromStorage();
+    const base = draft ? { ...initial, ...draft.data } : initial;
+    // Second layer: DB data takes priority
     if (existingData) {
       for (const r of existingData) {
-        if (r.questionId in initial) {
-          initial[r.questionId] = r.answer;
+        if (r.questionId in base) {
+          base[r.questionId] = r.answer;
         }
       }
     }
-    return initial;
+    return base;
   });
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'forward' | 'back'>('forward');
+  const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
+
+  // Dirty flag to avoid unnecessary writes
+  const isDirtyRef = useRef(false);
+  const formDataRef = useRef(formData);
+  const currentStepRef = useRef(currentStep);
+
+  // Keep refs in sync
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
+
+  // Auto-save every 3 seconds if dirty
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isDirtyRef.current) {
+        saveDraftToStorage(formDataRef.current, currentStepRef.current);
+        isDirtyRef.current = false;
+        setDraftSavedAt(new Date());
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Save on blur of the form container
+  const handleContainerBlur = useCallback(() => {
+    if (isDirtyRef.current) {
+      saveDraftToStorage(formDataRef.current, currentStepRef.current);
+      isDirtyRef.current = false;
+      setDraftSavedAt(new Date());
+    }
+  }, []);
 
   const updateField = useCallback((id: string, value: string) => {
     setFormData((prev) => ({ ...prev, [id]: value }));
+    isDirtyRef.current = true;
     setValidationMessage(null);
   }, []);
 
@@ -268,6 +346,7 @@ export default function PersonalBaselineQuestionnaire({
       const result = await response.json();
 
       if (result.success) {
+        clearDraftFromStorage();
         setIsComplete(true);
         onComplete?.();
       } else {
@@ -338,7 +417,7 @@ export default function PersonalBaselineQuestionnaire({
   const progress = ((currentStep + 1) / TOTAL_STEPS) * 100;
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto" onBlurCapture={handleContainerBlur}>
       {/* Progress bar */}
       <div className="w-full max-w-2xl mx-auto mb-10">
         <div className="flex items-center justify-between mb-3">
@@ -419,6 +498,16 @@ export default function PersonalBaselineQuestionnaire({
         >
           {validationMessage}
         </div>
+      )}
+
+      {/* Draft saved indicator */}
+      {draftSavedAt && (
+        <p
+          className="text-xs mt-4 text-right transition-opacity duration-500"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          Draft saved
+        </p>
       )}
 
       {/* Navigation buttons */}

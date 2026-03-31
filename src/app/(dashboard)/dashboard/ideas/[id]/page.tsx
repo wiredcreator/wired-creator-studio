@@ -406,6 +406,7 @@ export default function IdeaParkingLotPage() {
           onGenerateScript={handleGenerateScript}
           isSaving={isSaving}
           onMarkChanged={markChanged}
+          conceptAnswers={conceptAnswers}
         />
       )}
     </PageWrapper>
@@ -813,6 +814,8 @@ function ResourcesStep({
 // Step 3: Outline
 // ---------------------------------------------------------------------------
 
+const MIN_OUTLINE_WORDS = 50;
+
 interface OutlineStepProps {
   outline: string;
   setOutline: (v: string) => void;
@@ -825,6 +828,7 @@ interface OutlineStepProps {
   onGenerateScript: () => void;
   isSaving: boolean;
   onMarkChanged: () => void;
+  conceptAnswers: IConceptAnswers;
 }
 
 function OutlineStep({
@@ -839,10 +843,28 @@ function OutlineStep({
   onGenerateScript,
   isSaving,
   onMarkChanged,
+  conceptAnswers,
 }: OutlineStepProps) {
   const [isEditing, setIsEditing] = useState(false);
   const hasStructuredSections = outlineSections && outlineSections.length > 0;
   const hasContent = hasStructuredSections || outline.trim();
+
+  // Word count across all outline content (structured sections + freeform)
+  const outlineText = hasStructuredSections
+    ? outlineSections
+        .map((s) => `${s.title} ${s.bullets.join(' ')}`)
+        .join(' ')
+    : outline;
+  const outlineWordCount = outlineText.trim().split(/\s+/).filter(Boolean).length;
+  const hasEnoughWords = outlineWordCount >= MIN_OUTLINE_WORDS;
+
+  // Concept answers must be filled in before script generation
+  const hasConceptAnswers =
+    conceptAnswers.whoIsThisFor.trim().length > 0 &&
+    conceptAnswers.whatWillTheyLearn.trim().length > 0 &&
+    conceptAnswers.whyShouldTheyCare.trim().length > 0;
+
+  const canGenerateScript = hasContent && hasEnoughWords && hasConceptAnswers;
 
   // --- Section editing helpers ---
   const updateSectionTitle = (sectionId: string, newTitle: string) => {
@@ -1138,7 +1160,7 @@ function OutlineStep({
         <button
           type="button"
           onClick={onGenerateScript}
-          disabled={isGeneratingScript || !hasContent}
+          disabled={isGeneratingScript || !canGenerateScript}
           className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-5 py-2.5 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
         >
           {isGeneratingScript ? (
@@ -1157,10 +1179,24 @@ function OutlineStep({
         </button>
       </div>
 
-      {!hasContent && (
-        <p className="text-xs text-[var(--color-text-muted)]">
-          Complete your outline before generating a script. The more detail you provide, the better the script will be.
-        </p>
+      {!canGenerateScript && !isGeneratingScript && (
+        <div className="space-y-1.5">
+          {!hasContent && (
+            <p className="text-xs text-[var(--color-text-muted)]">
+              Add some content to your outline to get started.
+            </p>
+          )}
+          {hasContent && !hasEnoughWords && (
+            <p className="text-xs text-[var(--color-text-muted)]">
+              Your outline needs at least {MIN_OUTLINE_WORDS} words before generating a script. Current: {outlineWordCount} {outlineWordCount === 1 ? 'word' : 'words'}.
+            </p>
+          )}
+          {!hasConceptAnswers && (
+            <p className="text-xs text-[var(--color-text-muted)]">
+              Fill in all three concept questions (who, what, why) in the Concept step so the script knows your audience and angle.
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

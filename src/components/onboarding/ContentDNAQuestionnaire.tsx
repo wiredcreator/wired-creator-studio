@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ContentDNAFormData, INITIAL_FORM_DATA, STEP_LABELS } from '@/types/onboarding';
 import ProgressBar from './ProgressBar';
 import IdentityStep from './steps/IdentityStep';
@@ -13,6 +13,38 @@ import CoreMessageStep from './steps/CoreMessageStep';
 import ReviewStep from './steps/ReviewStep';
 
 const TOTAL_STEPS = STEP_LABELS.length;
+const DRAFT_KEY = 'wc-content-dna-draft';
+const DRAFT_STEP_KEY = 'wc-content-dna-step';
+
+function saveDraftToStorage(data: ContentDNAFormData, step: number) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+    localStorage.setItem(DRAFT_STEP_KEY, String(step));
+  } catch {
+    // Storage full or unavailable, silently ignore
+  }
+}
+
+function loadDraftFromStorage(): { data: ContentDNAFormData; step: number } | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as ContentDNAFormData;
+    const step = parseInt(localStorage.getItem(DRAFT_STEP_KEY) || '0', 10);
+    return { data, step };
+  } catch {
+    return null;
+  }
+}
+
+function clearDraftFromStorage() {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(DRAFT_STEP_KEY);
+  } catch {
+    // Silently ignore
+  }
+}
 
 // Validation per step - returns an error message or null
 function validateStep(step: number, data: ContentDNAFormData): string | null {
@@ -54,16 +86,74 @@ function validateStep(step: number, data: ContentDNAFormData): string | null {
   }
 }
 
-export default function ContentDNAQuestionnaire() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState<ContentDNAFormData>(INITIAL_FORM_DATA);
+interface ContentDNAQuestionnaireProps {
+  existingData?: Partial<ContentDNAFormData> | null;
+}
+
+export default function ContentDNAQuestionnaire({ existingData }: ContentDNAQuestionnaireProps = {}) {
+  const [currentStep, setCurrentStep] = useState(() => {
+    // If DB data exists, start at step 0 (let them review)
+    if (existingData && Object.values(existingData).some((v) => typeof v === 'string' ? v.trim() : v)) {
+      return 0;
+    }
+    // Otherwise try to restore step from draft
+    const draft = loadDraftFromStorage();
+    return draft ? draft.step : 0;
+  });
+  const [formData, setFormData] = useState<ContentDNAFormData>(() => {
+    const initial = { ...INITIAL_FORM_DATA };
+    // First layer: restore localStorage draft
+    const draft = loadDraftFromStorage();
+    const base = draft ? { ...initial, ...draft.data } : initial;
+    // Second layer: DB data takes priority over draft
+    if (existingData) {
+      return { ...base, ...existingData };
+    }
+    return base;
+  });
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'forward' | 'back'>('forward');
+  const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
+
+  // Dirty flag to avoid unnecessary writes
+  const isDirtyRef = useRef(false);
+  const formDataRef = useRef(formData);
+  const currentStepRef = useRef(currentStep);
+
+  // Keep refs in sync
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
+
+  // Auto-save every 3 seconds if dirty
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isDirtyRef.current) {
+        saveDraftToStorage(formDataRef.current, currentStepRef.current);
+        isDirtyRef.current = false;
+        setDraftSavedAt(new Date());
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Save on blur of the form container
+  const handleContainerBlur = useCallback(() => {
+    if (isDirtyRef.current) {
+      saveDraftToStorage(formDataRef.current, currentStepRef.current);
+      isDirtyRef.current = false;
+      setDraftSavedAt(new Date());
+    }
+  }, []);
 
   const updateFormData = useCallback((updates: Partial<ContentDNAFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
+    isDirtyRef.current = true;
     // Clear validation when user makes changes
     setValidationMessage(null);
   }, []);
@@ -109,6 +199,7 @@ export default function ContentDNAQuestionnaire() {
       const result = await response.json();
 
       if (result.success) {
+        clearDraftFromStorage();
         setIsComplete(true);
       } else {
         setValidationMessage(result.message || 'Something went wrong. Please try again.');
@@ -174,7 +265,7 @@ export default function ContentDNAQuestionnaire() {
   const isLastStep = currentStep === TOTAL_STEPS - 1;
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto" onBlurCapture={handleContainerBlur}>
       <ProgressBar currentStep={currentStep} totalSteps={TOTAL_STEPS} />
 
       {/* Step content with transition */}
@@ -223,6 +314,16 @@ export default function ContentDNAQuestionnaire() {
         >
           {validationMessage}
         </div>
+      )}
+
+      {/* Draft saved indicator */}
+      {draftSavedAt && (
+        <p
+          className="text-xs mt-4 text-right transition-opacity duration-500"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          Draft saved
+        </p>
       )}
 
       {/* Navigation buttons */}
