@@ -415,21 +415,7 @@ export default function BrainDumpFAB() {
                 </div>
               </button>
 
-              {/* Upload */}
-              <button
-                onClick={() => setMode('upload')}
-                className="flex w-full items-center gap-3 px-4 py-3 rounded-[var(--radius-md)] text-left hover:bg-[var(--color-bg-tertiary)] transition-colors"
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-900">
-                  <svg className="h-4 w-4 text-amber-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-[13px] font-medium text-[var(--color-text-primary)]">Upload</p>
-                  <p className="text-[11px] text-[var(--color-text-secondary)]">PDF, DOC, DOCX, or TXT files</p>
-                </div>
-              </button>
+              {/* Upload removed per client request */}
             </div>
           )}
 

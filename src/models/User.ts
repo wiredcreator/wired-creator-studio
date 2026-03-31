@@ -1,5 +1,8 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+export type SubscriptionTier = 'accelerator' | 'full_program' | 'monthly' | 'trial' | 'none';
+export type AccessStatus = 'active' | 'past_due' | 'canceled' | 'expired' | 'none';
+
 export interface IUser extends Document {
   email: string;
   password: string;
@@ -19,6 +22,10 @@ export interface IUser extends Document {
   magicLinkToken?: string;
   magicLinkExpires?: Date;
   stripeCustomerId: string;
+  subscriptionTier: SubscriptionTier;
+  accessStatus: AccessStatus;
+  accessExpiresAt: Date | null;
+  stripeSubscriptionId: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   // Auth security fields
@@ -105,6 +112,18 @@ const UserSchema = new Schema<IUser>(
     magicLinkToken: { type: String, default: null },
     magicLinkExpires: { type: Date, default: null },
     stripeCustomerId: { type: String, default: '' },
+    subscriptionTier: {
+      type: String,
+      enum: ['accelerator', 'full_program', 'monthly', 'trial', 'none'],
+      default: 'none',
+    },
+    accessStatus: {
+      type: String,
+      enum: ['active', 'past_due', 'canceled', 'expired', 'none'],
+      default: 'none',
+    },
+    accessExpiresAt: { type: Date, default: null },
+    stripeSubscriptionId: { type: String, default: '' },
     resetPasswordToken: {
       type: String,
     },

@@ -1,6 +1,7 @@
 import dbConnect from '@/lib/db';
 import UserXP, { IUserXP } from '@/models/UserXP';
 import { getXPForAction } from '@/lib/xp-config';
+import { createNotification } from '@/lib/notifications';
 
 /**
  * Check if two dates are the same calendar day (UTC).
@@ -96,6 +97,23 @@ export async function awardXP(
   });
 
   await userXP.save();
+
+  // Fire-and-forget XP earned notification
+  const actionLabels: Record<string, string> = {
+    complete_task: 'completing a task',
+    complete_side_quest: 'completing a side quest',
+    approve_script: 'generating a script',
+    brain_dump: 'a brain dump session',
+    generate_idea: 'generating an idea',
+    voice_storm: 'a voice storm session',
+  };
+  const label = actionLabels[action] || action;
+  createNotification({
+    userId,
+    type: 'xp_earned',
+    title: `+${points} XP earned!`,
+    message: `You earned ${points} XP for ${label}.`,
+  });
 
   return userXP;
 }

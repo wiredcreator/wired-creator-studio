@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Types } from 'mongoose';
 import dbConnect from '@/lib/db';
 import Task from '@/models/Task';
-import Notification from '@/models/Notification';
+import { createNotification } from '@/lib/notifications';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { validateObjectId } from '@/lib/validation';
 
@@ -49,17 +49,17 @@ export async function POST(
 
     // Fire-and-forget notification to the other party on this task
     const notifyUserId = task.userId.toString() === user.id
-      ? task.assignedBy?.toString()  // Student commented → notify admin
-      : task.userId.toString();       // Admin commented → notify student
+      ? task.assignedBy?.toString()  // Student commented, notify admin
+      : task.userId.toString();       // Admin commented, notify student
     if (notifyUserId && notifyUserId !== user.id) {
-      Notification.create({
+      createNotification({
         userId: notifyUserId,
         type: 'comment_reply',
         title: `New comment on "${task.title}"`,
         message: text.length > 100 ? text.slice(0, 100) + '...' : text,
         relatedId: task._id.toString(),
         relatedType: 'task',
-      }).catch(() => {});
+      });
     }
 
     // Re-fetch with populated comment user info

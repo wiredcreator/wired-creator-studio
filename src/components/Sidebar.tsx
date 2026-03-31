@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import { useTheme } from "./ThemeProvider";
@@ -18,7 +19,7 @@ const navItems = [
   { href: "/dashboard/today", label: "Tasks" },
   { href: "/dashboard/brain-dump", label: "Brain Dump" },
   { href: "/dashboard/side-quests", label: "Side Quests" },
-  { href: "/dashboard/support", label: "Support" },
+  // { href: "/dashboard/support", label: "Support" },
 ];
 
 const ACCENT = { light: '#4A90D9', dark: '#D4A843' };
@@ -56,16 +57,9 @@ export default function Sidebar({ userName, userRole = "student" }: SidebarProps
   return (
     <aside style={{ width: 200, display: 'flex', flexDirection: 'column', height: '100vh', padding: '24px 16px', overflowY: 'auto' }}>
       {/* Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 8, paddingRight: 8, marginBottom: 32 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 12, backgroundColor: ACCENT[t], display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }}>
-          <svg style={{ width: 16, height: 16, color: 'white' }} viewBox="0 0 24 24" fill="currentColor">
-            <path d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
-          </svg>
-        </div>
-        <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.02em', color: TEXT_PRI[t] }}>
-          studio
-        </span>
-        <div style={{ marginLeft: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, marginBottom: 32 }}>
+        <Image src="/logo.png" alt="Wired Creator Studio" width={120} height={32} style={{ objectFit: 'contain', filter: t === 'dark' ? 'brightness(1.8)' : 'none' }} priority />
+        <div style={{ marginLeft: 'auto', paddingLeft: 12 }}>
           <ThemeToggle />
         </div>
       </div>

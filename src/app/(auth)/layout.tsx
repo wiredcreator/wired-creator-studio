@@ -13,16 +13,7 @@ export default function AuthLayout({
       >
         {/* Logo at top */}
         <div className="relative z-10 p-10">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-white/90 shadow-md">
-              <svg className="h-4.5 w-4.5 text-[#2683EB]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
-              </svg>
-            </div>
-            <span className="text-[15px] font-semibold tracking-tight text-[#1a3a5c]">
-              studio
-            </span>
-          </div>
+          <Image src="/logo.png" alt="Wired Creator Studio" width={140} height={38} style={{ objectFit: 'contain' }} priority />
         </div>
 
         {/* Wired Creator text at bottom, above clouds */}
@@ -65,15 +56,8 @@ export default function AuthLayout({
       <div className="flex flex-1 items-center justify-center px-6" style={{ backgroundColor: '#FFFFFF', position: 'relative' }}>
         <div className="w-full max-w-[400px]">
           {/* Mobile logo */}
-          <div className="flex items-center gap-2.5 mb-10 lg:hidden">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-[#4A90D9]">
-              <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
-              </svg>
-            </div>
-            <span className="text-[15px] font-semibold tracking-tight text-[var(--color-text-primary)]">
-              Wired Studio
-            </span>
+          <div className="mb-10 lg:hidden">
+            <Image src="/logo.png" alt="Wired Creator Studio" width={130} height={34} style={{ objectFit: 'contain' }} priority />
           </div>
           {children}
         </div>

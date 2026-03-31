@@ -59,7 +59,6 @@ export default function ContentDNAQuestionnaire() {
   const [formData, setFormData] = useState<ContentDNAFormData>(INITIAL_FORM_DATA);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSkipping, setIsSkipping] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'forward' | 'back'>('forward');
 
@@ -121,51 +120,6 @@ export default function ContentDNAQuestionnaire() {
     }
   }, [formData]);
 
-  // DEV ONLY: Skip onboarding with placeholder data
-  const handleSkip = useCallback(async () => {
-    setIsSkipping(true);
-    setValidationMessage(null);
-
-    const placeholderData: ContentDNAFormData = {
-      yourStory: 'Test story about my journey',
-      winsAndMilestones: 'Test wins and milestones',
-      contentGoal: 'Test content goal',
-      offerAndContent: 'Test offer description',
-      goToPersonFor: 'Test go-to expertise',
-      talkWithoutPreparing: 'Test passionate topics',
-      audienceAndProblem: 'Test audience and problem',
-      uniquePerspective: 'Test unique perspective',
-      personalStories: 'Test personal stories',
-      knownForAndAgainst: 'Test known for and against',
-      contentHistory: 'Test content history',
-      timeAndEnergy: 'Test time and energy',
-      easyVsDraining: 'Test easy vs draining',
-      inspirations: [{ url: 'https://youtube.com/@test', note: 'Test note' }],
-      naturalFormat: 'Test format preference',
-      coreMessage: 'Test core message',
-    };
-
-    try {
-      const response = await fetch('/api/onboarding/content-dna', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(placeholderData),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setIsComplete(true);
-      } else {
-        setValidationMessage(result.message || 'Skip failed. Please try again.');
-      }
-    } catch {
-      setValidationMessage('Could not connect to the server. Please try again.');
-    } finally {
-      setIsSkipping(false);
-    }
-  }, []);
-
   // Success screen
   if (isComplete) {
     return (
@@ -221,22 +175,6 @@ export default function ContentDNAQuestionnaire() {
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      {/* DEV ONLY — remove before production */}
-      <div className="flex justify-end mb-3">
-        <button
-          type="button"
-          onClick={handleSkip}
-          disabled={isSkipping}
-          className="px-3 py-1.5 text-xs font-medium rounded border border-dashed transition-colors"
-          style={{
-            color: 'var(--color-text-muted)',
-            borderColor: 'var(--color-border)',
-          }}
-        >
-          {isSkipping ? 'Skipping...' : 'Skip (Dev)'}
-        </button>
-      </div>
-
       <ProgressBar currentStep={currentStep} totalSteps={TOTAL_STEPS} />
 
       {/* Step content with transition */}

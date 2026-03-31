@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 import dbConnect from '@/lib/db';
 import SideQuest from '@/models/SideQuest';
+import { createNotification } from '@/lib/notifications';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { parsePagination, paginationResponse } from '@/lib/pagination';
 import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
@@ -194,6 +195,14 @@ export async function POST(request: NextRequest) {
         completed: false,
       }))
     );
+
+    // Fire-and-forget notification that new side quests are available
+    createNotification({
+      userId,
+      type: 'quest_available',
+      title: 'New side quests available',
+      message: `${created.length} new side quest${created.length === 1 ? '' : 's'} are ready for you!`,
+    });
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

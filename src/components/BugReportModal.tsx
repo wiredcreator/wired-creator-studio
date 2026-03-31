@@ -203,12 +203,12 @@ export default function BugReportModal({ isOpen, onClose }: BugReportModalProps)
                     className={`flex-1 px-2 py-1.5 text-[12px] font-medium rounded-[var(--radius-md)] border transition-colors capitalize ${
                       severity === level
                         ? level === "critical"
-                          ? "bg-red-500/20 border-red-500/40 text-red-300"
+                          ? "bg-red-600 border-red-600 text-white"
                           : level === "high"
-                          ? "bg-orange-500/20 border-orange-500/40 text-orange-300"
+                          ? "bg-orange-600 border-orange-600 text-white"
                           : level === "medium"
-                          ? "bg-yellow-500/20 border-yellow-500/40 text-yellow-300"
-                          : "bg-blue-500/20 border-blue-500/40 text-blue-300"
+                          ? "bg-yellow-600 border-yellow-600 text-white"
+                          : "bg-blue-600 border-blue-600 text-white"
                         : "bg-[var(--color-bg-tertiary)] border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                     }`}
                   >

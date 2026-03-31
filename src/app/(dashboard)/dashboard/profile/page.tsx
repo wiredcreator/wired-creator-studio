@@ -6,7 +6,7 @@ import Link from 'next/link';
 import PageWrapper from '@/components/PageWrapper';
 import { useTheme } from '@/components/ThemeProvider';
 
-type SettingsTab = 'profile' | 'billing' | 'content-dna';
+type SettingsTab = 'profile' | 'content-dna';
 
 interface ProfileData {
   _id: string;
@@ -34,7 +34,6 @@ const TIMEZONES = [
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'profile', label: 'My Profile' },
-  { id: 'billing', label: 'Billing' },
   { id: 'content-dna', label: 'Content DNA' },
 ];
 
@@ -202,7 +201,6 @@ export default function SettingsPage() {
         />
       )}
 
-      {!loading && activeTab === 'billing' && <BillingTab />}
       {!loading && activeTab === 'content-dna' && <ContentDNATab />}
     </PageWrapper>
   );
@@ -396,15 +394,6 @@ function ProfileTab({
           </div>
         </div>
 
-        {/* Password placeholder */}
-        <div className="mt-5">
-          <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">
-            Password
-          </label>
-          <div className="h-11 flex items-center w-full rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-secondary)] px-3.5 text-sm text-[var(--color-text-secondary)]">
-            ••••••••
-          </div>
-        </div>
       </section>
 
       {/* About You */}

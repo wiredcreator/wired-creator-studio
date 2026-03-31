@@ -7,7 +7,6 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth;
-  const userRole = req.auth?.user?.role;
 
   // Protected routes: everything under /dashboard, /admin, and top-level app pages
   const isProtectedRoute =
@@ -21,7 +20,6 @@ export default auth((req) => {
     pathname.startsWith('/side-quests') ||
     pathname.startsWith('/brand-brain') ||
     pathname.startsWith('/brain-dump');
-  const isAdminRoute = pathname.startsWith('/admin');
   const isAuthRoute = pathname === '/login' || pathname === '/verify';
 
   // Redirect authenticated users away from auth pages (unless forced by signout param)
@@ -39,10 +37,9 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect non-admin users away from admin routes
-  if (isAdminRoute && isLoggedIn && userRole !== 'admin') {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
-  }
+  // Admin role check is handled by the admin layout (reads role from DB,
+  // so it's always up-to-date even if the JWT role is stale).
+  // The middleware only ensures the user is authenticated for admin routes.
 
   // Pass the pathname in a header so the layout can use it
   const response = NextResponse.next();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Script from '@/models/Script';
+import { createNotification, notifyAdmins } from '@/lib/notifications';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { validateObjectId } from '@/lib/validation';
 
@@ -110,6 +111,32 @@ export async function PUT(
     }
 
     await script.save();
+
+    // Fire-and-forget notifications on script status changes
+    if (body.status === 'review') {
+      // Student submitted for review, notify admins
+      notifyAdmins({
+        type: 'system',
+        title: 'Script submitted for review',
+        message: `A script was submitted for review: ${script.title}`,
+        relatedId: script._id.toString(),
+        relatedType: 'script',
+        excludeUserId: user.id,
+      });
+    } else if (body.status === 'approved') {
+      // Admin approved the script, notify the script owner
+      const scriptOwnerId = script.userId.toString();
+      if (scriptOwnerId !== user.id) {
+        createNotification({
+          userId: scriptOwnerId,
+          type: 'system',
+          title: 'Script approved',
+          message: `Your script "${script.title}" has been approved!`,
+          relatedId: script._id.toString(),
+          relatedType: 'script',
+        });
+      }
+    }
 
     return NextResponse.json(script);
   } catch (error) {

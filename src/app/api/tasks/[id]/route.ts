@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import Task from '@/models/Task';
-import Notification from '@/models/Notification';
-import User from '@/models/User';
+import { notifyAdmins } from '@/lib/notifications';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { validateObjectId } from '@/lib/validation';
 import { awardXP } from '@/lib/xp-service';
@@ -87,50 +86,28 @@ export async function PUT(
 
     // Fire-and-forget notifications to admins when a student flags stuck or requests more time
     if (body.stuck === true) {
-      (async () => {
-        try {
-          const adminUsers = await User.find({ role: 'admin' }).select('_id');
-          const notifyIds = new Set(adminUsers.map((a) => a._id.toString()));
-          // Also notify the assigner if they exist and aren't the current user
-          if (task.assignedBy) notifyIds.add(task.assignedBy.toString());
-          // Don't notify the user who triggered the action
-          notifyIds.delete(user.id);
-          const notifications = [...notifyIds].map((adminId) => ({
-            userId: adminId,
-            type: 'task_stuck' as const,
-            title: 'Student flagged a task as stuck',
-            message: `${user.name} flagged a task as stuck: ${task.title}`,
-            relatedId: task._id.toString(),
-            relatedType: 'task',
-          }));
-          if (notifications.length > 0) await Notification.insertMany(notifications);
-        } catch (err) {
-          console.error('[Notification] Failed to notify admins about stuck task:', err);
-        }
-      })();
+      notifyAdmins({
+        type: 'task_stuck',
+        title: 'Student flagged a task as stuck',
+        message: `${user.name} flagged a task as stuck: ${task.title}`,
+        relatedId: task._id.toString(),
+        relatedType: 'task',
+        excludeUserId: user.id,
+        alsoNotify: task.assignedBy ? [task.assignedBy.toString()] : [],
+      });
     }
 
     if (body.extensionDays !== undefined && Number(body.extensionDays) > 0) {
       const days = Number(body.extensionDays);
-      (async () => {
-        try {
-          const adminUsers = await User.find({ role: 'admin' }).select('_id');
-          const notifyIds = new Set(adminUsers.map((a) => a._id.toString()));
-          if (task.assignedBy) notifyIds.add(task.assignedBy.toString());
-          notifyIds.delete(user.id);
-          const notifications = [...notifyIds].map((adminId) => ({
-            userId: adminId,
-            type: 'extension_request' as const,
-            title: 'Student requested more time',
-            message: `${user.name} requested ${days} more day${days === 1 ? '' : 's'} on: ${task.title}`,
-            relatedId: task._id.toString(),
-            relatedType: 'task',
-          }));
-          if (notifications.length > 0) await Notification.insertMany(notifications);
-        } catch (err) {
-          console.error('[Notification] Failed to notify admins about extension request:', err);
-        }
-      })();
+      notifyAdmins({
+        type: 'extension_request',
+        title: 'Student requested more time',
+        message: `${user.name} requested ${days} more day${days === 1 ? '' : 's'} on: ${task.title}`,
+        relatedId: task._id.toString(),
+        relatedType: 'task',
+        excludeUserId: user.id,
+        alsoNotify: task.assignedBy ? [task.assignedBy.toString()] : [],
+      });
     }
 
     // Fire-and-forget XP award when task is completed

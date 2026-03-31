@@ -13,7 +13,7 @@ export async function sendPasswordResetEmail(to: string, resetToken: string): Pr
   const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
 
   if (!resend) {
-    console.log('RESEND_API_KEY not set — password reset URL:', resetUrl);
+    console.warn('[Email] RESEND_API_KEY not configured, password reset email not sent');
     return false;
   }
 
@@ -41,7 +41,7 @@ export async function sendVerificationEmail(to: string, verificationToken: strin
   const verifyUrl = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${verificationToken}`;
 
   if (!resend) {
-    console.log('RESEND_API_KEY not set — verification URL:', verifyUrl);
+    console.warn('[Email] RESEND_API_KEY not configured, verification email not sent');
     return false;
   }
 
@@ -73,7 +73,7 @@ export async function sendLoginLinkEmail(
   const loginUrl = `${process.env.NEXTAUTH_URL}/verify?token=${token}`;
 
   if (!resend) {
-    console.log('[Auth] RESEND_API_KEY not set — login link URL:', loginUrl);
+    console.warn('[Email] RESEND_API_KEY not configured, login link email not sent');
     return false;
   }
 

@@ -22,6 +22,11 @@ export default async function AdminLayout({
     redirect('/login?signout=1');
   }
 
+  // Role check against DB (not JWT) so it's always up-to-date
+  if (dbUser.role !== 'admin') {
+    redirect('/dashboard');
+  }
+
   const userName = dbUser.name || session.user.name || 'User';
 
   return (

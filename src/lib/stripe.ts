@@ -64,7 +64,7 @@ export async function checkPaidCustomer(
 
     // Check successful charges (covers manual/dashboard payments and GHL)
     const charges = await stripe.charges.list({ customer: customer.id, limit: 10 });
-    console.log(`[Stripe] Customer ${customer.id}: ${paymentIntents.data.length} PaymentIntents, ${charges.data.length} Charges`);
+    // Payment lookup complete; counts used for decision below
     const hasSuccessfulCharge = charges.data.some((ch) => ch.status === 'succeeded');
     if (hasSuccessfulCharge) {
       return { isPaid: true, customerId: customer.id, customerName: customer.name || undefined, reason: 'successful charge' };

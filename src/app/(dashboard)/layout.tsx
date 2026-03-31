@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
+import { checkPaidCustomer } from '@/lib/stripe';
 import Sidebar from '@/components/Sidebar';
 import BrainDumpFAB from '@/components/BrainDumpFAB';
 import DashboardHeader from '@/components/DashboardHeader';
@@ -41,6 +42,40 @@ export default async function DashboardLayout({
 
   if (!personalBaselineCompleted) {
     redirect('/onboarding/personal-baseline');
+  }
+
+  // Access gating (admins always bypass)
+  if (userRole !== 'admin') {
+    const accessStatus = dbUser.accessStatus || 'none';
+    const accessExpiresAt = dbUser.accessExpiresAt || null;
+
+    const isExpiredByDate = accessExpiresAt && new Date(accessExpiresAt) < new Date();
+    const isBlockedStatus = accessStatus === 'canceled' || accessStatus === 'expired';
+    const isNoneStatus = accessStatus === 'none';
+
+    if (isExpiredByDate || isBlockedStatus) {
+      redirect('/access-expired');
+    }
+
+    if (isNoneStatus) {
+      // Fallback: check Stripe in real-time in case payment happened but webhook hasn't fired
+      const stripeResult = await checkPaidCustomer(dbUser.email);
+      if (stripeResult.isPaid) {
+        // Update user access status so future requests skip this check
+        const inferredTier = stripeResult.reason === 'active subscription'
+          ? 'monthly'
+          : (stripeResult.reason === 'one-time payment' || stripeResult.reason === 'successful charge')
+            ? 'full_program'
+            : 'none';
+        await User.findByIdAndUpdate(session.user.id, {
+          accessStatus: 'active',
+          ...(inferredTier !== 'none' ? { subscriptionTier: inferredTier } : {}),
+        });
+      } else {
+        redirect('/access-expired');
+      }
+    }
+    // 'past_due' and 'active' pass through without redirect
   }
 
   return (

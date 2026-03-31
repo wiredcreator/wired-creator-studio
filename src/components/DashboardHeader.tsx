@@ -38,7 +38,7 @@ export default function DashboardHeader() {
         flexShrink: 0,
       }}
     >
-      {/* Left: Search bar */}
+      {/* Left: Search bar (hidden for now, re-enable when search is functional)
       <div style={{ flex: 1, maxWidth: 400 }}>
         <div
           style={{
@@ -81,6 +81,8 @@ export default function DashboardHeader() {
           />
         </div>
       </div>
+      */}
+      <div style={{ flex: 1 }} />
 
       {/* Right: XP + Notifications */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

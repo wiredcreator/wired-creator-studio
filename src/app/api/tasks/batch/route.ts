@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Task from '@/models/Task';
+import { createNotifications } from '@/lib/notifications';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
 export async function POST(request: NextRequest) {
@@ -58,6 +59,18 @@ export async function POST(request: NextRequest) {
         dayOfWeek: t.dayOfWeek,
         order: t.order || 0,
         embeddedVideoUrl: t.videoUrl || undefined,
+      }))
+    );
+
+    // Fire-and-forget notifications to assigned students
+    createNotifications(
+      created.map((t) => ({
+        userId: String(t.userId),
+        type: 'task_assigned' as const,
+        title: 'New task assigned',
+        message: `You were assigned a new task: ${t.title}`,
+        relatedId: t._id.toString(),
+        relatedType: 'task',
       }))
     );
 

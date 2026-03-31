@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import { useTheme } from "./ThemeProvider";
@@ -65,15 +66,8 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
   return (
     <aside style={{ width: 200, display: 'flex', flexDirection: 'column', height: '100vh', padding: '24px 16px', overflowY: 'auto' }}>
       {/* Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 8, paddingRight: 8, marginBottom: 32 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 12, backgroundColor: ACCENT[t], display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }}>
-          <svg style={{ width: 16, height: 16, color: 'white' }} viewBox="0 0 24 24" fill="currentColor">
-            <path d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
-          </svg>
-        </div>
-        <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.02em', color: TEXT_PRI[t] }}>
-          studio
-        </span>
+      <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, marginBottom: 32 }}>
+        <Image src="/logo.png" alt="Wired Creator Studio" width={120} height={32} style={{ objectFit: 'contain', filter: t === 'dark' ? 'brightness(1.8)' : 'none' }} priority />
         <span style={{
           fontSize: 10,
           fontWeight: 600,
@@ -83,6 +77,7 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
           backgroundColor: t === 'light' ? 'rgba(74,144,217,0.12)' : 'rgba(212,168,67,0.15)',
           padding: '2px 6px',
           borderRadius: 6,
+          marginLeft: 6,
         }}>
           Admin
         </span>

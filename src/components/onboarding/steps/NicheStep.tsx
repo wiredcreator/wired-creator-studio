@@ -71,7 +71,7 @@ export default function NicheStep({ data, onChange }: YourStoriesStepProps) {
           id="knownForAndAgainst"
           value={data.knownForAndAgainst}
           onChange={(e) => onChange({ knownForAndAgainst: e.target.value })}
-          placeholder="Known FOR: ...\nKnown AGAINST: ..."
+          placeholder={"Known FOR: ...\nKnown AGAINST: ..."}
           rows={6}
           className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none"
           style={{

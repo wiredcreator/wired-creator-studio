@@ -29,18 +29,25 @@ export async function POST(req: NextRequest) {
     // Check Stripe (skipped for admins)
     let customerName = '';
     let customerId = '';
+    let stripeReason = '';
     if (!isAdmin) {
       const stripeResult = await checkPaidCustomer(normalizedEmail);
       if (!stripeResult.isPaid) {
-        console.log(`[MagicLink] Rejected: ${normalizedEmail} — ${stripeResult.reason}`);
         return NextResponse.json({ message: RESPONSE_MESSAGE });
       }
-      console.log(`[MagicLink] Verified: ${normalizedEmail} — ${stripeResult.reason} (${stripeResult.customerId})`);
       customerName = stripeResult.customerName || '';
       customerId = stripeResult.customerId || '';
+      stripeReason = stripeResult.reason || '';
     } else {
-      console.log(`[MagicLink] Admin bypass: ${normalizedEmail} skipped Stripe check`);
+      // Admin bypass: skip Stripe check
     }
+
+    // Infer subscription tier from Stripe reason
+    const inferredTier = stripeReason === 'active subscription'
+      ? 'monthly'
+      : (stripeReason === 'one-time payment' || stripeReason === 'successful charge')
+        ? 'full_program'
+        : undefined;
 
     // Generate token
     const plainToken = crypto.randomBytes(32).toString('hex');
@@ -52,6 +59,13 @@ export async function POST(req: NextRequest) {
       existingUser.magicLinkExpires = expires;
       if (customerId && !existingUser.stripeCustomerId) {
         existingUser.stripeCustomerId = customerId;
+      }
+      // Set access fields when Stripe confirms payment
+      if (!isAdmin && inferredTier) {
+        existingUser.accessStatus = 'active';
+        if (existingUser.subscriptionTier === 'none') {
+          existingUser.subscriptionTier = inferredTier;
+        }
       }
       await existingUser.save();
       await sendLoginLinkEmail(normalizedEmail, existingUser.name, plainToken);
@@ -66,6 +80,8 @@ export async function POST(req: NextRequest) {
         magicLinkToken: hashedToken,
         magicLinkExpires: expires,
         stripeCustomerId: customerId,
+        subscriptionTier: inferredTier || 'none',
+        accessStatus: inferredTier ? 'active' : 'none',
         emailVerified: false,
         onboardingCompleted: false,
         personalBaselineCompleted: false,

@@ -32,7 +32,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           try {
             await dbConnect();
             const dbUser = await User.findById(token.id)
-              .select('passwordChangedAt')
+              .select('passwordChangedAt role')
               .lean();
 
             if (!dbUser) {
@@ -48,6 +48,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 // Password changed after token was issued — invalidate
                 return null;
               }
+            }
+
+            // Keep role in sync with DB (e.g. admin promotion)
+            if (dbUser.role && dbUser.role !== token.role) {
+              token.role = dbUser.role;
             }
 
             token.lastPasswordCheck = now;

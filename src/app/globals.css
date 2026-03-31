@@ -91,6 +91,13 @@
   --shadow-glow: 0 0 20px rgba(74, 144, 217, 0.15);
 }
 
+/* ── Placeholder text ── */
+textarea::placeholder,
+input::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 1;
+}
+
 /* ── Base Styles ── */
 
 * {
