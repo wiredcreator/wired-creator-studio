@@ -13,47 +13,8 @@
   --radius-full: 9999px;
 }
 
-/* ── Dark Theme (default) ── */
+/* ── Light Theme (default) ── */
 :root {
-  --color-bg: #0C0D12;
-  --color-bg-primary: #0C0D12;
-  --color-bg-secondary: #131520;
-  --color-bg-card: #161823;
-  --color-bg-sidebar: #0A0B10;
-  --color-bg-elevated: #1C1E2E;
-  --color-bg-dark: #080910;
-
-  --color-text: #E4E4E7;
-  --color-text-primary: #E4E4E7;
-  --color-text-secondary: #8B8D9E;
-  --color-text-muted: #555770;
-  --color-text-inverse: #0C0D12;
-
-  --color-accent: #D4A843;
-  --color-accent-hover: #E0B94F;
-  --color-accent-light: rgba(212, 168, 67, 0.12);
-  --color-accent-subtle: rgba(212, 168, 67, 0.06);
-
-  --color-success: #3ECF8E;
-  --color-success-light: rgba(62, 207, 142, 0.12);
-  --color-warning: #F0B429;
-  --color-warning-light: rgba(240, 180, 41, 0.12);
-  --color-error: #EF4444;
-  --color-error-light: rgba(239, 68, 68, 0.12);
-
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-light: rgba(255, 255, 255, 0.04);
-
-  --color-hover: rgba(255, 255, 255, 0.04);
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(212, 168, 67, 0.15);
-}
-
-/* ── Light Theme ── */
-[data-theme="light"] {
   --color-bg: #E8ECF4;
   --color-bg-primary: #E8ECF4;
   --color-bg-secondary: #DFE4EF;
@@ -91,6 +52,45 @@
   --shadow-glow: 0 0 20px rgba(74, 144, 217, 0.15);
 }
 
+/* ── Dark Theme ── */
+[data-theme="dark"] {
+  --color-bg: #0C0D12;
+  --color-bg-primary: #0C0D12;
+  --color-bg-secondary: #131520;
+  --color-bg-card: #161823;
+  --color-bg-sidebar: #0A0B10;
+  --color-bg-elevated: #1C1E2E;
+  --color-bg-dark: #080910;
+
+  --color-text: #E4E4E7;
+  --color-text-primary: #E4E4E7;
+  --color-text-secondary: #8B8D9E;
+  --color-text-muted: #555770;
+  --color-text-inverse: #0C0D12;
+
+  --color-accent: #D4A843;
+  --color-accent-hover: #E0B94F;
+  --color-accent-light: rgba(212, 168, 67, 0.12);
+  --color-accent-subtle: rgba(212, 168, 67, 0.06);
+
+  --color-success: #3ECF8E;
+  --color-success-light: rgba(62, 207, 142, 0.12);
+  --color-warning: #F0B429;
+  --color-warning-light: rgba(240, 180, 41, 0.12);
+  --color-error: #EF4444;
+  --color-error-light: rgba(239, 68, 68, 0.12);
+
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-light: rgba(255, 255, 255, 0.04);
+
+  --color-hover: rgba(255, 255, 255, 0.04);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(212, 168, 67, 0.15);
+}
+
 /* ── Placeholder text ── */
 textarea::placeholder,
 input::placeholder {
@@ -102,11 +102,11 @@ input::placeholder {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.08) transparent;
+  scrollbar-color: rgba(0,0,0,0.12) transparent;
 }
 
-[data-theme="light"] * {
-  scrollbar-color: rgba(0,0,0,0.12) transparent;
+[data-theme="dark"] * {
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
 }
 
 button,
@@ -156,20 +156,20 @@ h1, h2 {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.12);
   border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
-}
-
-[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* ── Noise texture overlay ── */
@@ -215,13 +215,13 @@ body::before {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.03) 50%, transparent 75%);
+  background: linear-gradient(90deg, transparent 25%, rgba(0,0,0,0.03) 50%, transparent 75%);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
 
-[data-theme="light"] .animate-shimmer {
-  background: linear-gradient(90deg, transparent 25%, rgba(0,0,0,0.03) 50%, transparent 75%);
+[data-theme="dark"] .animate-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.03) 50%, transparent 75%);
   background-size: 200% 100%;
 }
 
