@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 import dbConnect from '@/lib/db';
 import ContentDNAResponse from '@/models/ContentDNAResponse';
 import BrandBrain from '@/models/BrandBrain';
@@ -91,6 +92,9 @@ function buildResponses(data: ContentDNAPayload) {
 
 export async function POST(request: NextRequest) {
   try {
+    const rl = aiLimiter.check(getRateLimitKey(request, 'onboarding-content-dna'));
+    if (!rl.success) return rateLimitResponse(rl.resetIn);
+
     // Authenticate the user
     const authResult = await getAuthenticatedUser();
     if (authResult instanceof NextResponse) {

@@ -904,6 +904,16 @@ function OutlineStep({
     onMarkChanged();
   };
 
+  // Escape HTML entities to prevent XSS in rendered outline
+  function escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   // Simple markdown-to-HTML renderer for legacy outlines
   const renderedOutline = useMemo(() => {
     if (hasStructuredSections || !outline.trim()) return '';
@@ -923,27 +933,27 @@ function OutlineStep({
       if (!trimmed) {
         htmlLines.push('<div class="h-3"></div>');
       } else if (trimmed.startsWith('## ')) {
-        htmlLines.push(`<h2 class="text-lg font-semibold text-[var(--color-text-primary)] mt-5 mb-2">${trimmed.slice(3)}</h2>`);
+        htmlLines.push(`<h2 class="text-lg font-semibold text-[var(--color-text-primary)] mt-5 mb-2">${escapeHtml(trimmed.slice(3))}</h2>`);
       } else if (trimmed.startsWith('# ')) {
-        htmlLines.push(`<h1 class="text-xl font-bold text-[var(--color-text-primary)] mt-5 mb-2">${trimmed.slice(2)}</h1>`);
+        htmlLines.push(`<h1 class="text-xl font-bold text-[var(--color-text-primary)] mt-5 mb-2">${escapeHtml(trimmed.slice(2))}</h1>`);
       } else if (trimmed.startsWith('### ')) {
-        htmlLines.push(`<h3 class="text-base font-semibold text-[var(--color-text-primary)] mt-4 mb-1.5">${trimmed.slice(4)}</h3>`);
+        htmlLines.push(`<h3 class="text-base font-semibold text-[var(--color-text-primary)] mt-4 mb-1.5">${escapeHtml(trimmed.slice(4))}</h3>`);
       } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
         if (!inList) {
           htmlLines.push('<ul class="space-y-1.5 ml-1">');
           inList = true;
         }
-        const content = trimmed.slice(2).replace(/\*\*(.+?)\*\*/g, '<strong class="text-[var(--color-text-primary)]">$1</strong>');
+        const content = escapeHtml(trimmed.slice(2)).replace(/\*\*(.+?)\*\*/g, '<strong class="text-[var(--color-text-primary)]">$1</strong>');
         htmlLines.push(`<li class="flex gap-2 text-sm text-[var(--color-text-secondary)]"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-accent)]"></span><span>${content}</span></li>`);
       } else if (trimmed.match(/^\d+\.\s/)) {
         if (!inList) {
           htmlLines.push('<ul class="space-y-1.5 ml-1">');
           inList = true;
         }
-        const content = trimmed.replace(/^\d+\.\s/, '').replace(/\*\*(.+?)\*\*/g, '<strong class="text-[var(--color-text-primary)]">$1</strong>');
+        const content = escapeHtml(trimmed.replace(/^\d+\.\s/, '')).replace(/\*\*(.+?)\*\*/g, '<strong class="text-[var(--color-text-primary)]">$1</strong>');
         htmlLines.push(`<li class="flex gap-2 text-sm text-[var(--color-text-secondary)]"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-accent)]"></span><span>${content}</span></li>`);
       } else {
-        const content = trimmed.replace(/\*\*(.+?)\*\*/g, '<strong class="text-[var(--color-text-primary)]">$1</strong>');
+        const content = escapeHtml(trimmed).replace(/\*\*(.+?)\*\*/g, '<strong class="text-[var(--color-text-primary)]">$1</strong>');
         htmlLines.push(`<p class="text-sm text-[var(--color-text-secondary)] leading-relaxed">${content}</p>`);
       }
     }

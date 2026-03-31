@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 import dbConnect from '@/lib/db';
 import PersonalBaseline from '@/models/PersonalBaseline';
 import ContentDNAResponse from '@/models/ContentDNAResponse';
@@ -54,6 +55,9 @@ const STATE_TO_TIMEZONE: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   try {
+    const rl = aiLimiter.check(getRateLimitKey(request, 'onboarding-personal-baseline'));
+    if (!rl.success) return rateLimitResponse(rl.resetIn);
+
     const authResult = await getAuthenticatedUser();
     if (authResult instanceof NextResponse) {
       return authResult;

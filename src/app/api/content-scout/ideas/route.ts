@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 import dbConnect from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib/ai/client';
@@ -14,6 +15,9 @@ interface GeneratedScoutIdea {
 // POST /api/content-scout/ideas — Generate ideas from a trending video
 export async function POST(request: NextRequest) {
   try {
+    const rl = aiLimiter.check(getRateLimitKey(request, 'content-scout-ideas'));
+    if (!rl.success) return rateLimitResponse(rl.resetIn);
+
     const authResult = await getAuthenticatedUser();
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;

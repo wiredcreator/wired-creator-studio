@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import OpenAI from 'openai';
 
 export async function POST(request: NextRequest) {
   try {
+    const rl = aiLimiter.check(getRateLimitKey(request, 'voice-transcribe'));
+    if (!rl.success) return rateLimitResponse(rl.resetIn);
+
     const authResult = await getAuthenticatedUser();
     if (authResult instanceof NextResponse) return authResult;
 
