@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -892,8 +892,18 @@ export default function ContentScout({ userId }: { userId: string }) {
   const [sources, setSources] = useState<ScoutSource[]>([]);
   const [candidates, setCandidates] = useState<DiscoveredCandidate[]>([]);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const [recencyDays, setRecencyDays] = useState<7 | 14>(14);
 
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  // --- Filter videos by recency ---
+  const filteredVideos = useMemo(() => {
+    const cutoff = Date.now() - recencyDays * 24 * 60 * 60 * 1000;
+    return videos.filter((v) => {
+      if (!v.publishedAt) return true;
+      return new Date(v.publishedAt).getTime() >= cutoff;
+    });
+  }, [videos, recencyDays]);
 
   // --- Fetch Content Scout data ---
   const fetchScoutData = useCallback(async () => {
@@ -1127,19 +1137,39 @@ export default function ContentScout({ userId }: { userId: string }) {
       {/* TOP SECTION: Top Videos In My Niche                          */}
       {/* ============================================================ */}
       <div className="mb-8">
-        <div className="mb-4">
-          <h3 className="text-base font-bold text-[var(--color-text-primary)]">
-            Top Videos In My Niche
-          </h3>
-          <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-            Trending content from creators in your space this week
-            {generatedAt && (
-              <> &middot; Last generated: {relativeTime(generatedAt)}</>
-            )}
-          </p>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold text-[var(--color-text-primary)]">
+              Top Videos In My Niche
+            </h3>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+              Trending content from creators in your space
+              {generatedAt && (
+                <> &middot; Last generated: {relativeTime(generatedAt)}</>
+              )}
+            </p>
+          </div>
+
+          {/* Recency toggle */}
+          <div className="flex flex-shrink-0 items-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-0.5">
+            {([7, 14] as const).map((days) => (
+              <button
+                key={days}
+                type="button"
+                onClick={() => setRecencyDays(days)}
+                className="rounded-full px-3 py-1 text-xs font-medium outline-none ring-0 transition-all duration-150"
+                style={{
+                  backgroundColor: recencyDays === days ? 'var(--color-accent)' : 'transparent',
+                  color: recencyDays === days ? 'var(--color-bg-dark)' : 'var(--color-text-secondary)',
+                }}
+              >
+                {days}d
+              </button>
+            ))}
+          </div>
         </div>
 
-        {videos.length > 0 ? (
+        {filteredVideos.length > 0 ? (
           <div className="relative">
             {/* Left arrow */}
             <CarouselArrow direction="left" onClick={() => scrollCarousel('left')} />
@@ -1153,7 +1183,7 @@ export default function ContentScout({ userId }: { userId: string }) {
                 msOverflowStyle: 'none',
               }}
             >
-              {videos.map((video) => (
+              {filteredVideos.map((video) => (
                 <VideoCard
                   key={video.videoId}
                   video={video}
@@ -1168,7 +1198,9 @@ export default function ContentScout({ userId }: { userId: string }) {
         ) : (
           <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 text-center">
             <p className="text-sm text-[var(--color-text-muted)]">
-              No trending videos found yet. Try regenerating.
+              {videos.length > 0
+                ? `No videos found in the last ${recencyDays} days. Try switching to ${recencyDays === 7 ? '14' : '7'} days.`
+                : 'No trending videos found yet. Try regenerating.'}
             </p>
           </div>
         )}

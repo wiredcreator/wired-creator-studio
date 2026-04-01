@@ -8,10 +8,15 @@ import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib
 import { trackAIUsage } from '@/lib/ai/usage-tracker';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const authResult = await getAuthenticatedUser();
     if (authResult instanceof NextResponse) return authResult;
+
+    const { searchParams } = new URL(request.url);
+    const count = Math.min(Math.max(parseInt(searchParams.get('count') || '3', 10), 1), 5);
+    const excludeRaw = searchParams.get('exclude') || '';
+    const excludePrompts = excludeRaw ? excludeRaw.split('||').filter(Boolean) : [];
 
     await dbConnect();
 
@@ -54,11 +59,11 @@ export async function GET() {
     const response = await client.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1024,
-      system: 'You generate personalized thought-provoking questions to help creators start voice storming sessions. Return ONLY a JSON array of 3 question strings. Each question should be specific to the creator\'s niche and goals, open-ended, and designed to unlock stories, insights, or content ideas. Avoid generic questions — reference their industry, pillars, or goals directly. Never repeat topics from their recent sessions.',
+      system: `You generate personalized thought-provoking questions to help creators start voice storming sessions. Return ONLY a JSON array of exactly ${count} question string${count === 1 ? '' : 's'}. Each question should be specific to the creator's niche and goals, open-ended, and designed to unlock stories, insights, or content ideas. Avoid generic questions - reference their industry, pillars, or goals directly. Never repeat topics from their recent sessions.`,
       messages: [
         {
           role: 'user',
-          content: `Generate 3 personalized voice storming prompts for a creator in the "${industry}" space.
+          content: `Generate ${count} personalized voice storming prompt${count === 1 ? '' : 's'} for a creator in the "${industry}" space.
 
 Content pillars: ${pillars.length > 0 ? pillars.join(', ') : 'not yet defined'}
 
@@ -69,7 +74,11 @@ ${recentTopics.length > 0
   ? `Recent session topics (DO NOT repeat these): ${recentTopics.join(' | ')}`
   : ''}
 
-Make the prompts conversational, specific to their niche, and easy to riff on. Each prompt should unlock a different angle: one about recent experiences, one about audience questions or pain points, and one about a lesson or shift in perspective.`,
+${excludePrompts.length > 0
+  ? `Previously shown prompts (DO NOT repeat or paraphrase these): ${excludePrompts.join(' | ')}`
+  : ''}
+
+Make the prompts conversational, specific to their niche, and easy to riff on.${count >= 3 ? ' Each prompt should unlock a different angle: one about recent experiences, one about audience questions or pain points, and one about a lesson or shift in perspective.' : ''}`,
         },
       ],
     });

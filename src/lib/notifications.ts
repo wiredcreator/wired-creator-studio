@@ -11,7 +11,8 @@ export type NotificationType =
   | 'xp_earned'
   | 'system'
   | 'task_stuck'
-  | 'extension_request';
+  | 'extension_request'
+  | 'coach_message';
 
 export interface NotificationInput {
   userId: string;

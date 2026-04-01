@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PageWrapper from '@/components/PageWrapper';
 import IdeaCard from '@/components/ideas/IdeaCard';
@@ -146,6 +146,14 @@ export default function IdeasPage() {
   const [manualDescription, setManualDescription] = useState('');
   const [manualPillar, setManualPillar] = useState('');
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+
+  // Voice recording
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Animation
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
@@ -411,6 +419,72 @@ export default function IdeasPage() {
     }
   };
 
+  // --- Voice recording ---
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        stream.getTracks().forEach((t) => t.stop());
+
+        setIsTranscribing(true);
+        try {
+          const formData = new FormData();
+          formData.append('audio', blob, 'recording.webm');
+          const res = await fetch('/api/voice-storming/transcribe', {
+            method: 'POST',
+            body: formData,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.text) {
+              setManualTitle((prev) => (prev ? prev + ' ' + data.text : data.text));
+            }
+          }
+        } catch (err) {
+          console.error('Transcription failed:', err);
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+    } catch {
+      alert('Could not access microphone. Please allow microphone access.');
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  const formatRecordingTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   // --- Computed / filtered ideas ---
   const filteredIdeas = useMemo(() => {
     let result = ideas;
@@ -557,14 +631,54 @@ export default function IdeasPage() {
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
-                  title="Voice input"
+                  onClick={toggleRecording}
+                  disabled={isTranscribing}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
+                    isRecording
+                      ? 'text-red-500 animate-pulse'
+                      : isTranscribing
+                        ? 'text-[var(--color-accent)] opacity-60'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                  }`}
+                  title={isRecording ? 'Stop recording' : isTranscribing ? 'Transcribing...' : 'Voice input'}
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
-                  </svg>
+                  {isRecording ? (
+                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                      <rect x="6" y="6" width="12" height="12" rx="2" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                    </svg>
+                  )}
                 </button>
               </div>
+
+              {/* Recording indicator */}
+              {isRecording && (
+                <div className="flex items-center gap-2 text-xs text-red-400">
+                  <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                  <span>Recording: {formatRecordingTime(recordingTime)}</span>
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="ml-1 rounded-[var(--radius-sm)] border border-red-500/40 px-2 py-0.5 text-xs text-red-400 transition-colors hover:bg-red-500/10"
+                  >
+                    Stop
+                  </button>
+                </div>
+              )}
+
+              {/* Transcribing indicator */}
+              {isTranscribing && (
+                <div className="flex items-center gap-2 text-xs text-[var(--color-accent)]">
+                  <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span>Transcribing audio...</span>
+                </div>
+              )}
 
               <select
                 value={manualPillar}
@@ -580,7 +694,7 @@ export default function IdeasPage() {
               </select>
 
               <p className="text-xs text-[var(--color-text-muted)]">
-                Type your idea or click 🎙 to speak it — press ↵ Enter to save
+                Type your idea or tap the mic to speak it. Press Enter to save.
               </p>
 
               <button

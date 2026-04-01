@@ -253,6 +253,13 @@ body::before {
 .idea-detail-enter { animation: ideaDetailEnter 0.25s ease-out; }
 .idea-approve-flash { animation: approveFlash 0.5s ease-out; }
 
+/* ── Timer nudge animation (gentle, no-shame pulse) ── */
+@keyframes timerNudge {
+  0%, 100% { border-color: var(--color-warning); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+  50% { box-shadow: 0 0 8px 0 rgba(234, 179, 8, 0.15); }
+}
+.animate-timer-nudge { animation: timerNudge 2.5s ease-in-out infinite; }
+
 /* ── Scrollbar hide utility ── */
 .scrollbar-hide {
   -ms-overflow-style: none;

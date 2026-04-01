@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Types } from 'mongoose';
 import dbConnect from '@/lib/db';
 import Task from '@/models/Task';
-import { createNotification } from '@/lib/notifications';
+import { createNotification, createNotifications } from '@/lib/notifications';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { validateObjectId } from '@/lib/validation';
 
@@ -47,19 +47,37 @@ export async function POST(
 
     await task.save();
 
-    // Fire-and-forget notification to the other party on this task
-    const notifyUserId = task.userId.toString() === user.id
-      ? task.assignedBy?.toString()  // Student commented, notify admin
-      : task.userId.toString();       // Admin commented, notify student
-    if (notifyUserId && notifyUserId !== user.id) {
-      createNotification({
-        userId: notifyUserId,
-        type: 'comment_reply',
-        title: `New comment on "${task.title}"`,
-        message: text.length > 100 ? text.slice(0, 100) + '...' : text,
-        relatedId: task._id.toString(),
-        relatedType: 'task',
-      });
+    // Fire-and-forget notifications:
+    // Notify the task owner, the task assigner, and all previous commenters
+    // (excluding the person who just posted the comment)
+    const recipientSet = new Set<string>();
+
+    // Always include task owner and assigner
+    recipientSet.add(task.userId.toString());
+    if (task.assignedBy) {
+      recipientSet.add(task.assignedBy.toString());
+    }
+
+    // Include all previous commenters in the thread
+    for (const comment of task.comments) {
+      recipientSet.add(comment.userId.toString());
+    }
+
+    // Remove the commenter themselves
+    recipientSet.delete(user.id);
+
+    if (recipientSet.size > 0) {
+      const truncatedText = text.length > 100 ? text.slice(0, 100) + '...' : text;
+      createNotifications(
+        [...recipientSet].map((uid) => ({
+          userId: uid,
+          type: 'comment_reply' as const,
+          title: `New comment on "${task.title}"`,
+          message: truncatedText,
+          relatedId: task._id.toString(),
+          relatedType: 'task',
+        }))
+      );
     }
 
     // Re-fetch with populated comment user info

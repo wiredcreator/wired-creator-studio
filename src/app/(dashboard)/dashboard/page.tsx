@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import StatCard from "@/components/dashboard/StatCard";
 import XPStreakCard from "@/components/dashboard/XPStreakCard";
 import WeeklyProgress from "@/components/dashboard/WeeklyProgress";
+import ProgressWidget from "@/components/dashboard/ProgressWidget";
+import XPBreakdown from "@/components/dashboard/XPBreakdown";
 
 interface DashboardStats {
   tasks: number;
@@ -131,7 +133,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Progress + XP/Streaks Row */}
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="mb-6 grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <WeeklyProgress />
           </div>
@@ -142,6 +144,16 @@ export default function DashboardPage() {
               bestStreak={xp.bestStreak}
             />
           </div>
+        </div>
+
+        {/* Activity Overview (weekly/monthly progress) */}
+        <div className="mb-6">
+          <ProgressWidget />
+        </div>
+
+        {/* XP Breakdown by Activity Type */}
+        <div className="mb-6">
+          <XPBreakdown />
         </div>
       </div>
     </div>

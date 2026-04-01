@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { SideQuestType } from '@/models/SideQuest';
 
 // ---------------------------------------------------------------------------
@@ -61,6 +61,174 @@ const TYPE_ICONS: Record<SideQuestType, React.ReactNode> = {
     </svg>
   ),
 };
+
+// ---------------------------------------------------------------------------
+// Countdown Timer
+// ---------------------------------------------------------------------------
+
+type TimerStatus = 'idle' | 'running' | 'paused' | 'finished';
+
+function CountdownTimer({ minutes }: { minutes: number }) {
+  const [status, setStatus] = useState<TimerStatus>('idle');
+  const [secondsLeft, setSecondsLeft] = useState(minutes * 60);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearTimer = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => clearTimer();
+  }, [clearTimer]);
+
+  const startTimer = () => {
+    if (status === 'idle') {
+      setSecondsLeft(minutes * 60);
+    }
+    setStatus('running');
+    clearTimer();
+    intervalRef.current = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearTimer();
+          setStatus('finished');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const pauseTimer = () => {
+    clearTimer();
+    setStatus('paused');
+  };
+
+  const resetTimer = () => {
+    clearTimer();
+    setSecondsLeft(minutes * 60);
+    setStatus('idle');
+  };
+
+  const mins = Math.floor(secondsLeft / 60);
+  const secs = secondsLeft % 60;
+  const display = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  const progress = 1 - secondsLeft / (minutes * 60);
+
+  if (status === 'idle') {
+    return (
+      <button
+        type="button"
+        onClick={startTimer}
+        className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+      >
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+        Start Timer ({minutes} min)
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className={`inline-flex items-center gap-3 rounded-[var(--radius-md)] border px-3 py-2 transition-all ${
+        status === 'finished'
+          ? 'animate-timer-nudge border-[var(--color-warning)] bg-[var(--color-bg-secondary)]'
+          : 'border-[var(--color-border)] bg-[var(--color-bg-secondary)]'
+      }`}
+    >
+      {/* Circular progress indicator */}
+      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center">
+        <svg className="h-8 w-8 -rotate-90" viewBox="0 0 32 32">
+          <circle
+            cx="16"
+            cy="16"
+            r="13"
+            fill="none"
+            stroke="var(--color-border)"
+            strokeWidth="2.5"
+          />
+          <circle
+            cx="16"
+            cy="16"
+            r="13"
+            fill="none"
+            stroke={status === 'finished' ? 'var(--color-warning)' : 'var(--color-accent)'}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeDasharray={`${2 * Math.PI * 13}`}
+            strokeDashoffset={`${2 * Math.PI * 13 * (1 - progress)}`}
+            className="transition-[stroke-dashoffset] duration-1000 ease-linear"
+          />
+        </svg>
+      </div>
+
+      {/* Time display */}
+      <span
+        className={`font-mono text-base font-semibold tabular-nums ${
+          status === 'finished'
+            ? 'text-[var(--color-warning)]'
+            : 'text-[var(--color-text-primary)]'
+        }`}
+      >
+        {display}
+      </span>
+
+      {/* Finished message */}
+      {status === 'finished' && (
+        <span className="text-xs text-[var(--color-warning)]">
+          Time is up! No rush, finish when you are ready.
+        </span>
+      )}
+
+      {/* Controls */}
+      <div className="flex items-center gap-1">
+        {status === 'running' && (
+          <button
+            type="button"
+            onClick={pauseTimer}
+            className="rounded-[var(--radius-sm)] p-1 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+            title="Pause timer"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+            </svg>
+          </button>
+        )}
+
+        {status === 'paused' && (
+          <button
+            type="button"
+            onClick={startTimer}
+            className="rounded-[var(--radius-sm)] p-1 text-[var(--color-accent)] transition-colors hover:text-[var(--color-text-primary)]"
+            title="Resume timer"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+            </svg>
+          </button>
+        )}
+
+        {(status === 'paused' || status === 'finished') && (
+          <button
+            type="button"
+            onClick={resetTimer}
+            className="rounded-[var(--radius-sm)] p-1 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+            title="Reset timer"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+            </svg>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -251,6 +419,13 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
               {quest.prompt}
             </p>
           </div>
+
+          {/* Optional countdown timer */}
+          {quest.estimatedMinutes != null && quest.estimatedMinutes > 0 && (
+            <div className="mt-4">
+              <CountdownTimer minutes={quest.estimatedMinutes} />
+            </div>
+          )}
 
           {/* Response area for research tasks and exercises */}
           {needsResponse && (

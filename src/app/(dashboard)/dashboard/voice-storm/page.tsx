@@ -59,6 +59,8 @@ export default function VoiceStormPage() {
   const [prompts, setPrompts] = useState<string[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
   const [loadingPrompts, setLoadingPrompts] = useState(false);
+  const [skippedPrompts, setSkippedPrompts] = useState<string[]>([]);
+  const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
 
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -94,6 +96,7 @@ export default function VoiceStormPage() {
   const fetchPrompts = async () => {
     setLoadingPrompts(true);
     setInputExpanded(true);
+    setSkippedPrompts([]);
     try {
       const res = await fetch('/api/voice-storming/prompts');
       if (res.ok) {
@@ -110,6 +113,35 @@ export default function VoiceStormPage() {
       setSelectedPrompt(null);
     } finally {
       setLoadingPrompts(false);
+    }
+  };
+
+  const skipPrompt = async (index: number) => {
+    const skippedPrompt = prompts[index];
+    const allSkipped = [...skippedPrompts, skippedPrompt];
+    setSkippedPrompts(allSkipped);
+    setReplacingIndex(index);
+
+    // Optimistically remove the prompt
+    setPrompts((prev) => prev.filter((_, i) => i !== index));
+    if (selectedPrompt === skippedPrompt) setSelectedPrompt(null);
+
+    // Fetch a single replacement in the background
+    try {
+      const excludeAll = [...allSkipped, ...prompts.filter((_, i) => i !== index)];
+      const params = new URLSearchParams({ count: '1', exclude: excludeAll.join('||') });
+      const res = await fetch(`/api/voice-storming/prompts?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        const newPrompt = (data.prompts || [])[0];
+        if (newPrompt) {
+          setPrompts((prev) => [...prev, newPrompt]);
+        }
+      }
+    } catch {
+      // Silently fail; user still has remaining prompts
+    } finally {
+      setReplacingIndex(null);
     }
   };
 
@@ -493,25 +525,48 @@ export default function VoiceStormPage() {
               )}
 
               {/* Prompt chips */}
-              {prompts.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+              {(prompts.length > 0 || replacingIndex !== null) && (
+                <div className="flex flex-col gap-2">
                   {prompts.slice(0, 3).map((prompt, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setSelectedPrompt(prompt);
-                        setTranscript((prev) => (prev ? prev + '\n\n' + prompt : prompt));
-                        textareaRef.current?.focus();
-                      }}
-                      className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                        selectedPrompt === prompt
-                          ? 'border-[var(--color-accent)] bg-[var(--color-accent-light)] text-[var(--color-accent)]'
-                          : 'border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'
-                      }`}
+                    <div
+                      key={prompt}
+                      className="flex items-center gap-2 animate-[fadeIn_0.25s_ease-in-out]"
                     >
-                      {prompt}
-                    </button>
+                      <button
+                        onClick={() => {
+                          setSelectedPrompt(prompt);
+                          setTranscript((prev) => (prev ? prev + '\n\n' + prompt : prompt));
+                          textareaRef.current?.focus();
+                        }}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-colors text-left ${
+                          selectedPrompt === prompt
+                            ? 'border-[var(--color-accent)] bg-[var(--color-accent-light)] text-[var(--color-accent)]'
+                            : 'border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'
+                        }`}
+                      >
+                        {prompt}
+                      </button>
+                      <button
+                        onClick={() => skipPrompt(i)}
+                        disabled={replacingIndex !== null}
+                        className="flex-shrink-0 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors disabled:opacity-40"
+                        title="Try a different prompt"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+                        </svg>
+                      </button>
+                    </div>
                   ))}
+                  {replacingIndex !== null && (
+                    <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                      <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Finding a new prompt...
+                    </div>
+                  )}
                 </div>
               )}
             </div>
