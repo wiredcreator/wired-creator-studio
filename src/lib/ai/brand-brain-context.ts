@@ -63,7 +63,7 @@ export async function assembleBrandBrainContext(
         brandBrain.toneOfVoiceGuide
       ).lean();
 
-      if (guide && guide.parameters.length > 0) {
+      if (guide && guide.status === 'active' && guide.parameters.length > 0) {
         sections.push('\n## Tone of Voice Guide');
         const grouped = groupByCategory(guide.parameters);
 

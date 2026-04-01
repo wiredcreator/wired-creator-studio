@@ -26,10 +26,11 @@ export interface ContentDNAFormData {
   personalStories: string;
   knownForAndAgainst: string;
 
-  // Step 5: Your History (Q11-Q13)
+  // Step 5: Your History (Q11-Q13 + optional written samples)
   contentHistory: string;
   timeAndEnergy: string;
   easyVsDraining: string;
+  writtenSamples: string;
 
   // Step 6: Your Inspiration (Q14-Q15)
   inspirations: InspirationEntry[];
@@ -53,18 +54,28 @@ export const INITIAL_FORM_DATA: ContentDNAFormData = {
   contentHistory: '',
   timeAndEnergy: '',
   easyVsDraining: '',
+  writtenSamples: '',
   inspirations: [{ url: '', note: '' }],
   naturalFormat: '',
   coreMessage: '',
 };
 
 export const STEP_LABELS = [
-  'Your Story',
-  'Your Business',
-  'Your Passion',
-  'Your Stories',
-  'Your History',
-  'Your Inspiration',
-  'Your Core Message',
+  'Your Story',          // Q1: yourStory
+  'Wins & Milestones',   // Q2: winsAndMilestones
+  'Content Goal',        // Q3: contentGoal
+  'Your Offer',          // Q4: offerAndContent
+  'Go-To Person',        // Q5: goToPersonFor
+  'Your Fire Topics',    // Q6: talkWithoutPreparing
+  'Your Audience',       // Q7: audienceAndProblem
+  'Your Perspective',    // Q8: uniquePerspective
+  'Your Stories',        // Q9: personalStories
+  'Known For & Against', // Q10: knownForAndAgainst
+  'Content History',     // Q11: contentHistory
+  'Time & Energy',       // Q12: timeAndEnergy
+  'Easy vs. Draining',   // Q13: easyVsDraining
+  'Writing Samples',     // Q14: writtenSamples (optional)
+  'Your Inspiration',    // Q15: inspirations + naturalFormat
+  'Your Core Message',   // Q16: coreMessage
   'Review',
 ] as const;

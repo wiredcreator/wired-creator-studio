@@ -75,6 +75,12 @@ export default function IdeaParkingLotPage() {
   const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
 
+  // Voice storm prompt state
+  const [hasLinkedVoiceStorm, setHasLinkedVoiceStorm] = useState(false);
+  const [voiceStormChecked, setVoiceStormChecked] = useState(false);
+  const [showVoiceStormPrompt, setShowVoiceStormPrompt] = useState(false);
+  const [voiceStormPromptSkipped, setVoiceStormPromptSkipped] = useState(false);
+
   // Unsaved changes tracking
   const [hasChanges, setHasChanges] = useState(false);
   useUnsavedChanges(hasChanges);
@@ -110,6 +116,25 @@ export default function IdeaParkingLotPage() {
   useEffect(() => {
     fetchIdea();
   }, [fetchIdea]);
+
+  // Check if this idea already has a linked voice storm
+  useEffect(() => {
+    const checkVoiceStorm = async () => {
+      try {
+        const res = await fetch(`/api/voice-storming?linkedIdeaId=${ideaId}&limit=1`);
+        if (res.ok) {
+          const data = await res.json();
+          const sessions = data.data || [];
+          setHasLinkedVoiceStorm(sessions.length > 0);
+        }
+      } catch {
+        // If check fails, don't block the flow
+      } finally {
+        setVoiceStormChecked(true);
+      }
+    };
+    checkVoiceStorm();
+  }, [ideaId]);
 
   const markChanged = () => {
     if (!hasChanges) setHasChanges(true);
@@ -254,6 +279,13 @@ export default function IdeaParkingLotPage() {
   };
 
   const handleGenerateScript = async () => {
+    // If no linked voice storm and user hasn't skipped the prompt yet, show it
+    if (voiceStormChecked && !hasLinkedVoiceStorm && !voiceStormPromptSkipped) {
+      setShowVoiceStormPrompt(true);
+      return;
+    }
+
+    setShowVoiceStormPrompt(false);
     setIsGeneratingScript(true);
     try {
       // Save outline first
@@ -407,6 +439,41 @@ export default function IdeaParkingLotPage() {
           isSaving={isSaving}
           onMarkChanged={markChanged}
           conceptAnswers={conceptAnswers}
+          showVoiceStormPrompt={showVoiceStormPrompt}
+          onSkipVoiceStorm={() => {
+            setVoiceStormPromptSkipped(true);
+            setShowVoiceStormPrompt(false);
+          }}
+          onSkipAndGenerateScript={async () => {
+            setVoiceStormPromptSkipped(true);
+            setShowVoiceStormPrompt(false);
+            setIsGeneratingScript(true);
+            try {
+              if (outlineSections.length > 0) {
+                await saveIdea({ outlineSections } as unknown as Partial<IdeaData>);
+              } else {
+                await saveIdea({ outline });
+              }
+              const res = await fetch('/api/scripts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ideaId }),
+              });
+              if (res.ok) {
+                await fetch(`/api/ideas/${ideaId}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ status: 'scripted' }),
+                });
+                router.push('/dashboard/scripts');
+              }
+            } catch (err) {
+              console.error('Failed to generate script:', err);
+            } finally {
+              setIsGeneratingScript(false);
+            }
+          }}
+          ideaId={ideaId}
         />
       )}
     </PageWrapper>
@@ -829,6 +896,10 @@ interface OutlineStepProps {
   isSaving: boolean;
   onMarkChanged: () => void;
   conceptAnswers: IConceptAnswers;
+  showVoiceStormPrompt: boolean;
+  onSkipVoiceStorm: () => void;
+  onSkipAndGenerateScript: () => void;
+  ideaId: string;
 }
 
 function OutlineStep({
@@ -844,6 +915,10 @@ function OutlineStep({
   isSaving,
   onMarkChanged,
   conceptAnswers,
+  showVoiceStormPrompt,
+  onSkipVoiceStorm,
+  onSkipAndGenerateScript,
+  ideaId,
 }: OutlineStepProps) {
   const [isEditing, setIsEditing] = useState(false);
   const hasStructuredSections = outlineSections && outlineSections.length > 0;
@@ -1178,6 +1253,45 @@ function OutlineStep({
           )}
         </button>
       </div>
+
+      {/* Voice Storm Prompt */}
+      {showVoiceStormPrompt && (
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-accent)] bg-[var(--color-bg-card)] p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="h-5 w-5 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-semibold text-[var(--color-text)]">
+                Want a better script?
+              </h4>
+              <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+                Record a quick voice storm about this idea first. Your raw thoughts and natural speaking style become the foundation of a more authentic script.
+              </p>
+              <div className="flex items-center gap-3 mt-4">
+                <a
+                  href={`/dashboard/voice-storm?linkIdea=${ideaId}`}
+                  className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)]"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                  </svg>
+                  Voice Storm First
+                </a>
+                <button
+                  type="button"
+                  onClick={onSkipAndGenerateScript}
+                  className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-bg-tertiary)]"
+                >
+                  Skip, Generate Script
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!canGenerateScript && !isGeneratingScript && (
         <div className="space-y-1.5">

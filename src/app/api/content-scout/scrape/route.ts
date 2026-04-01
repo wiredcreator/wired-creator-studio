@@ -97,6 +97,41 @@ async function fetchChannelVideos(
   }
 }
 
+// --- YouTube Shorts filter ---
+
+async function isYouTubeShort(videoId: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5_000);
+
+    const res = await fetch(`https://www.youtube.com/shorts/${videoId}`, {
+      method: 'HEAD',
+      redirect: 'manual',
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    // If YouTube returns 200, it's a Short. If it redirects (301/302), it's a regular video.
+    return res.status === 200;
+  } catch {
+    // On error, assume it's not a Short (keep the video)
+    return false;
+  }
+}
+
+async function filterOutShorts(videos: ICachedVideo[]): Promise<ICachedVideo[]> {
+  if (videos.length === 0) return videos;
+
+  const results = await Promise.all(
+    videos.map(async (video) => {
+      const isShort = await isYouTubeShort(video.videoId);
+      return isShort ? null : video;
+    })
+  );
+
+  return results.filter((v): v is ICachedVideo => v !== null);
+}
+
 // --- Relevance filter via Claude ---
 
 async function filterRelevantVideos(
@@ -202,16 +237,20 @@ export async function POST(request: NextRequest) {
       }).lean();
 
       if (cached && cached.expiresAt > new Date()) {
-        // Cache hit — use cached videos
-        allVideos.push(...cached.videos);
+        // Cache hit — filter out any Shorts that slipped into cache before this filter existed
+        const cachedFiltered = await filterOutShorts(cached.videos as ICachedVideo[]);
+        allVideos.push(...cachedFiltered);
         continue;
       }
 
       // Cache miss or expired — fetch via RSS
-      const videos = await fetchChannelVideos(
+      const rawVideos = await fetchChannelVideos(
         channelId,
         source.channelName || ''
       );
+
+      // Filter out YouTube Shorts before caching
+      const videos = await filterOutShorts(rawVideos);
 
       if (videos.length > 0) {
         const now = new Date();

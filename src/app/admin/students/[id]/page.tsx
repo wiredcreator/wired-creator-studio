@@ -283,6 +283,13 @@ export default function StudentDetailPage() {
   const [brandBrainLoading, setBrandBrainLoading] = useState(false);
   const [brandBrainLoaded, setBrandBrainLoaded] = useState(false);
 
+  // Transcript ingest form state
+  const [ingestTranscript, setIngestTranscript] = useState("");
+  const [ingestCallType, setIngestCallType] = useState<"1on1" | "group">("1on1");
+  const [ingestTitle, setIngestTitle] = useState("");
+  const [ingestLoading, setIngestLoading] = useState(false);
+  const [ingestFeedback, setIngestFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
   // Fetch coach session
   useEffect(() => {
     async function getSession() {
@@ -1964,6 +1971,98 @@ export default function StudentDetailPage() {
                     items={brandBrain.equipmentChecklist || []}
                   />
                 )}
+
+                {/* Ingest Call Transcript */}
+                <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                  <h3 className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">
+                    Ingest Call Transcript
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                        Title (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={ingestTitle}
+                        onChange={(e) => setIngestTitle(e.target.value)}
+                        placeholder="e.g. Week 3 coaching call"
+                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                        Call Type
+                      </label>
+                      <select
+                        value={ingestCallType}
+                        onChange={(e) => setIngestCallType(e.target.value as "1on1" | "group")}
+                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0"
+                      >
+                        <option value="1on1">1-on-1 Coaching</option>
+                        <option value="group">Group Call</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                        Transcript
+                      </label>
+                      <textarea
+                        value={ingestTranscript}
+                        onChange={(e) => setIngestTranscript(e.target.value)}
+                        placeholder="Paste the call transcript here..."
+                        rows={6}
+                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0 resize-y"
+                      />
+                    </div>
+                    {ingestFeedback && (
+                      <div
+                        className={`rounded-[var(--radius-md)] px-3 py-2 text-sm ${
+                          ingestFeedback.type === "success"
+                            ? "bg-emerald-900/40 text-emerald-400"
+                            : "bg-red-900/40 text-red-400"
+                        }`}
+                      >
+                        {ingestFeedback.message}
+                      </div>
+                    )}
+                    <button
+                      disabled={ingestLoading || !ingestTranscript.trim()}
+                      onClick={async () => {
+                        setIngestLoading(true);
+                        setIngestFeedback(null);
+                        try {
+                          const res = await fetch("/api/admin/ingest-transcript", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              studentId: id,
+                              transcript: ingestTranscript,
+                              callType: ingestCallType,
+                              title: ingestTitle || undefined,
+                            }),
+                          });
+                          if (!res.ok) {
+                            const err = await res.json();
+                            throw new Error(err.error || "Failed to ingest transcript");
+                          }
+                          setIngestFeedback({ type: "success", message: "Transcript ingested and linked to Brand Brain." });
+                          setIngestTranscript("");
+                          setIngestTitle("");
+                          setIngestCallType("1on1");
+                        } catch (err: unknown) {
+                          const message = err instanceof Error ? err.message : "Something went wrong";
+                          setIngestFeedback({ type: "error", message });
+                        } finally {
+                          setIngestLoading(false);
+                        }
+                      }}
+                      className="rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {ingestLoading ? "Ingesting..." : "Ingest Transcript"}
+                    </button>
+                  </div>
+                </div>
 
                 {/* Tone of Voice link */}
                 {tovGuide && (

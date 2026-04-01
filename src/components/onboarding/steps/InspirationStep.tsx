@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { ContentDNAFormData, InspirationEntry } from '@/types/onboarding';
+import VoiceTextarea from '../VoiceTextarea';
 
 type FetchStatus = 'idle' | 'fetching' | 'success' | 'error';
 
@@ -320,21 +321,12 @@ export default function InspirationStep({ data, onChange }: InspirationStepProps
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           Talking on camera, recording audio, writing, or something more visual like graphics or carousels? Don&apos;t overthink it. What feels the most doable today, not what you think you should be doing.
         </p>
-        <textarea
+        <VoiceTextarea
           id="naturalFormat"
           value={data.naturalFormat}
-          onChange={(e) => onChange({ naturalFormat: e.target.value })}
+          onChange={(val) => onChange({ naturalFormat: val })}
           placeholder="What format feels most natural to you?"
           rows={4}
-          className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none"
-          style={{
-            backgroundColor: 'var(--color-bg-primary)',
-            borderColor: 'var(--color-border)',
-            color: 'var(--color-text-primary)',
-            borderRadius: 'var(--radius-md)',
-          }}
-          onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
-          onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
       </div>
     </div>

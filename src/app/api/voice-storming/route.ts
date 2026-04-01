@@ -37,7 +37,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Filters
-    if (searchParams.get('linked') === 'true') {
+    const linkedIdeaId = searchParams.get('linkedIdeaId');
+    if (linkedIdeaId) {
+      filter.linkedIdeaIds = linkedIdeaId;
+    } else if (searchParams.get('linked') === 'true') {
       filter.linkedIdeaIds = { $exists: true, $ne: [] };
     }
     if (searchParams.get('hasIdeas') === 'true') {

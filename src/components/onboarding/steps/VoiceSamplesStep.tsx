@@ -114,6 +114,36 @@ export default function VoiceSamplesStep({ data, onChange }: YourHistoryStepProp
           onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
       </div>
+
+      {/* Written Samples (optional) */}
+      <div className="space-y-2 pt-4 border-t" style={{ borderColor: 'var(--color-border-light)' }}>
+        <label
+          htmlFor="writtenSamples"
+          className="block text-base font-medium"
+          style={{ color: 'var(--color-text-primary)' }}
+        >
+          Have existing content? Paste a few examples below.
+        </label>
+        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+          Blog posts, social captions, past scripts, newsletters, emails to your audience. Anything you have written in your own voice. This helps us capture how you naturally communicate, even better. Paste multiple samples separated by a blank line. Totally optional.
+        </p>
+        <textarea
+          id="writtenSamples"
+          value={data.writtenSamples}
+          onChange={(e) => onChange({ writtenSamples: e.target.value })}
+          placeholder="Paste your writing samples here. Separate multiple samples with a blank line..."
+          rows={8}
+          className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none outline-none ring-0"
+          style={{
+            backgroundColor: 'var(--color-bg-primary)',
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text-primary)',
+            borderRadius: 'var(--radius-md)',
+          }}
+          onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
+          onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
+        />
+      </div>
     </div>
   );
 }

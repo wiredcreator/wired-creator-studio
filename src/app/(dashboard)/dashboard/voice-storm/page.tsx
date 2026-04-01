@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import PageWrapper from '@/components/PageWrapper';
 
 interface VoiceStormSession {
@@ -41,6 +41,7 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
 
 export default function VoiceStormPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Sessions state
   const [sessions, setSessions] = useState<VoiceStormSession[]>([]);
@@ -149,9 +150,21 @@ export default function VoiceStormPage() {
     fetchSessions();
     fetch('/api/ideas?status=approved&limit=50')
       .then((r) => r.json())
-      .then((d) => setIdeas(d.data || []))
+      .then((d) => {
+        setIdeas(d.data || []);
+        // If arriving from idea detail page with linkIdea param, pre-link the idea
+        const linkIdeaId = searchParams.get('linkIdea');
+        if (linkIdeaId) {
+          const matchingIdea = (d.data || []).find((i: Idea) => i._id === linkIdeaId);
+          if (matchingIdea) {
+            setSessionType('video_idea');
+            setLinkedIdeaIds([linkIdeaId]);
+            setInputExpanded(true);
+          }
+        }
+      })
       .catch(() => {});
-  }, [fetchSessions]);
+  }, [fetchSessions, searchParams]);
 
   // Debounced search
   useEffect(() => {

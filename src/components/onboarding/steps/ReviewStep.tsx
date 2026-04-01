@@ -1,6 +1,6 @@
 'use client';
 
-import { ContentDNAFormData, STEP_LABELS } from '@/types/onboarding';
+import { ContentDNAFormData } from '@/types/onboarding';
 
 interface ReviewStepProps {
   data: ContentDNAFormData;
@@ -68,6 +68,15 @@ function ReviewField({ label, value }: { label: string; value: string }) {
   );
 }
 
+// Step index mapping for "Edit" buttons (one question per screen):
+// 0: yourStory, 1: winsAndMilestones, 2: contentGoal
+// 3: offerAndContent, 4: goToPersonFor
+// 5: talkWithoutPreparing, 6: audienceAndProblem, 7: uniquePerspective
+// 8: personalStories, 9: knownForAndAgainst
+// 10: contentHistory, 11: timeAndEnergy, 12: easyVsDraining, 13: writtenSamples
+// 14: InspirationStep (inspirations + naturalFormat)
+// 15: coreMessage
+
 export default function ReviewStep({ data, onEditStep }: ReviewStepProps) {
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -86,41 +95,80 @@ export default function ReviewStep({ data, onEditStep }: ReviewStepProps) {
         </p>
       </div>
 
-      {/* Step 1: Your Story */}
-      <SectionCard title={STEP_LABELS[0]} stepIndex={0} onEdit={onEditStep}>
+      {/* Your Story */}
+      <SectionCard title="Your Story" stepIndex={0} onEdit={onEditStep}>
         <ReviewField label="What you do and how you got here" value={data.yourStory} />
+      </SectionCard>
+
+      {/* Wins & Milestones */}
+      <SectionCard title="Wins & Milestones" stepIndex={1} onEdit={onEditStep}>
         <ReviewField label="Biggest wins and milestones" value={data.winsAndMilestones} />
+      </SectionCard>
+
+      {/* Content Goal */}
+      <SectionCard title="Content Goal" stepIndex={2} onEdit={onEditStep}>
         <ReviewField label="What you want content to lead to" value={data.contentGoal} />
       </SectionCard>
 
-      {/* Step 2: Your Business */}
-      <SectionCard title={STEP_LABELS[1]} stepIndex={1} onEdit={onEditStep}>
+      {/* Your Offer */}
+      <SectionCard title="Your Offer" stepIndex={3} onEdit={onEditStep}>
         <ReviewField label="What you sell and how content connects" value={data.offerAndContent} />
+      </SectionCard>
+
+      {/* Go-To Person */}
+      <SectionCard title="Go-To Person" stepIndex={4} onEdit={onEditStep}>
         <ReviewField label="What people come to you for" value={data.goToPersonFor} />
       </SectionCard>
 
-      {/* Step 3: Your Passion */}
-      <SectionCard title={STEP_LABELS[2]} stepIndex={2} onEdit={onEditStep}>
+      {/* Fire Topics */}
+      <SectionCard title="Your Fire Topics" stepIndex={5} onEdit={onEditStep}>
         <ReviewField label="What you could talk about for 30 minutes" value={data.talkWithoutPreparing} />
+      </SectionCard>
+
+      {/* Your Audience */}
+      <SectionCard title="Your Audience" stepIndex={6} onEdit={onEditStep}>
         <ReviewField label="Your audience and their painful problem" value={data.audienceAndProblem} />
+      </SectionCard>
+
+      {/* Your Perspective */}
+      <SectionCard title="Your Perspective" stepIndex={7} onEdit={onEditStep}>
         <ReviewField label="Your unique perspective" value={data.uniquePerspective} />
       </SectionCard>
 
-      {/* Step 4: Your Stories */}
-      <SectionCard title={STEP_LABELS[3]} stepIndex={3} onEdit={onEditStep}>
+      {/* Your Stories */}
+      <SectionCard title="Your Stories" stepIndex={8} onEdit={onEditStep}>
         <ReviewField label="Personal stories that shaped you" value={data.personalStories} />
+      </SectionCard>
+
+      {/* Known For & Against */}
+      <SectionCard title="Known For & Against" stepIndex={9} onEdit={onEditStep}>
         <ReviewField label="Known for and against" value={data.knownForAndAgainst} />
       </SectionCard>
 
-      {/* Step 5: Your History */}
-      <SectionCard title={STEP_LABELS[4]} stepIndex={4} onEdit={onEditStep}>
+      {/* Content History */}
+      <SectionCard title="Content History" stepIndex={10} onEdit={onEditStep}>
         <ReviewField label="Content creation history" value={data.contentHistory} />
+      </SectionCard>
+
+      {/* Time & Energy */}
+      <SectionCard title="Time & Energy" stepIndex={11} onEdit={onEditStep}>
         <ReviewField label="Time and energy for content" value={data.timeAndEnergy} />
+      </SectionCard>
+
+      {/* Easy vs. Draining */}
+      <SectionCard title="Easy vs. Draining" stepIndex={12} onEdit={onEditStep}>
         <ReviewField label="Easy vs. draining parts" value={data.easyVsDraining} />
       </SectionCard>
 
-      {/* Step 6: Your Inspiration */}
-      <SectionCard title={STEP_LABELS[5]} stepIndex={5} onEdit={onEditStep}>
+      {/* Writing Samples (only show if filled) */}
+      {data.writtenSamples && (
+        <SectionCard title="Writing Samples" stepIndex={13} onEdit={onEditStep}>
+          <ReviewField label="Written content samples" value={data.writtenSamples} />
+        </SectionCard>
+      )}
+
+      {/* Your Inspiration */}
+      <SectionCard title="Your Inspiration" stepIndex={14} onEdit={onEditStep}>
         {data.inspirations.filter((e) => e.url.trim()).length > 0 ? (
           data.inspirations
             .filter((e) => e.url.trim())
@@ -144,8 +192,8 @@ export default function ReviewStep({ data, onEditStep }: ReviewStepProps) {
         <ReviewField label="Most natural format" value={data.naturalFormat} />
       </SectionCard>
 
-      {/* Step 7: Your Core Message */}
-      <SectionCard title={STEP_LABELS[6]} stepIndex={6} onEdit={onEditStep}>
+      {/* Your Core Message */}
+      <SectionCard title="Your Core Message" stepIndex={15} onEdit={onEditStep}>
         <ReviewField label="Core message" value={data.coreMessage} />
       </SectionCard>
     </div>

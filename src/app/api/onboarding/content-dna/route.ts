@@ -29,10 +29,11 @@ interface ContentDNAPayload {
   personalStories: string;
   knownForAndAgainst: string;
 
-  // Step 5: Your History (Q11-Q13)
+  // Step 5: Your History (Q11-Q13 + optional written samples)
   contentHistory: string;
   timeAndEnergy: string;
   easyVsDraining: string;
+  writtenSamples?: string;
 
   // Step 6: Your Inspiration (Q14-Q15)
   inspirations: { url: string; note: string }[];
@@ -71,7 +72,7 @@ function validatePayload(data: ContentDNAPayload): string | null {
  * Convert the flat form payload into the ContentDNAResponse schema format.
  */
 function buildResponses(data: ContentDNAPayload) {
-  return [
+  const responses = [
     { questionId: 'yourStory', question: 'What do you do and how did you end up here?', answer: data.yourStory, answerType: 'text' as const },
     { questionId: 'winsAndMilestones', question: 'What are the biggest wins, results, or milestones you can point to?', answer: data.winsAndMilestones, answerType: 'text' as const },
     { questionId: 'contentGoal', question: 'What do you want your content to actually lead to?', answer: data.contentGoal, answerType: 'text' as const },
@@ -88,6 +89,18 @@ function buildResponses(data: ContentDNAPayload) {
     { questionId: 'naturalFormat', question: 'What format feels most natural for you to create in right now?', answer: data.naturalFormat, answerType: 'text' as const },
     { questionId: 'coreMessage', question: 'If someone watched all your content and walked away with one core message about you, what would you want it to be?', answer: data.coreMessage, answerType: 'text' as const },
   ];
+
+  // Include written samples as a questionnaire response if provided
+  if (data.writtenSamples?.trim()) {
+    responses.push({
+      questionId: 'writtenSamples',
+      question: 'Written content samples (blog posts, captions, scripts) pasted by the creator',
+      answer: data.writtenSamples,
+      answerType: 'text' as const,
+    });
+  }
+
+  return responses;
 }
 
 export async function POST(request: NextRequest) {
@@ -127,8 +140,18 @@ export async function POST(request: NextRequest) {
       extractedTranscript: '',
     }));
 
-    // No more separate content samples — voice samples removed in V2 questionnaire
+    // Parse written samples into content samples for TOV generation
     const contentSamples: { text: string; type: string }[] = [];
+    if (body.writtenSamples?.trim()) {
+      // Split on double newlines to separate individual samples
+      const samples = body.writtenSamples
+        .split(/\n\s*\n/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      for (const sample of samples) {
+        contentSamples.push({ text: sample, type: 'written_sample' });
+      }
+    }
 
     // Upsert: update if the user already submitted, otherwise create
     const contentDNA = await ContentDNAResponse.findOneAndUpdate(
@@ -200,7 +223,7 @@ export async function POST(request: NextRequest) {
               userId,
               brandBrainId: brandBrain._id,
               parameters: guide.parameters,
-              status: 'draft',
+              status: 'review',
               generatedFrom: {
                 questionnaireId: contentDNAId,
                 transcriptIds: [],
@@ -338,7 +361,7 @@ export async function POST(request: NextRequest) {
                 { userId },
                 {
                   parameters: updatedGuide.parameters,
-                  status: 'draft',
+                  status: 'review',
                   generatedFrom: {
                     questionnaireId: contentDNAId,
                     transcriptIds: [],

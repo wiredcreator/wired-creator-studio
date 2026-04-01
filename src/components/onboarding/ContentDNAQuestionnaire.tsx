@@ -3,18 +3,187 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { ContentDNAFormData, INITIAL_FORM_DATA, STEP_LABELS } from '@/types/onboarding';
 import ProgressBar from './ProgressBar';
-import IdentityStep from './steps/IdentityStep';
-import VisionStep from './steps/VisionStep';
-import AudienceStep from './steps/AudienceStep';
-import NicheStep from './steps/NicheStep';
-import VoiceSamplesStep from './steps/VoiceSamplesStep';
+import QuestionStep, { QuestionConfig } from './QuestionStep';
 import InspirationStep from './steps/InspirationStep';
-import CoreMessageStep from './steps/CoreMessageStep';
 import ReviewStep from './steps/ReviewStep';
 
 const TOTAL_STEPS = STEP_LABELS.length;
 const DRAFT_KEY = 'wc-content-dna-draft';
 const DRAFT_STEP_KEY = 'wc-content-dna-step';
+
+// All single-question steps defined as data.
+// InspirationStep (step 14) and ReviewStep (step 16) are special and rendered separately.
+const QUESTIONS: QuestionConfig[] = [
+  {
+    fieldKey: 'yourStory',
+    stepTitle: 'Your Story',
+    stepSubtitle: '15-20 minutes. Long-form answers. Voice-to-text is encouraged.',
+    label: 'What do you do and how did you end up here?',
+    helperText:
+      'Tell us about your work, your business, or whatever you spend most of your energy building. The messy path, the wins and failures, the stuff that actually got you to where you are now.',
+    placeholder: 'Tell us your story...',
+    required: true,
+  },
+  {
+    fieldKey: 'winsAndMilestones',
+    stepTitle: 'Wins & Milestones',
+    stepSubtitle: 'The credibility bank that gives your content weight.',
+    label: 'What are the biggest wins, results, or milestones you can point to?',
+    helperText:
+      "Numbers, outcomes, things you've built, problems you've solved, clients you've helped. Even small ones count. If you're earlier in your journey, tell us what you're actively studying, experimenting with, or working toward becoming the person who knows this stuff. This becomes your credibility bank.",
+    placeholder: 'Share your wins and milestones...',
+    required: true,
+  },
+  {
+    fieldKey: 'contentGoal',
+    stepTitle: 'Content Goal',
+    stepSubtitle: 'What does success actually look like for you?',
+    label: 'What do you want your content to actually lead to?',
+    helperText:
+      'Not "get more followers." What\'s the real outcome you\'re after? Maybe it\'s filling your coaching program. Maybe it\'s landing speaking gigs. Maybe it\'s quitting your job in 12 months. If your content worked exactly the way you wanted it to, what changes in your life or business?',
+    placeholder: "What's the real outcome you're after?",
+    required: true,
+  },
+  {
+    fieldKey: 'offerAndContent',
+    stepTitle: 'Your Offer',
+    stepSubtitle: 'Help us understand what you\'re building and how content fits in.',
+    label: 'What do you sell or plan to sell, and how does content connect to that?',
+    helperText:
+      "Tell us about your offer, your service, your product, whatever it is. If you don't have one yet, tell us what you're working toward. We need to understand this because your content strategy should be built to drive people toward your thing, not just get views.",
+    placeholder: 'Describe your offer and how content connects to it...',
+    required: true,
+  },
+  {
+    fieldKey: 'goToPersonFor',
+    stepTitle: 'Go-To Person',
+    stepSubtitle: 'The thing people naturally come to you for.',
+    label: 'What do people always come to you for?',
+    helperText:
+      'Think about the questions friends, coworkers, or clients keep asking you. The stuff people DM you about. The thing someone once said "you should make content about that." What do you naturally become the go-to person for?',
+    placeholder: 'What do people always come to you for?',
+    required: true,
+  },
+  {
+    fieldKey: 'talkWithoutPreparing',
+    stepTitle: 'Your Fire Topics',
+    stepSubtitle: 'What fires you up and keeps you talking?',
+    label: 'What could you talk about for 30 minutes without preparing?',
+    helperText:
+      'Not what you think you should talk about. What actually fires you up. The topics where you lose track of time and catch yourself mid-rant. List as many as come to mind.',
+    placeholder: 'What topics fire you up?',
+    required: true,
+  },
+  {
+    fieldKey: 'audienceAndProblem',
+    stepTitle: 'Your Audience',
+    stepSubtitle: 'Who are you here to help, and what are they stuck on?',
+    label: 'Who do you want your content to reach, and what painful problem are you solving for them?',
+    helperText:
+      "Describe them like a real person. What are they going through? What have they tried that isn't working? What's the painful problem they're stuck on that you know how to solve? And after they watch your video, what shifts for them, even if it's small? The more specific you can be about their struggle, the better your content ideas will be.",
+    placeholder:
+      "Describe the person you're creating for and the problem you solve...",
+    required: true,
+  },
+  {
+    fieldKey: 'uniquePerspective',
+    stepTitle: 'Your Perspective',
+    stepSubtitle: 'What makes your take different from everyone else?',
+    label: 'What makes your perspective different from everyone else talking about this stuff?',
+    helperText:
+      "Maybe it's your background, your personality, how you explain things, or something you went through that shaped your point of view. What do you bring to the conversation that someone else literally can't?",
+    placeholder: 'What makes your perspective unique?',
+    required: true,
+  },
+  {
+    fieldKey: 'personalStories',
+    stepTitle: 'Your Stories',
+    stepSubtitle: 'The experiences that make your content yours.',
+    label: 'What are 2 or 3 personal stories that shaped who you are today?',
+    helperText:
+      "They don't need to be dramatic. A turning point, a failure, a moment of clarity, something funny that taught you something real. Stories are what make content stick. We want to know which ones are yours to tell.",
+    placeholder: 'Share 2-3 personal stories that shaped you...',
+    required: true,
+    rows: 6,
+  },
+  {
+    fieldKey: 'knownForAndAgainst',
+    stepTitle: 'Known For & Against',
+    stepSubtitle: 'The ideas you will repeat through every piece of content.',
+    label: 'What do you want to be known FOR, and what do you want to be known AGAINST?',
+    helperText:
+      'Give us two of each. The "for" is what you want people to associate with your name every time they see your content. The "against" is the stuff in your industry that you reject, disagree with, or refuse to do. These become the ideas you\'ll repeat over and over through different stories and scenarios.',
+    placeholder: 'Known FOR: ...\nKnown AGAINST: ...',
+    required: true,
+    rows: 6,
+  },
+  {
+    fieldKey: 'contentHistory',
+    stepTitle: 'Content History',
+    stepSubtitle: "Where you've been so we know what to build differently.",
+    label: 'Have you tried making content before? What happened?',
+    helperText:
+      "Tell us what you actually did, how far you got, what the process looked like, and where it fell apart. Did you burn out? Overthink everything? Run out of ideas? Get stuck in editing? If you've never tried, what's been stopping you? No judgment here. We need to know what hasn't worked so we don't build you the same thing again.",
+    placeholder: 'Tell us about your content creation history...',
+    required: true,
+  },
+  {
+    fieldKey: 'timeAndEnergy',
+    stepTitle: 'Time & Energy',
+    stepSubtitle: 'The honest number, not the aspirational one.',
+    label: 'How much time and energy do you realistically have for content?',
+    helperText:
+      "Not the aspirational number, the honest one, given everything else going on in your life. How many hours a week can you actually give to this? When are you sharpest during the day, morning, afternoon, or night?",
+    placeholder: 'Be honest about your available time and energy...',
+    required: true,
+  },
+  {
+    fieldKey: 'easyVsDraining',
+    stepTitle: 'Easy vs. Draining',
+    stepSubtitle: 'We will build your workflow around what gives you energy.',
+    label: "What parts of making content feel easy to you, and what parts feel like they'd drain you?",
+    helperText:
+      "Think about the whole process: brainstorming ideas, writing or scripting, talking on camera, recording audio, editing, posting. Which parts give you energy and which ones make you want to quit before you start?",
+    placeholder: 'What feels easy vs. draining about content creation?',
+    required: true,
+  },
+  {
+    fieldKey: 'writtenSamples',
+    stepTitle: 'Writing Samples',
+    stepSubtitle: 'Totally optional, but helps us capture your natural voice.',
+    label: 'Have existing content? Paste a few examples below.',
+    helperText:
+      'Blog posts, social captions, past scripts, newsletters, emails to your audience. Anything you have written in your own voice. This helps us capture how you naturally communicate, even better. Paste multiple samples separated by a blank line.',
+    placeholder:
+      'Paste your writing samples here. Separate multiple samples with a blank line...',
+    required: false,
+    rows: 8,
+  },
+  // Step 14 is InspirationStep (special UI) - not in this array
+  // Step 15 is coreMessage
+];
+
+// coreMessage is rendered as a single question step after InspirationStep
+const CORE_MESSAGE_QUESTION: QuestionConfig = {
+  fieldKey: 'coreMessage',
+  stepTitle: 'Your Core Message',
+  stepSubtitle: 'The thread that ties everything together.',
+  label: 'If someone watched all your content and walked away with one core message about you, what would you want it to be?',
+  helperText:
+    'Not a tagline. The thread that ties everything together. The thing that makes someone say "that\'s what they\'re about."',
+  placeholder: "What's the one core message you want people to take away?",
+  required: true,
+};
+
+// Step mapping:
+// 0-13: single question steps (QUESTIONS array indices 0-13)
+// 14: InspirationStep (special UI)
+// 15: coreMessage
+// 16: ReviewStep
+
+const INSPIRATION_STEP = 14;
+const CORE_MESSAGE_STEP = 15;
+const REVIEW_STEP = 16;
 
 function saveDraftToStorage(data: ContentDNAFormData, step: number) {
   try {
@@ -46,44 +215,31 @@ function clearDraftFromStorage() {
   }
 }
 
-// Validation per step - returns an error message or null
 function validateStep(step: number, data: ContentDNAFormData): string | null {
-  switch (step) {
-    case 0: // Your Story (Q1-Q3)
-      if (!data.yourStory.trim()) return 'Tell us about what you do and how you got here.';
-      if (!data.winsAndMilestones.trim()) return 'Share at least a few wins or milestones.';
-      if (!data.contentGoal.trim()) return 'Tell us what you want your content to lead to.';
-      return null;
-    case 1: // Your Business (Q4-Q5)
-      if (!data.offerAndContent.trim()) return 'Tell us about what you sell or plan to sell.';
-      if (!data.goToPersonFor.trim()) return 'Tell us what people come to you for.';
-      return null;
-    case 2: // Your Passion (Q6-Q8)
-      if (!data.talkWithoutPreparing.trim()) return 'Tell us what you could talk about for 30 minutes.';
-      if (!data.audienceAndProblem.trim()) return 'Describe your audience and the problem you solve.';
-      if (!data.uniquePerspective.trim()) return 'Tell us what makes your perspective different.';
-      return null;
-    case 3: // Your Stories (Q9-Q10)
-      if (!data.personalStories.trim()) return 'Share at least a couple personal stories.';
-      if (!data.knownForAndAgainst.trim()) return 'Tell us what you want to be known for and against.';
-      return null;
-    case 4: // Your History (Q11-Q13)
-      if (!data.contentHistory.trim()) return 'Tell us about your content creation history.';
-      if (!data.timeAndEnergy.trim()) return 'Share how much time and energy you have for content.';
-      if (!data.easyVsDraining.trim()) return 'Tell us what feels easy vs. draining.';
-      return null;
-    case 5: // Your Inspiration (Q14-Q15)
-      if (!data.inspirations.some((e) => e.url.trim())) {
-        return 'Add at least one creator or YouTube URL.';
-      }
-      if (!data.naturalFormat.trim()) return 'Tell us what format feels most natural for you.';
-      return null;
-    case 6: // Your Core Message (Q16)
-      if (!data.coreMessage.trim()) return 'Share your core message.';
-      return null;
-    default:
-      return null;
+  if (step < QUESTIONS.length) {
+    const q = QUESTIONS[step];
+    if (q.required && !(data[q.fieldKey as keyof ContentDNAFormData] as string).trim()) {
+      return `Please fill in this question before continuing.`;
+    }
+    return null;
   }
+
+  if (step === INSPIRATION_STEP) {
+    if (!data.inspirations.some((e) => e.url.trim())) {
+      return 'Add at least one creator or YouTube URL.';
+    }
+    if (!data.naturalFormat.trim()) {
+      return 'Tell us what format feels most natural for you.';
+    }
+    return null;
+  }
+
+  if (step === CORE_MESSAGE_STEP) {
+    if (!data.coreMessage.trim()) return 'Share your core message.';
+    return null;
+  }
+
+  return null;
 }
 
 interface ContentDNAQuestionnaireProps {
@@ -92,20 +248,16 @@ interface ContentDNAQuestionnaireProps {
 
 export default function ContentDNAQuestionnaire({ existingData }: ContentDNAQuestionnaireProps = {}) {
   const [currentStep, setCurrentStep] = useState(() => {
-    // If DB data exists, start at step 0 (let them review)
     if (existingData && Object.values(existingData).some((v) => typeof v === 'string' ? v.trim() : v)) {
       return 0;
     }
-    // Otherwise try to restore step from draft
     const draft = loadDraftFromStorage();
     return draft ? draft.step : 0;
   });
   const [formData, setFormData] = useState<ContentDNAFormData>(() => {
     const initial = { ...INITIAL_FORM_DATA };
-    // First layer: restore localStorage draft
     const draft = loadDraftFromStorage();
     const base = draft ? { ...initial, ...draft.data } : initial;
-    // Second layer: DB data takes priority over draft
     if (existingData) {
       return { ...base, ...existingData };
     }
@@ -117,12 +269,10 @@ export default function ContentDNAQuestionnaire({ existingData }: ContentDNAQues
   const [slideDirection, setSlideDirection] = useState<'forward' | 'back'>('forward');
   const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
 
-  // Dirty flag to avoid unnecessary writes
   const isDirtyRef = useRef(false);
   const formDataRef = useRef(formData);
   const currentStepRef = useRef(currentStep);
 
-  // Keep refs in sync
   useEffect(() => {
     formDataRef.current = formData;
   }, [formData]);
@@ -142,7 +292,6 @@ export default function ContentDNAQuestionnaire({ existingData }: ContentDNAQues
     return () => clearInterval(interval);
   }, []);
 
-  // Save on blur of the form container
   const handleContainerBlur = useCallback(() => {
     if (isDirtyRef.current) {
       saveDraftToStorage(formDataRef.current, currentStepRef.current);
@@ -154,7 +303,6 @@ export default function ContentDNAQuestionnaire({ existingData }: ContentDNAQues
   const updateFormData = useCallback((updates: Partial<ContentDNAFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
     isDirtyRef.current = true;
-    // Clear validation when user makes changes
     setValidationMessage(null);
   }, []);
 
@@ -162,7 +310,6 @@ export default function ContentDNAQuestionnaire({ existingData }: ContentDNAQues
     setSlideDirection(step > currentStep ? 'forward' : 'back');
     setCurrentStep(step);
     setValidationMessage(null);
-    // Scroll to top smoothly
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
 
@@ -175,6 +322,9 @@ export default function ContentDNAQuestionnaire({ existingData }: ContentDNAQues
     setSlideDirection('forward');
     setCurrentStep((prev) => Math.min(prev + 1, TOTAL_STEPS - 1));
     setValidationMessage(null);
+    // Save draft on step change
+    saveDraftToStorage(formData, currentStep + 1);
+    isDirtyRef.current = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep, formData]);
 
@@ -264,6 +414,45 @@ export default function ContentDNAQuestionnaire({ existingData }: ContentDNAQues
 
   const isLastStep = currentStep === TOTAL_STEPS - 1;
 
+  // Render the current step content
+  const renderStepContent = () => {
+    // Single-question steps (0-13)
+    if (currentStep < QUESTIONS.length) {
+      const question = QUESTIONS[currentStep];
+      const fieldKey = question.fieldKey as keyof ContentDNAFormData;
+      return (
+        <QuestionStep
+          question={question}
+          value={formData[fieldKey] as string}
+          onChange={(val) => updateFormData({ [fieldKey]: val })}
+        />
+      );
+    }
+
+    // Inspiration step (special UI with URLs + naturalFormat)
+    if (currentStep === INSPIRATION_STEP) {
+      return <InspirationStep data={formData} onChange={updateFormData} />;
+    }
+
+    // Core message step
+    if (currentStep === CORE_MESSAGE_STEP) {
+      return (
+        <QuestionStep
+          question={CORE_MESSAGE_QUESTION}
+          value={formData.coreMessage}
+          onChange={(val) => updateFormData({ coreMessage: val })}
+        />
+      );
+    }
+
+    // Review step
+    if (currentStep === REVIEW_STEP) {
+      return <ReviewStep data={formData} onEditStep={goToStep} />;
+    }
+
+    return null;
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto" onBlurCapture={handleContainerBlur}>
       <ProgressBar currentStep={currentStep} totalSteps={TOTAL_STEPS} />
@@ -276,30 +465,7 @@ export default function ContentDNAQuestionnaire({ existingData }: ContentDNAQues
           animation: `${slideDirection === 'forward' ? 'slideInRight' : 'slideInLeft'} 0.35s ease-out forwards`,
         }}
       >
-        {currentStep === 0 && (
-          <IdentityStep data={formData} onChange={updateFormData} />
-        )}
-        {currentStep === 1 && (
-          <VisionStep data={formData} onChange={updateFormData} />
-        )}
-        {currentStep === 2 && (
-          <AudienceStep data={formData} onChange={updateFormData} />
-        )}
-        {currentStep === 3 && (
-          <NicheStep data={formData} onChange={updateFormData} />
-        )}
-        {currentStep === 4 && (
-          <VoiceSamplesStep data={formData} onChange={updateFormData} />
-        )}
-        {currentStep === 5 && (
-          <InspirationStep data={formData} onChange={updateFormData} />
-        )}
-        {currentStep === 6 && (
-          <CoreMessageStep data={formData} onChange={updateFormData} />
-        )}
-        {currentStep === 7 && (
-          <ReviewStep data={formData} onEditStep={goToStep} />
-        )}
+        {renderStepContent()}
       </div>
 
       {/* Validation message */}

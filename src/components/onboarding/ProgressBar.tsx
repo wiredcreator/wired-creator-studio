@@ -40,28 +40,6 @@ export default function ProgressBar({ currentStep, totalSteps }: ProgressBarProp
           }}
         />
       </div>
-
-      {/* Step dots */}
-      <div className="flex justify-between mt-3 px-1">
-        {STEP_LABELS.map((label, index) => (
-          <div
-            key={label}
-            className="flex flex-col items-center"
-            style={{ width: `${100 / totalSteps}%` }}
-          >
-            <div
-              className="w-2.5 h-2.5 rounded-full transition-all duration-300"
-              style={{
-                backgroundColor:
-                  index <= currentStep
-                    ? 'var(--color-accent)'
-                    : 'var(--color-border)',
-                transform: index === currentStep ? 'scale(1.3)' : 'scale(1)',
-              }}
-            />
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
