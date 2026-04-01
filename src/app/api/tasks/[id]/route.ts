@@ -58,6 +58,8 @@ export async function PUT(
     if (body.dueDate !== undefined) task.dueDate = new Date(body.dueDate);
     if (body.embeddedVideoUrl !== undefined) task.embeddedVideoUrl = body.embeddedVideoUrl;
     if (body.linkedContentId !== undefined) task.linkedContentId = body.linkedContentId;
+    if (body.linkedContentType !== undefined) task.linkedContentType = body.linkedContentType;
+    if (body.linkedContentTitle !== undefined) task.linkedContentTitle = body.linkedContentTitle;
     if (body.weekNumber !== undefined) task.weekNumber = body.weekNumber;
     if (body.dayOfWeek !== undefined) task.dayOfWeek = body.dayOfWeek;
     if (body.order !== undefined) task.order = body.order;

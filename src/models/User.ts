@@ -35,6 +35,8 @@ export interface IUser extends Document {
   emailVerified: boolean;
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
+  bodyDoubleId?: mongoose.Types.ObjectId | null;
+  currentWeekNumber: number;
   // Methods
   isLocked(): boolean;
   createdAt: Date;
@@ -151,6 +153,17 @@ const UserSchema = new Schema<IUser>(
     },
     emailVerificationExpires: {
       type: Date,
+    },
+    bodyDoubleId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    currentWeekNumber: {
+      type: Number,
+      default: 1,
+      min: 1,
+      max: 16,
     },
   },
   {

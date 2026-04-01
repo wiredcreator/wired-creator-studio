@@ -59,6 +59,9 @@ export async function PUT(
     if (body.equipmentProfile !== undefined) {
       brandBrain.equipmentProfile = body.equipmentProfile;
     }
+    if (body.equipmentChecklist !== undefined) {
+      brandBrain.equipmentChecklist = body.equipmentChecklist;
+    }
     if (body.toneOfVoiceGuide !== undefined) {
       brandBrain.toneOfVoiceGuide = body.toneOfVoiceGuide;
     }

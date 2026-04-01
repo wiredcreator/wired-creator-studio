@@ -7,6 +7,7 @@ import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
 import { generateIdeas } from '@/lib/ai/generate';
 import { getIdeaPatterns } from '@/lib/ai/idea-patterns';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { createNotification } from '@/lib/notifications';
 
 // POST /api/ideas/generate — Generate new AI content ideas for a user
 export async function POST(request: NextRequest) {
@@ -20,10 +21,16 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    const userId = user.id;
+    // Allow admins to generate ideas on behalf of a student
+    const body = await request.json().catch(() => ({}));
+    let targetUserId = user.id;
+    const isAdminProxy = user.role === 'admin' && body.studentId;
+    if (isAdminProxy) {
+      targetUserId = body.studentId;
+    }
 
-    // Guard: ensure the user has completed onboarding with a Brand Brain
-    const brandBrain = await BrandBrain.findOne({ userId }).lean();
+    // Guard: ensure the target user has completed onboarding with a Brand Brain
+    const brandBrain = await BrandBrain.findOne({ userId: targetUserId }).lean();
 
     if (!brandBrain) {
       return NextResponse.json(
@@ -39,14 +46,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            'Your Brand Brain has no content pillars yet. Please complete the Content DNA questionnaire first.',
+            'Student needs content pillars first. The Content DNA questionnaire must be completed before generating ideas.',
         },
         { status: 422 }
       );
     }
 
     // Assemble Brand Brain context for idea generation
-    const brandBrainContext = await assembleBrandBrainContext(userId, {
+    const brandBrainContext = await assembleBrandBrainContext(targetUserId, {
       includeToneOfVoice: true,
       includeContentPillars: true,
       includeIndustryData: true,
@@ -55,15 +62,15 @@ export async function POST(request: NextRequest) {
     });
 
     // Fetch approval/rejection patterns to improve idea relevance
-    const patternsContext = await getIdeaPatterns(userId);
+    const patternsContext = await getIdeaPatterns(targetUserId);
 
     // Generate ideas via AI (or mock data)
-    const generatedIdeas = await generateIdeas(brandBrainContext, undefined, patternsContext, userId);
+    const generatedIdeas = await generateIdeas(brandBrainContext, undefined, patternsContext, targetUserId);
 
     // Save all generated ideas to MongoDB
     const savedIdeas = await ContentIdea.insertMany(
       generatedIdeas.map((idea) => ({
-        userId,
+        userId: targetUserId,
         title: idea.title,
         description: idea.description,
         status: 'suggested',
@@ -72,6 +79,16 @@ export async function POST(request: NextRequest) {
         tags: [],
       }))
     );
+
+    // Notify the student when an admin generates ideas on their behalf
+    if (isAdminProxy) {
+      createNotification({
+        userId: targetUserId,
+        type: 'system',
+        title: 'New ideas generated',
+        message: 'Your coach generated new content ideas for you.',
+      });
+    }
 
     return NextResponse.json(
       {

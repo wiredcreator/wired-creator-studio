@@ -99,6 +99,8 @@ export async function POST(request: NextRequest) {
       dueDate: new Date(dueDate),
       assignedBy: user.id,
       linkedContentId: body.linkedContentId,
+      linkedContentType: body.linkedContentType,
+      linkedContentTitle: body.linkedContentTitle,
       embeddedVideoUrl: body.embeddedVideoUrl || '',
       weekNumber,
       dayOfWeek,

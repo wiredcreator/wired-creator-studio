@@ -16,6 +16,7 @@ const navItems = [
   { href: "/admin/prompts", label: "AI Prompts" },
   { href: "/admin/ai-usage", label: "AI Usage" },
   { href: "/admin/program", label: "Program Board" },
+  { href: "/admin/task-templates", label: "Task Templates" },
   { href: "/admin/my-tasks", label: "My Tasks" },
   { href: "/admin/team", label: "Team" },
   { href: "/admin/settings", label: "Settings" },

@@ -33,6 +33,8 @@ export interface ITask extends Document {
   assignedBy: Types.ObjectId;
   comments: mongoose.Types.DocumentArray<ITaskComment>;
   linkedContentId?: Types.ObjectId;
+  linkedContentType?: 'idea' | 'script';
+  linkedContentTitle?: string;
   embeddedVideoUrl?: string;
   weekNumber: number;
   dayOfWeek: number;
@@ -111,6 +113,14 @@ const TaskSchema = new Schema<ITask>(
     },
     linkedContentId: {
       type: Schema.Types.ObjectId,
+    },
+    linkedContentType: {
+      type: String,
+      enum: ['idea', 'script'],
+    },
+    linkedContentTitle: {
+      type: String,
+      trim: true,
     },
     embeddedVideoUrl: {
       type: String,

@@ -19,6 +19,8 @@ export interface TaskData {
   assignedBy?: { _id: string; name: string; email: string };
   comments: TaskComment[];
   linkedContentId?: string;
+  linkedContentType?: 'idea' | 'script';
+  linkedContentTitle?: string;
   embeddedVideoUrl?: string;
   weekNumber: number;
   dayOfWeek: number;
@@ -140,6 +142,17 @@ export default function TaskCard({ task, onStatusChange, onClick }: TaskCardProp
       >
         {task.title}
       </h3>
+
+      {/* Linked content badge */}
+      {task.linkedContentType && task.linkedContentTitle && (
+        <span
+          className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${
+            task.linkedContentType === 'idea' ? 'bg-purple-600' : 'bg-emerald-600'
+          }`}
+        >
+          {task.linkedContentType === 'idea' ? '[Idea]' : '[Script]'} {task.linkedContentTitle}
+        </span>
+      )}
 
       {/* Bottom row: comment count left, view details right */}
       <div className="mt-4 flex items-center justify-between">

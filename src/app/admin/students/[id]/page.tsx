@@ -5,6 +5,9 @@ import { useParams } from "next/navigation";
 import PageWrapper from "@/components/PageWrapper";
 import TaskCard, { TaskData } from "@/components/tasks/TaskCard";
 import ToneOfVoiceEditor from "@/components/brand-brain/ToneOfVoiceEditor";
+import CoachNotes from "@/components/admin/CoachNotes";
+import EquipmentChecklist from "@/components/admin/EquipmentChecklist";
+import BodyDoubleAssignment from "@/components/admin/BodyDoubleAssignment";
 import type { ToneOfVoiceParameter } from "@/types/ai";
 
 interface StudentInfo {
@@ -20,6 +23,9 @@ interface StudentInfo {
   state?: string;
   timezone?: string;
   onboardingCompleted?: boolean;
+  bodyDoubleId?: string;
+  bodyDoubleName?: string;
+  currentWeekNumber?: number;
 }
 
 type TovStatus = "draft" | "review" | "active";
@@ -49,6 +55,10 @@ interface BrandBrainData {
     location?: string;
     constraints?: string;
   };
+  equipmentChecklist?: Array<{
+    label: string;
+    checked: boolean;
+  }>;
 }
 
 // --- Tab data interfaces ---
@@ -204,6 +214,19 @@ export default function StudentDetailPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [coachId, setCoachId] = useState("");
 
+  // Content options for linking tasks to ideas/scripts
+  const [contentOptions, setContentOptions] = useState<
+    Array<{ _id: string; title: string; type: 'idea' | 'script' }>
+  >([]);
+  const [contentOptionsLoaded, setContentOptionsLoaded] = useState(false);
+
+  // Generate ideas state
+  const [generatingIdeas, setGeneratingIdeas] = useState(false);
+  const [generateIdeasError, setGenerateIdeasError] = useState("");
+
+  // Advance week state
+  const [advancingWeek, setAdvancingWeek] = useState(false);
+
   // New task form state
   const [newTask, setNewTask] = useState({
     title: "",
@@ -214,6 +237,9 @@ export default function StudentDetailPage() {
     dayOfWeek: 1,
     embeddedVideoUrl: "",
     order: 0,
+    linkedContentId: "",
+    linkedContentType: "" as "" | "idea" | "script",
+    linkedContentTitle: "",
   });
 
   // Tone of Voice review state
@@ -231,6 +257,9 @@ export default function StudentDetailPage() {
     weekNumber: 1,
     dayOfWeek: 1,
     embeddedVideoUrl: "",
+    linkedContentId: "",
+    linkedContentType: "" as "" | "idea" | "script",
+    linkedContentTitle: "",
   });
 
   // --- Tab data states ---
@@ -277,12 +306,45 @@ export default function StudentDetailPage() {
       );
       if (res.ok) {
         const data = await res.json();
-        setTasks(data);
+        setTasks(data.data || data);
       }
     } catch (err) {
       console.error("Error fetching tasks:", err);
     }
   }, [id, selectedWeek]);
+
+  const fetchContentOptions = useCallback(async () => {
+    if (contentOptionsLoaded) return;
+    try {
+      const [ideasRes, scriptsRes] = await Promise.all([
+        fetch(`/api/ideas?userId=${id}&limit=100`),
+        fetch(`/api/scripts?userId=${id}&limit=100`),
+      ]);
+      const options: Array<{ _id: string; title: string; type: 'idea' | 'script' }> = [];
+      if (ideasRes.ok) {
+        const ideasData = await ideasRes.json();
+        const ideasList = ideasData.data || ideasData;
+        if (Array.isArray(ideasList)) {
+          for (const idea of ideasList) {
+            options.push({ _id: idea._id, title: idea.title, type: 'idea' });
+          }
+        }
+      }
+      if (scriptsRes.ok) {
+        const scriptsData = await scriptsRes.json();
+        const scriptsList = scriptsData.data || scriptsData;
+        if (Array.isArray(scriptsList)) {
+          for (const script of scriptsList) {
+            options.push({ _id: script._id, title: script.title, type: 'script' });
+          }
+        }
+      }
+      setContentOptions(options);
+      setContentOptionsLoaded(true);
+    } catch (err) {
+      console.error("Error fetching content options:", err);
+    }
+  }, [id, contentOptionsLoaded]);
 
   // Fetch student info
   useEffect(() => {
@@ -513,6 +575,9 @@ export default function StudentDetailPage() {
           dayOfWeek: newTask.dayOfWeek,
           embeddedVideoUrl: newTask.embeddedVideoUrl,
           order: newTask.order,
+          linkedContentId: newTask.linkedContentId || undefined,
+          linkedContentType: newTask.linkedContentType || undefined,
+          linkedContentTitle: newTask.linkedContentTitle || undefined,
         }),
       });
 
@@ -526,6 +591,9 @@ export default function StudentDetailPage() {
           dayOfWeek: 1,
           embeddedVideoUrl: "",
           order: 0,
+          linkedContentId: "",
+          linkedContentType: "",
+          linkedContentTitle: "",
         });
         setShowAddForm(false);
         fetchTasks();
@@ -552,6 +620,7 @@ export default function StudentDetailPage() {
 
   const handleStartEdit = (task: TaskData) => {
     setEditingTask(task._id);
+    fetchContentOptions();
     setEditForm({
       title: task.title,
       description: task.description || "",
@@ -560,6 +629,9 @@ export default function StudentDetailPage() {
       weekNumber: task.weekNumber,
       dayOfWeek: task.dayOfWeek,
       embeddedVideoUrl: task.embeddedVideoUrl || "",
+      linkedContentId: task.linkedContentId || "",
+      linkedContentType: (task.linkedContentType || "") as "" | "idea" | "script",
+      linkedContentTitle: task.linkedContentTitle || "",
     });
   };
 
@@ -576,6 +648,9 @@ export default function StudentDetailPage() {
           weekNumber: editForm.weekNumber,
           dayOfWeek: editForm.dayOfWeek,
           embeddedVideoUrl: editForm.embeddedVideoUrl,
+          linkedContentId: editForm.linkedContentId || undefined,
+          linkedContentType: editForm.linkedContentType || undefined,
+          linkedContentTitle: editForm.linkedContentTitle || undefined,
         }),
       });
       if (res.ok) {
@@ -843,6 +918,9 @@ export default function StudentDetailPage() {
                 )}
               </div>
 
+              {/* Body Double Assignment */}
+              <BodyDoubleAssignment studentId={student._id} />
+
               {/* Details Card */}
               <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
                 <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
@@ -900,6 +978,9 @@ export default function StudentDetailPage() {
           </div>
         )}
 
+        {/* Coach Notes */}
+        {student && <CoachNotes studentId={student._id} />}
+
         {/* Tab Switcher */}
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-1">
           <div className="flex flex-wrap gap-1">
@@ -944,6 +1025,45 @@ export default function StudentDetailPage() {
               </div>
             </div>
 
+            {/* Advance week */}
+            {student?.currentWeekNumber && student.currentWeekNumber < 16 && (
+              <div className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5">
+                <p className="text-xs text-[var(--color-text-secondary)]">
+                  Current program week: <span className="font-semibold text-[var(--color-text-primary)]">{student.currentWeekNumber}</span>
+                </p>
+                <button
+                  onClick={async () => {
+                    const next = (student.currentWeekNumber || 1) + 1;
+                    if (!confirm(`Advance ${student.name} to Week ${next}? This will auto-assign any configured task templates.`)) return;
+                    setAdvancingWeek(true);
+                    try {
+                      const res = await fetch("/api/admin/advance-week", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ studentId: id }),
+                      });
+                      if (res.ok) {
+                        const data = await res.json();
+                        setStudent((prev) => prev ? { ...prev, currentWeekNumber: data.newWeekNumber } : prev);
+                        setSelectedWeek(data.newWeekNumber);
+                        // Refetch tasks for new week
+                        const tasksRes = await fetch(`/api/tasks?userId=${id}&weekNumber=${data.newWeekNumber}`);
+                        if (tasksRes.ok) {
+                          const tasksData = await tasksRes.json();
+                          setTasks(tasksData.data || tasksData);
+                        }
+                      }
+                    } catch {}
+                    setAdvancingWeek(false);
+                  }}
+                  disabled={advancingWeek}
+                  className="flex items-center gap-1.5 rounded-md bg-[var(--color-bg-tertiary)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-primary)] outline-none ring-0 transition-opacity hover:opacity-80 disabled:opacity-50"
+                >
+                  {advancingWeek ? "Advancing..." : `Advance to Week ${(student.currentWeekNumber || 1) + 1}`}
+                </button>
+              </div>
+            )}
+
             {/* Add task button */}
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
@@ -952,6 +1072,7 @@ export default function StudentDetailPage() {
               <button
                 onClick={() => {
                   setNewTask((prev) => ({ ...prev, weekNumber: selectedWeek }));
+                  if (!showAddForm) fetchContentOptions();
                   setShowAddForm(!showAddForm);
                 }}
                 className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)]"
@@ -1116,6 +1237,62 @@ export default function StudentDetailPage() {
                       className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
                     />
                   </div>
+
+                  {/* Link to Content */}
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                      Link to Content (optional)
+                    </label>
+                    <select
+                      value={newTask.linkedContentId}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        if (!selectedId) {
+                          setNewTask((prev) => ({
+                            ...prev,
+                            linkedContentId: "",
+                            linkedContentType: "",
+                            linkedContentTitle: "",
+                          }));
+                        } else {
+                          const option = contentOptions.find((o) => o._id === selectedId);
+                          if (option) {
+                            setNewTask((prev) => ({
+                              ...prev,
+                              linkedContentId: option._id,
+                              linkedContentType: option.type,
+                              linkedContentTitle: option.title,
+                            }));
+                          }
+                        }
+                      }}
+                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+                    >
+                      <option value="">None</option>
+                      {contentOptions.filter((o) => o.type === 'idea').length > 0 && (
+                        <optgroup label="Ideas">
+                          {contentOptions
+                            .filter((o) => o.type === 'idea')
+                            .map((o) => (
+                              <option key={o._id} value={o._id}>
+                                {o.title}
+                              </option>
+                            ))}
+                        </optgroup>
+                      )}
+                      {contentOptions.filter((o) => o.type === 'script').length > 0 && (
+                        <optgroup label="Scripts">
+                          {contentOptions
+                            .filter((o) => o.type === 'script')
+                            .map((o) => (
+                              <option key={o._id} value={o._id}>
+                                {o.title}
+                              </option>
+                            ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Form actions */}
@@ -1247,6 +1424,58 @@ export default function StudentDetailPage() {
                                     className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
                                   />
                                 </div>
+                                {/* Link to Content */}
+                                <div className="sm:col-span-2">
+                                  <select
+                                    value={editForm.linkedContentId}
+                                    onChange={(e) => {
+                                      const selectedId = e.target.value;
+                                      if (!selectedId) {
+                                        setEditForm((prev) => ({
+                                          ...prev,
+                                          linkedContentId: "",
+                                          linkedContentType: "",
+                                          linkedContentTitle: "",
+                                        }));
+                                      } else {
+                                        const option = contentOptions.find((o) => o._id === selectedId);
+                                        if (option) {
+                                          setEditForm((prev) => ({
+                                            ...prev,
+                                            linkedContentId: option._id,
+                                            linkedContentType: option.type,
+                                            linkedContentTitle: option.title,
+                                          }));
+                                        }
+                                      }
+                                    }}
+                                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+                                  >
+                                    <option value="">No linked content</option>
+                                    {contentOptions.filter((o) => o.type === 'idea').length > 0 && (
+                                      <optgroup label="Ideas">
+                                        {contentOptions
+                                          .filter((o) => o.type === 'idea')
+                                          .map((o) => (
+                                            <option key={o._id} value={o._id}>
+                                              {o.title}
+                                            </option>
+                                          ))}
+                                      </optgroup>
+                                    )}
+                                    {contentOptions.filter((o) => o.type === 'script').length > 0 && (
+                                      <optgroup label="Scripts">
+                                        {contentOptions
+                                          .filter((o) => o.type === 'script')
+                                          .map((o) => (
+                                            <option key={o._id} value={o._id}>
+                                              {o.title}
+                                            </option>
+                                          ))}
+                                      </optgroup>
+                                    )}
+                                  </select>
+                                </div>
                               </div>
                               <div className="mt-3 flex justify-end gap-2">
                                 <button
@@ -1327,6 +1556,58 @@ export default function StudentDetailPage() {
         {/* ========== IDEAS TAB ========== */}
         {activeTab === "ideas" && (
           <div className="space-y-4">
+            {/* Ideas header with generate button */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                {ideas.length} idea{ideas.length !== 1 ? "s" : ""}
+              </p>
+              <button
+                onClick={async () => {
+                  setGeneratingIdeas(true);
+                  setGenerateIdeasError("");
+                  try {
+                    const res = await fetch("/api/ideas/generate", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ studentId: id }),
+                    });
+                    if (!res.ok) {
+                      const data = await res.json().catch(() => ({}));
+                      throw new Error(data.error || "Failed to generate ideas");
+                    }
+                    // Refetch ideas
+                    const ideasRes = await fetch(`/api/ideas?userId=${id}&limit=100`);
+                    if (ideasRes.ok) {
+                      const data = await ideasRes.json();
+                      setIdeas(data.data || data);
+                    }
+                  } catch (err) {
+                    setGenerateIdeasError(err instanceof Error ? err.message : "Failed to generate ideas");
+                  } finally {
+                    setGeneratingIdeas(false);
+                  }
+                }}
+                disabled={generatingIdeas}
+                className="flex items-center gap-1.5 rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white outline-none ring-0 transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {generatingIdeas ? (
+                  <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
+                  </svg>
+                )}
+                {generatingIdeas ? "Generating..." : "Generate Ideas"}
+              </button>
+            </div>
+            {generateIdeasError && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                {generateIdeasError}
+              </div>
+            )}
             {ideasLoading && <LoadingSkeleton />}
             {!ideasLoading && ideas.length === 0 && (
               <EmptyState message="This student has no content ideas yet." />
@@ -1674,6 +1955,14 @@ export default function StudentDetailPage() {
                       )}
                     </div>
                   </div>
+                )}
+
+                {/* Equipment Checklist */}
+                {brandBrain._id && (
+                  <EquipmentChecklist
+                    brandBrainId={brandBrain._id}
+                    items={brandBrain.equipmentChecklist || []}
+                  />
                 )}
 
                 {/* Tone of Voice link */}

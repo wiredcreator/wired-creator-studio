@@ -56,6 +56,7 @@ export interface IBrandBrainSnapshot {
   contentPillars: IContentPillar[];
   industryData: IIndustryData;
   equipmentProfile: IEquipmentProfile;
+  equipmentChecklist?: IEquipmentChecklistItem[];
   voiceStormSessions?: Types.ObjectId[];
   callTranscripts?: Types.ObjectId[];
   approvedIdeas?: Types.ObjectId[];
@@ -74,6 +75,20 @@ const BrandBrainSnapshotSchema = new Schema<IBrandBrainSnapshot>(
     callTranscripts: [{ type: Schema.Types.ObjectId, ref: 'CallTranscript' }],
     approvedIdeas: [{ type: Schema.Types.ObjectId, ref: 'ContentIdea' }],
     contentDNAResponse: { type: Schema.Types.ObjectId, ref: 'ContentDNAResponse' },
+  },
+  { _id: false }
+);
+
+// --- Equipment Checklist Item Sub-document ---
+export interface IEquipmentChecklistItem {
+  label: string;
+  checked: boolean;
+}
+
+const EquipmentChecklistItemSchema = new Schema<IEquipmentChecklistItem>(
+  {
+    label: { type: String, required: true },
+    checked: { type: Boolean, default: false },
   },
   { _id: false }
 );
@@ -103,6 +118,7 @@ export interface IBrandBrain extends Document {
   contentPillars: IContentPillar[];
   industryData: IIndustryData;
   equipmentProfile: IEquipmentProfile;
+  equipmentChecklist: IEquipmentChecklistItem[];
   voiceStormSessions: Types.ObjectId[];
   callTranscripts: Types.ObjectId[];
   approvedIdeas: Types.ObjectId[];
@@ -134,6 +150,10 @@ const BrandBrainSchema = new Schema<IBrandBrain>(
     equipmentProfile: {
       type: EquipmentProfileSchema,
       default: () => ({}),
+    },
+    equipmentChecklist: {
+      type: [EquipmentChecklistItemSchema],
+      default: [],
     },
     voiceStormSessions: [
       { type: Schema.Types.ObjectId, ref: 'VoiceStormingTranscript' },
