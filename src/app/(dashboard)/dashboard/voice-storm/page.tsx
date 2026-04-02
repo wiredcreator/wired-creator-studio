@@ -72,6 +72,7 @@ export default function VoiceStormPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chunkTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingTranscriptions = useRef(0);
+  const stoppingRef = useRef(false);
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const inputContainerRef = useRef<HTMLDivElement | null>(null);
@@ -295,6 +296,14 @@ export default function VoiceStormPage() {
         const blob = new Blob(localChunks, { type: 'audio/webm' });
         transcribeBlob(blob);
       }
+      // If this was the final stop (user clicked stop), kill the stream
+      if (stoppingRef.current) {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((t) => t.stop());
+          streamRef.current = null;
+        }
+        stoppingRef.current = false;
+      }
     };
 
     return recorder;
@@ -306,15 +315,17 @@ export default function VoiceStormPage() {
     if (!recorder || !stream || recorder.state !== 'recording') return;
 
     // Stop current recorder; its onstop will transcribe its own local chunks
+    // stoppingRef is false here so the stream stays alive
     recorder.stop();
 
-    // Start a fresh recorder on the same stream with its own chunk array
+    // Start a fresh recorder on the same stream
     const newRecorder = createRecorder(stream);
     newRecorder.start();
     mediaRecorderRef.current = newRecorder;
   };
 
   const startRecording = async () => {
+    stoppingRef.current = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -334,15 +345,27 @@ export default function VoiceStormPage() {
   };
 
   const stopRecording = () => {
+    // Stop the chunk cycle timer first to prevent race conditions
     if (chunkTimerRef.current) {
       clearInterval(chunkTimerRef.current);
       chunkTimerRef.current = null;
     }
-    mediaRecorderRef.current?.stop();
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
+
+    // Mark as final stop so onstop callback knows to kill the stream
+    stoppingRef.current = true;
+
+    // Stop the recorder (onstop will handle transcription + stream cleanup)
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    } else {
+      // Recorder already stopped (e.g. cycle just happened), clean up stream directly
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      stoppingRef.current = false;
     }
+
     setIsRecording(false);
     if (timerRef.current) clearInterval(timerRef.current);
   };

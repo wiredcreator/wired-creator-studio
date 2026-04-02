@@ -31,8 +31,8 @@ export default function VoiceTextarea({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const valueRef = useRef(value);
   const pendingTranscriptions = useRef(0);
+  const stoppingRef = useRef(false); // true when user clicks stop (final stop)
 
-  // Keep valueRef in sync so chunk callbacks have latest value
   useEffect(() => {
     valueRef.current = value;
   }, [value]);
@@ -107,6 +107,14 @@ export default function VoiceTextarea({
             transcribeBlob(blob);
           }
         }
+        // If this was the final stop (user clicked stop), kill the stream
+        if (stoppingRef.current) {
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach((t) => t.stop());
+            streamRef.current = null;
+          }
+          stoppingRef.current = false;
+        }
       };
 
       return recorder;
@@ -120,9 +128,10 @@ export default function VoiceTextarea({
     if (!recorder || !stream || recorder.state !== 'recording') return;
 
     // Stop current recorder; its onstop will transcribe its own local chunks
+    // stoppingRef is false here so the stream stays alive
     recorder.stop();
 
-    // Start a fresh recorder on the same stream with its own chunk array
+    // Start a fresh recorder on the same stream
     const newRecorder = createRecorder(stream);
     newRecorder.start();
     mediaRecorderRef.current = newRecorder;
@@ -130,6 +139,7 @@ export default function VoiceTextarea({
 
   const startRecording = useCallback(async () => {
     setError(null);
+    stoppingRef.current = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -146,22 +156,28 @@ export default function VoiceTextarea({
     } catch {
       setError('Could not access microphone. Please allow mic access.');
     }
-  }, [transcribeBlob, cycleRecorder]);
+  }, [createRecorder, cycleRecorder]);
 
   const stopRecording = useCallback(() => {
-    // Stop the chunk cycle timer
+    // Stop the chunk cycle timer first to prevent race conditions
     if (chunkTimerRef.current) {
       clearInterval(chunkTimerRef.current);
       chunkTimerRef.current = null;
     }
 
-    // Stop the recorder (onstop will handle transcription of remaining audio)
-    mediaRecorderRef.current?.stop();
+    // Mark as final stop so onstop callback knows to kill the stream
+    stoppingRef.current = true;
 
-    // Stop the mic stream
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
+    // Stop the recorder (onstop will handle transcription + stream cleanup)
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    } else {
+      // Recorder already stopped (e.g. cycle just happened), clean up stream directly
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      stoppingRef.current = false;
     }
 
     setIsRecording(false);
