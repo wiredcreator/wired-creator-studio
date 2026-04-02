@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import VoiceTextarea from './VoiceTextarea';
 
 // --- Question definitions ---
 
@@ -730,20 +731,11 @@ function QuestionStep({
               onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
             />
           ) : (
-            <textarea
+            <VoiceTextarea
               id={q.id}
               value={formData[q.id]}
-              onChange={(e) => onChange(q.id, e.target.value)}
+              onChange={(val) => onChange(q.id, val)}
               rows={4}
-              className="w-full px-4 py-3 text-base border transition-colors duration-200 resize-none outline-none"
-              style={{
-                backgroundColor: 'var(--color-bg-card)',
-                borderColor: 'var(--color-border)',
-                color: 'var(--color-text-primary)',
-                borderRadius: 'var(--radius-md)',
-              }}
-              onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
-              onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
             />
           )}
         </div>

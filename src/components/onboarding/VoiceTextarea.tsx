@@ -2,6 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 
+const CHUNK_INTERVAL_MS = 120_000; // Auto-transcribe every 2 minutes
+
 interface VoiceTextareaProps {
   id: string;
   value: string;
@@ -23,16 +25,27 @@ export default function VoiceTextarea({
   const [error, setError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const chunkTimerRef = useRef<NodeJS.Timeout | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const valueRef = useRef(value);
+  const pendingTranscriptions = useRef(0);
+
+  // Keep valueRef in sync so chunk callbacks have latest value
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (chunkTimerRef.current) clearInterval(chunkTimerRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
         mediaRecorderRef.current.stop();
       }
     };
@@ -44,56 +57,113 @@ export default function VoiceTextarea({
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  const transcribeBlob = useCallback(
+    async (blob: Blob) => {
+      pendingTranscriptions.current += 1;
+      setIsTranscribing(true);
+      try {
+        const formData = new FormData();
+        formData.append('audio', blob, 'recording.webm');
+        const res = await fetch('/api/voice-storming/transcribe', {
+          method: 'POST',
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.text) {
+            const current = valueRef.current;
+            const updated = current ? current + '\n\n' + data.text : data.text;
+            onChange(updated);
+          }
+        } else {
+          setError('Failed to transcribe. Please try again.');
+        }
+      } catch {
+        setError('Failed to transcribe. Please try again.');
+      } finally {
+        pendingTranscriptions.current -= 1;
+        if (pendingTranscriptions.current <= 0) {
+          pendingTranscriptions.current = 0;
+          setIsTranscribing(false);
+        }
+      }
+    },
+    [onChange]
+  );
+
+  const createRecorder = useCallback(
+    (stream: MediaStream) => {
+      const recorder = new MediaRecorder(stream);
+      const localChunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) localChunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        if (localChunks.length > 0) {
+          const blob = new Blob(localChunks, { type: 'audio/webm' });
+          if (blob.size > 0) {
+            transcribeBlob(blob);
+          }
+        }
+      };
+
+      return recorder;
+    },
+    [transcribeBlob]
+  );
+
+  const cycleRecorder = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    const stream = streamRef.current;
+    if (!recorder || !stream || recorder.state !== 'recording') return;
+
+    // Stop current recorder; its onstop will transcribe its own local chunks
+    recorder.stop();
+
+    // Start a fresh recorder on the same stream with its own chunk array
+    const newRecorder = createRecorder(stream);
+    newRecorder.start();
+    mediaRecorderRef.current = newRecorder;
+  }, [createRecorder]);
+
   const startRecording = useCallback(async () => {
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      recorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        stream.getTracks().forEach((t) => t.stop());
-
-        setIsTranscribing(true);
-        try {
-          const formData = new FormData();
-          formData.append('audio', blob, 'recording.webm');
-          const res = await fetch('/api/voice-storming/transcribe', {
-            method: 'POST',
-            body: formData,
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.text) {
-              onChange(value ? value + '\n\n' + data.text : data.text);
-            }
-          } else {
-            setError('Failed to transcribe. Please try again.');
-          }
-        } catch {
-          setError('Failed to transcribe. Please try again.');
-        } finally {
-          setIsTranscribing(false);
-        }
-      };
+      streamRef.current = stream;
+      const recorder = createRecorder(stream);
 
       recorder.start();
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+
+      // Auto-cycle every 2 minutes for chunked transcription
+      chunkTimerRef.current = setInterval(cycleRecorder, CHUNK_INTERVAL_MS);
     } catch {
       setError('Could not access microphone. Please allow mic access.');
     }
-  }, [onChange, value]);
+  }, [transcribeBlob, cycleRecorder]);
 
   const stopRecording = useCallback(() => {
+    // Stop the chunk cycle timer
+    if (chunkTimerRef.current) {
+      clearInterval(chunkTimerRef.current);
+      chunkTimerRef.current = null;
+    }
+
+    // Stop the recorder (onstop will handle transcription of remaining audio)
     mediaRecorderRef.current?.stop();
+
+    // Stop the mic stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+
     setIsRecording(false);
     if (timerRef.current) {
       clearInterval(timerRef.current);

@@ -68,8 +68,10 @@ export default function VoiceStormPage() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [transcribing, setTranscribing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const chunkTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingTranscriptions = useRef(0);
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const inputContainerRef = useRef<HTMLDivElement | null>(null);
@@ -146,6 +148,55 @@ export default function VoiceStormPage() {
     }
   };
 
+  const DRAFT_KEY = 'wc-voice-storm-draft';
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft.transcript) {
+          setTranscript(draft.transcript);
+          setInputExpanded(true);
+          if (draft.sessionType) setSessionType(draft.sessionType);
+          if (draft.linkedIdeaIds) setLinkedIdeaIds(draft.linkedIdeaIds);
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }, []);
+
+  // Auto-save transcript to localStorage when it changes
+  useEffect(() => {
+    if (transcript.trim()) {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          transcript,
+          sessionType,
+          linkedIdeaIds,
+          savedAt: new Date().toISOString(),
+        }));
+      } catch {
+        // Storage full or unavailable
+      }
+    } else {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+  }, [transcript, sessionType, linkedIdeaIds]);
+
+  // Warn before leaving with unsaved transcript
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (transcript.trim() || isRecording) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [transcript, isRecording]);
+
   useEffect(() => {
     fetchSessions();
     fetch('/api/ideas?status=approved&limit=50')
@@ -201,54 +252,97 @@ export default function VoiceStormPage() {
 
   // ─── Recording Logic ──────────────────────────────────────────────────
 
+  const CHUNK_INTERVAL_MS = 120_000; // Auto-transcribe every 2 minutes
+
+  const transcribeBlob = async (blob: Blob) => {
+    if (blob.size === 0) return;
+    pendingTranscriptions.current += 1;
+    setTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', blob, 'recording.webm');
+      const res = await fetch('/api/voice-storming/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text) {
+          setTranscript((prev) => prev ? prev + '\n\n' + data.text : data.text);
+        }
+      }
+    } catch (err) {
+      console.error('Transcription failed:', err);
+    } finally {
+      pendingTranscriptions.current -= 1;
+      if (pendingTranscriptions.current <= 0) {
+        pendingTranscriptions.current = 0;
+        setTranscribing(false);
+      }
+    }
+  };
+
+  const createRecorder = (stream: MediaStream) => {
+    const recorder = new MediaRecorder(stream);
+    const localChunks: Blob[] = [];
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) localChunks.push(e.data);
+    };
+
+    recorder.onstop = () => {
+      if (localChunks.length > 0) {
+        const blob = new Blob(localChunks, { type: 'audio/webm' });
+        transcribeBlob(blob);
+      }
+    };
+
+    return recorder;
+  };
+
+  const cycleRecorder = () => {
+    const recorder = mediaRecorderRef.current;
+    const stream = streamRef.current;
+    if (!recorder || !stream || recorder.state !== 'recording') return;
+
+    // Stop current recorder; its onstop will transcribe its own local chunks
+    recorder.stop();
+
+    // Start a fresh recorder on the same stream with its own chunk array
+    const newRecorder = createRecorder(stream);
+    newRecorder.start();
+    mediaRecorderRef.current = newRecorder;
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      recorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        stream.getTracks().forEach((t) => t.stop());
-
-        // Transcribe via Whisper
-        setTranscribing(true);
-        try {
-          const formData = new FormData();
-          formData.append('audio', blob, 'recording.webm');
-          const res = await fetch('/api/voice-storming/transcribe', {
-            method: 'POST',
-            body: formData,
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.text) {
-              setTranscript((prev) => prev ? prev + '\n\n' + data.text : data.text);
-            }
-          }
-        } catch (err) {
-          console.error('Transcription failed:', err);
-        } finally {
-          setTranscribing(false);
-        }
-      };
+      streamRef.current = stream;
+      const recorder = createRecorder(stream);
 
       recorder.start();
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+
+      // Auto-cycle every 2 minutes for chunked transcription
+      chunkTimerRef.current = setInterval(cycleRecorder, CHUNK_INTERVAL_MS);
     } catch {
       alert('Could not access microphone. Please allow microphone access or paste your transcript manually.');
     }
   };
 
   const stopRecording = () => {
+    if (chunkTimerRef.current) {
+      clearInterval(chunkTimerRef.current);
+      chunkTimerRef.current = null;
+    }
     mediaRecorderRef.current?.stop();
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
     setIsRecording(false);
     if (timerRef.current) clearInterval(timerRef.current);
   };
@@ -280,6 +374,8 @@ export default function VoiceStormPage() {
         const data = await res.json();
         const newId = data._id ?? data.data?._id;
         if (newId) {
+          // Clear draft since we've saved successfully
+          localStorage.removeItem(DRAFT_KEY);
           // Process in background, then navigate
           fetch(`/api/voice-storming/${newId}/process`, { method: 'POST' }).catch(() => {});
           router.push(`/dashboard/voice-storm/${newId}`);
