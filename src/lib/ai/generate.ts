@@ -23,6 +23,7 @@ import type {
 import dbConnect from '@/lib/db';
 import AIDocument from '@/models/AIDocument';
 import type { AIDocumentCategory } from '@/models/AIDocument';
+import BrandBrain from '@/models/BrandBrain';
 
 // Helper to track usage with timing
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,36 +48,49 @@ export async function buildSystemPrompt(
   try {
     await dbConnect();
 
-    // Fetch global documents for this category
-    const globalDocs = await AIDocument.find({
-      category,
-      scope: 'global',
-    })
-      .sort({ sortOrder: 1 })
-      .lean();
-
-    // Fetch user-scoped documents if userId provided
-    let userDocs: typeof globalDocs = [];
-    if (userId) {
-      userDocs = await AIDocument.find({
-        category,
-        userId,
-      })
+    // Run all DB queries in parallel for performance
+    const [globalDocs, userDocs, brandBrain] = await Promise.all([
+      // Fetch global documents for this category
+      AIDocument.find({ category, scope: 'global' })
         .sort({ sortOrder: 1 })
-        .lean();
-    }
+        .lean(),
+      // Fetch user-scoped documents if userId provided
+      userId
+        ? AIDocument.find({ category, userId }).sort({ sortOrder: 1 }).lean()
+        : Promise.resolve([]),
+      // Fetch the student's BrandBrain compiled profile if userId provided
+      userId
+        ? BrandBrain.findOne({ userId }).select('compiledProfile').lean()
+        : Promise.resolve(null),
+    ]);
 
-    const allDocs = [...globalDocs, ...userDocs];
+    const globalSection =
+      globalDocs.length > 0
+        ? globalDocs.map((d) => `## ${d.title}\n${d.content}`).join('\n\n')
+        : '';
 
-    if (allDocs.length === 0) {
+    // Inject compiled student profile between global docs and user docs
+    const compiledProfileContent =
+      brandBrain &&
+      brandBrain.compiledProfile &&
+      brandBrain.compiledProfile.content
+        ? `## Student Profile\n${brandBrain.compiledProfile.content}`
+        : '';
+
+    const userSection =
+      userDocs.length > 0
+        ? userDocs.map((d) => `## ${d.title}\n${d.content}`).join('\n\n')
+        : '';
+
+    const parts = [basePrompt, globalSection, compiledProfileContent, userSection].filter(
+      Boolean
+    );
+
+    if (parts.length === 1) {
       return basePrompt;
     }
 
-    const docSection = allDocs
-      .map((d) => `## ${d.title}\n${d.content}`)
-      .join('\n\n');
-
-    return `${basePrompt}\n\n${docSection}`;
+    return parts.join('\n\n');
   } catch (error) {
     console.error('Failed to fetch AI documents, using base prompt:', error);
     return basePrompt;
