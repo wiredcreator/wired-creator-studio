@@ -13,7 +13,7 @@ interface AdminSidebarProps {
 const navItems = [
   { href: "/admin", label: "Overview", exact: true },
   { href: "/admin/students", label: "Students" },
-  { href: "/admin/prompts", label: "AI Prompts" },
+  { href: "/admin/ai-documents", label: "AI Documents" },
   { href: "/admin/ai-usage", label: "AI Usage" },
   { href: "/admin/program", label: "Program Board" },
   { href: "/admin/task-templates", label: "Task Templates" },
