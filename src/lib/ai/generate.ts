@@ -21,8 +21,8 @@ import type {
   GeneratedSideQuest,
 } from '@/types/ai';
 import dbConnect from '@/lib/db';
-import CustomPrompt from '@/models/CustomPrompt';
-import type { CustomPromptCategory } from '@/models/CustomPrompt';
+import AIDocument from '@/models/AIDocument';
+import type { AIDocumentCategory } from '@/models/AIDocument';
 
 // Helper to track usage with timing
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,34 +35,50 @@ function track(userId: string, feature: AIFeature, response: any, startMs: numbe
 // ---------------------------------------------------------------------------
 
 /**
- * Fetches all active custom prompts for a given category and appends them
- * to the base system prompt. Returns the augmented system prompt string.
+ * Builds the full system prompt by concatenating the base prompt with
+ * global AI Documents and user-scoped AI Documents for the given category.
+ * Injection order: base prompt -> global docs -> user docs.
  */
-async function getAugmentedSystemPrompt(
+async function buildSystemPrompt(
   basePrompt: string,
-  category: CustomPromptCategory
+  category: AIDocumentCategory,
+  userId?: string
 ): Promise<string> {
   try {
     await dbConnect();
-    const customPrompts = await CustomPrompt.find({
+
+    // Fetch global documents for this category
+    const globalDocs = await AIDocument.find({
       category,
-      isActive: true,
+      scope: 'global',
     })
-      .sort({ createdAt: 1 })
+      .sort({ sortOrder: 1 })
       .lean();
 
-    if (customPrompts.length === 0) {
+    // Fetch user-scoped documents if userId provided
+    let userDocs: typeof globalDocs = [];
+    if (userId) {
+      userDocs = await AIDocument.find({
+        category,
+        userId,
+      })
+        .sort({ sortOrder: 1 })
+        .lean();
+    }
+
+    const allDocs = [...globalDocs, ...userDocs];
+
+    if (allDocs.length === 0) {
       return basePrompt;
     }
 
-    const customSection = customPrompts
-      .map((p) => `## Custom Instructions: ${p.name}\n${p.promptText}`)
+    const docSection = allDocs
+      .map((d) => `## ${d.title}\n${d.content}`)
       .join('\n\n');
 
-    return `${basePrompt}\n\n${customSection}`;
+    return `${basePrompt}\n\n${docSection}`;
   } catch (error) {
-    // If custom prompt fetch fails, fall back to the base prompt
-    console.error('Failed to fetch custom prompts, using base prompt:', error);
+    console.error('Failed to fetch AI documents, using base prompt:', error);
     return basePrompt;
   }
 }
@@ -145,7 +161,7 @@ export async function generateToneOfVoice(
     '\nPlease analyze all of the above and generate a comprehensive Tone of Voice Guide.'
   );
 
-  const toneSystemPrompt = await getAugmentedSystemPrompt(TONE_OF_VOICE_SYSTEM_PROMPT, 'tone_of_voice');
+  const toneSystemPrompt = await buildSystemPrompt(TONE_OF_VOICE_SYSTEM_PROMPT, 'tone_of_voice', userId);
 
   const startMs = Date.now();
   const response = await withRetry(() =>
@@ -213,9 +229,10 @@ export async function generateContentPillars(
     '\nPlease analyze the above responses and generate content pillars for this creator.'
   );
 
-  const pillarSystemPrompt = await getAugmentedSystemPrompt(
+  const pillarSystemPrompt = await buildSystemPrompt(
     CONTENT_PILLAR_GENERATION_PROMPT,
-    'content_pillar_generation'
+    'content_pillar_generation',
+    userId
   );
 
   const startMs = Date.now();
@@ -290,7 +307,7 @@ export async function processBrainDump(
       ? `\n\n## Creator's Content Pillars\n${contentPillars.map((p, i) => `${i + 1}. ${p}`).join('\n')}`
       : '\n\n## Creator\'s Content Pillars\nNo content pillars defined yet. Use "uncategorized" for all theme mappings.';
 
-  const brainDumpSystemPrompt = await getAugmentedSystemPrompt(BRAIN_DUMP_PROCESSING_PROMPT, 'brain_dump_processing');
+  const brainDumpSystemPrompt = await buildSystemPrompt(BRAIN_DUMP_PROCESSING_PROMPT, 'brain_dump_processing', userId);
 
   const startMs = Date.now();
   const response = await withRetry(() =>
@@ -362,7 +379,7 @@ export async function generateIdeas(
     '\nGenerate 6-8 concrete, ready-to-film video ideas based on the above context.',
   ].join('\n');
 
-  const ideaSystemPrompt = await getAugmentedSystemPrompt(IDEA_GENERATION_SYSTEM_PROMPT, 'idea_generation');
+  const ideaSystemPrompt = await buildSystemPrompt(IDEA_GENERATION_SYSTEM_PROMPT, 'idea_generation', userId);
 
   const startMs = Date.now();
   const response = await withRetry(() =>
@@ -467,7 +484,7 @@ export async function generateScript(
     '\nPlease generate a complete video script based on the above context. Return ONLY valid JSON with the fields: title, fullScript, bulletPoints (array of strings), and teleprompterVersion.'
   );
 
-  const scriptSystemPrompt = await getAugmentedSystemPrompt(SCRIPT_GENERATION_SYSTEM_PROMPT, 'script_generation');
+  const scriptSystemPrompt = await buildSystemPrompt(SCRIPT_GENERATION_SYSTEM_PROMPT, 'script_generation', userId);
 
   const startMs = Date.now();
   const response = await withRetry(() =>
@@ -541,7 +558,7 @@ export async function processVoiceStorming(
       ? `\n\nContent Pillars: ${contentPillars.join(', ')}`
       : '';
 
-  const voiceStormSystemPrompt = await getAugmentedSystemPrompt(VOICE_STORMING_PROCESSING_PROMPT, 'tone_of_voice');
+  const voiceStormSystemPrompt = await buildSystemPrompt(VOICE_STORMING_PROCESSING_PROMPT, 'tone_of_voice', userId);
 
   const startMs = Date.now();
   const response = await withRetry(() =>
@@ -661,7 +678,7 @@ export async function generateSideQuests(
 
   userParts.push('\nGenerate 3 personalized side quests based on the above context.');
 
-  const sideQuestSystemPrompt = await getAugmentedSystemPrompt(SIDE_QUEST_GENERATION_PROMPT, 'side_quest_generation');
+  const sideQuestSystemPrompt = await buildSystemPrompt(SIDE_QUEST_GENERATION_PROMPT, 'side_quest_generation', userId);
 
   const startMs = Date.now();
   const response = await withRetry(() =>
@@ -761,9 +778,10 @@ export async function processPersonalBaseline(
     '\nPlease analyze the above survey responses and generate a structured student profile with risk flags.'
   );
 
-  const systemPrompt = await getAugmentedSystemPrompt(
+  const systemPrompt = await buildSystemPrompt(
     PERSONAL_BASELINE_PROCESSING_PROMPT,
-    'personal_baseline_processing'
+    'personal_baseline_processing',
+    userId
   );
 
   const startMs = Date.now();
