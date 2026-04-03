@@ -30,12 +30,6 @@ const CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Student {
-  _id: string;
-  name: string;
-  email: string;
-}
-
 interface AIDocument {
   _id: string;
   title: string;
@@ -51,8 +45,6 @@ interface AIDocument {
 const emptyForm = {
   title: "",
   category: "idea_generation",
-  scope: "global" as "global" | "user",
-  userId: "",
   content: "",
   sortOrder: 0,
 };
@@ -113,8 +105,6 @@ function SkeletonCard() {
 
 interface ModalProps {
   editing: AIDocument | null;
-  students: Student[];
-  studentsLoading: boolean;
   submitting: boolean;
   error: string | null;
   form: typeof emptyForm;
@@ -125,8 +115,6 @@ interface ModalProps {
 
 function DocumentModal({
   editing,
-  students,
-  studentsLoading,
   submitting,
   error,
   form,
@@ -205,52 +193,6 @@ function DocumentModal({
             </select>
           </div>
 
-          {/* Scope */}
-          <div>
-            <label className={labelClass}>Scope</label>
-            <div className="flex items-center gap-5 pt-1">
-              {(["global", "user"] as const).map((s) => (
-                <label
-                  key={s}
-                  className="flex cursor-pointer items-center gap-2 text-sm text-[var(--color-text-primary)]"
-                >
-                  <input
-                    type="radio"
-                    name="scope"
-                    value={s}
-                    checked={form.scope === s}
-                    onChange={() => onChange({ scope: s, userId: "" })}
-                    className="accent-[var(--color-accent)]"
-                  />
-                  {s === "global" ? "Global" : "User-specific"}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* User picker — only when scope is "user" */}
-          {form.scope === "user" && (
-            <div>
-              <label className={labelClass}>Student</label>
-              {studentsLoading ? (
-                <div className="h-9 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)]" />
-              ) : (
-                <select
-                  value={form.userId}
-                  onChange={(e) => onChange({ userId: e.target.value })}
-                  className={inputClass}
-                >
-                  <option value="">Select a student...</option>
-                  {students.map((s) => (
-                    <option key={s._id} value={s._id}>
-                      {s.name} — {s.email}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          )}
-
           {/* Content */}
           <div>
             <label className={labelClass}>Content</label>
@@ -309,7 +251,6 @@ export default function AIDocumentsPage() {
   const [documents, setDocuments] = useState<AIDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedScope, setSelectedScope] = useState("");
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -318,18 +259,12 @@ export default function AIDocumentsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
-  // Students for the user picker
-  const [students, setStudents] = useState<Student[]>([]);
-  const [studentsLoading, setStudentsLoading] = useState(false);
-  const [studentsFetched, setStudentsFetched] = useState(false);
-
   // ── Fetch documents ──────────────────────────────────────────────────────
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedCategory) params.set("category", selectedCategory);
-      if (selectedScope) params.set("scope", selectedScope);
       const res = await fetch(`/api/admin/ai-documents?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
@@ -340,35 +275,11 @@ export default function AIDocumentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory, selectedScope]);
+  }, [selectedCategory]);
 
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
-
-  // ── Fetch students (lazy, once) ──────────────────────────────────────────
-  const fetchStudents = useCallback(async () => {
-    if (studentsFetched) return;
-    setStudentsLoading(true);
-    try {
-      const res = await fetch("/api/admin/students");
-      if (res.ok) {
-        const data = await res.json();
-        setStudents(
-          (data.students ?? []).map((s: { _id: string; name: string; email: string }) => ({
-            _id: s._id,
-            name: s.name,
-            email: s.email,
-          }))
-        );
-      }
-    } catch {
-      // ignore
-    } finally {
-      setStudentsLoading(false);
-      setStudentsFetched(true);
-    }
-  }, [studentsFetched]);
 
   // ── Open modal ───────────────────────────────────────────────────────────
   function openCreate() {
@@ -376,7 +287,6 @@ export default function AIDocumentsPage() {
     setForm({ ...emptyForm });
     setModalError(null);
     setShowModal(true);
-    fetchStudents();
   }
 
   function openEdit(doc: AIDocument) {
@@ -384,14 +294,11 @@ export default function AIDocumentsPage() {
     setForm({
       title: doc.title,
       category: doc.category,
-      scope: doc.scope,
-      userId: doc.userId?._id ?? "",
       content: doc.content,
       sortOrder: doc.sortOrder,
     });
     setModalError(null);
     setShowModal(true);
-    fetchStudents();
   }
 
   function closeModal() {
@@ -417,10 +324,6 @@ export default function AIDocumentsPage() {
       setModalError("Content is required.");
       return;
     }
-    if (form.scope === "user" && !form.userId) {
-      setModalError("Please select a student for user-specific scope.");
-      return;
-    }
 
     setSubmitting(true);
 
@@ -428,8 +331,8 @@ export default function AIDocumentsPage() {
       const payload = {
         title: form.title.trim(),
         category: form.category,
-        scope: form.scope,
-        userId: form.scope === "user" ? form.userId : undefined,
+        scope: "global",
+        userId: null,
         content: form.content.trim(),
         sortOrder: form.sortOrder,
       };
@@ -511,17 +414,6 @@ export default function AIDocumentsPage() {
               ))}
             </select>
 
-            {/* Scope filter */}
-            <select
-              value={selectedScope}
-              onChange={(e) => setSelectedScope(e.target.value)}
-              className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] ring-0"
-            >
-              <option value="">All Scopes</option>
-              <option value="global">Global</option>
-              <option value="user">User</option>
-            </select>
-
             <div className="flex-1" />
 
             {/* Add button */}
@@ -572,7 +464,7 @@ export default function AIDocumentsPage() {
                 No AI documents found
               </p>
               <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                {selectedCategory || selectedScope
+                {selectedCategory
                   ? "Try adjusting your filters."
                   : "Create the first document to get started."}
               </p>
@@ -596,8 +488,6 @@ export default function AIDocumentsPage() {
       {showModal && (
         <DocumentModal
           editing={editingDoc}
-          students={students}
-          studentsLoading={studentsLoading}
           submitting={submitting}
           error={modalError}
           form={form}
