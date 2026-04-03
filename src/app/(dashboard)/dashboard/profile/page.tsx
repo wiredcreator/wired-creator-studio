@@ -39,13 +39,14 @@ const tabs: { id: SettingsTab; label: string }[] = [
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
-  idea_generation: 'Title Generation',
+  idea_generation: 'Idea Generation',
   script_generation: 'Script Generation',
   brain_dump_processing: 'Brain Dump Processing',
   tone_of_voice: 'Tone of Voice',
   side_quest_generation: 'Side Quest Generation',
   content_pillar_generation: 'Content Pillar Generation',
   personal_baseline_processing: 'Personal Baseline Processing',
+  title_generation: 'Title Generation',
 };
 
 export default function SettingsPage() {

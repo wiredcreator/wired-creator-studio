@@ -39,7 +39,7 @@ function track(userId: string, feature: AIFeature, response: any, startMs: numbe
  * global AI Documents and user-scoped AI Documents for the given category.
  * Injection order: base prompt -> global docs -> user docs.
  */
-async function buildSystemPrompt(
+export async function buildSystemPrompt(
   basePrompt: string,
   category: AIDocumentCategory,
   userId?: string

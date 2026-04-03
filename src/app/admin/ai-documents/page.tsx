@@ -13,6 +13,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   side_quest_generation: "Side Quest Generation",
   content_pillar_generation: "Content Pillar Generation",
   personal_baseline_processing: "Personal Baseline Processing",
+  title_generation: "Title Generation",
 };
 
 const CATEGORY_COLORS: Record<string, string> = {

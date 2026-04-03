@@ -3,6 +3,7 @@ import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit'
 import dbConnect from '@/lib/db';
 import ContentIdea from '@/models/ContentIdea';
 import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib/ai/client';
+import { buildSystemPrompt } from '@/lib/ai/generate';
 import { randomUUID } from 'crypto';
 import { trackAIUsage } from '@/lib/ai/usage-tracker';
 import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
@@ -90,10 +91,15 @@ Respond with ONLY valid JSON:
 
       case 'alternativeTitles': {
         const startMs = Date.now();
+        const augmentedSystemPrompt = await buildSystemPrompt(
+          `You are a YouTube title expert. Generate compelling, click-worthy alternative titles that maintain the core topic but offer different angles, hooks, or framings.\n\n${brandBrainContext}`,
+          'title_generation',
+          user.id
+        );
         const response = await client.messages.create({
           model: CLAUDE_MODEL,
           max_tokens: 1024,
-          system: `You are a YouTube title expert. Generate compelling, click-worthy alternative titles that maintain the core topic but offer different angles, hooks, or framings.\n\n${brandBrainContext}`,
+          system: augmentedSystemPrompt,
           messages: [
             {
               role: 'user',
