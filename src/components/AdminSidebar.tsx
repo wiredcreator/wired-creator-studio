@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import ThemeToggle from "./ThemeToggle";
 import { useTheme } from "./ThemeProvider";
 
 interface AdminSidebarProps {
@@ -67,9 +66,6 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, marginBottom: 32 }}>
         <Image src="/logo.png" alt="Wired Creator Studio" width={120} height={32} style={{ objectFit: 'contain', filter: t === 'dark' ? 'brightness(1.8)' : 'none' }} priority />
-        <div style={{ marginLeft: 'auto' }}>
-          <ThemeToggle />
-        </div>
       </div>
 
       {/* Navigation */}
