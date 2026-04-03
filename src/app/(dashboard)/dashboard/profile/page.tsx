@@ -6,7 +6,7 @@ import Link from 'next/link';
 import PageWrapper from '@/components/PageWrapper';
 import { useTheme } from '@/components/ThemeProvider';
 
-type SettingsTab = 'profile' | 'content-dna';
+type SettingsTab = 'profile' | 'content-dna' | 'ai-preferences';
 
 interface ProfileData {
   _id: string;
@@ -35,7 +35,18 @@ const TIMEZONES = [
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'profile', label: 'My Profile' },
   { id: 'content-dna', label: 'Content DNA' },
+  { id: 'ai-preferences', label: 'AI Preferences' },
 ];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  idea_generation: 'Title Generation',
+  script_generation: 'Script Generation',
+  brain_dump_processing: 'Brain Dump Processing',
+  tone_of_voice: 'Tone of Voice',
+  side_quest_generation: 'Side Quest Generation',
+  content_pillar_generation: 'Content Pillar Generation',
+  personal_baseline_processing: 'Personal Baseline Processing',
+};
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
@@ -47,6 +58,14 @@ export default function SettingsPage() {
 
   const { theme, setTheme } = useTheme();
 
+  // AI Documents state
+  const [aiDocs, setAiDocs] = useState<any[]>([]);
+  const [aiDocsLoading, setAiDocsLoading] = useState(false);
+  const [showAiDocForm, setShowAiDocForm] = useState(false);
+  const [editingAiDoc, setEditingAiDoc] = useState<any>(null);
+  const [aiDocForm, setAiDocForm] = useState({ title: '', category: '', content: '' });
+  const [aiDocSaving, setAiDocSaving] = useState(false);
+
   // Profile form state
   const [profileImage, setProfileImage] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -55,6 +74,74 @@ export default function SettingsPage() {
   const [neurodivergentProfile, setNeurodivergentProfile] = useState('');
   const [contentGoals, setContentGoals] = useState('');
   const [timezone, setTimezone] = useState('America/New_York');
+
+  const fetchAiDocs = useCallback(async () => {
+    setAiDocsLoading(true);
+    try {
+      const res = await fetch('/api/ai-documents');
+      const data = await res.json();
+      setAiDocs(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch AI documents:', error);
+    } finally {
+      setAiDocsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'ai-preferences') {
+      fetchAiDocs();
+    }
+  }, [activeTab, fetchAiDocs]);
+
+  const handleCreateAiDoc = async () => {
+    setAiDocSaving(true);
+    try {
+      const res = await fetch('/api/ai-documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aiDocForm),
+      });
+      if (!res.ok) throw new Error('Failed to create');
+      setShowAiDocForm(false);
+      setAiDocForm({ title: '', category: '', content: '' });
+      fetchAiDocs();
+    } catch (err) {
+      console.error('Failed to create AI document:', err);
+    } finally {
+      setAiDocSaving(false);
+    }
+  };
+
+  const handleUpdateAiDoc = async () => {
+    if (!editingAiDoc) return;
+    setAiDocSaving(true);
+    try {
+      const res = await fetch(`/api/ai-documents/${editingAiDoc._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: aiDocForm.title, content: aiDocForm.content }),
+      });
+      if (!res.ok) throw new Error('Failed to update');
+      setEditingAiDoc(null);
+      setAiDocForm({ title: '', category: '', content: '' });
+      fetchAiDocs();
+    } catch (err) {
+      console.error('Failed to update AI document:', err);
+    } finally {
+      setAiDocSaving(false);
+    }
+  };
+
+  const handleDeleteAiDoc = async (id: string) => {
+    if (!confirm('Delete this AI preference? This cannot be undone.')) return;
+    try {
+      await fetch(`/api/ai-documents/${id}`, { method: 'DELETE' });
+      fetchAiDocs();
+    } catch (err) {
+      console.error('Failed to delete AI document:', err);
+    }
+  };
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -202,6 +289,42 @@ export default function SettingsPage() {
       )}
 
       {!loading && activeTab === 'content-dna' && <ContentDNATab />}
+
+      {activeTab === 'ai-preferences' && (
+        <AiPreferencesTab
+          aiDocs={aiDocs}
+          aiDocsLoading={aiDocsLoading}
+          showAiDocForm={showAiDocForm}
+          editingAiDoc={editingAiDoc}
+          aiDocForm={aiDocForm}
+          aiDocSaving={aiDocSaving}
+          onShowForm={() => {
+            setEditingAiDoc(null);
+            setAiDocForm({ title: '', category: '', content: '' });
+            setShowAiDocForm(true);
+          }}
+          onHideForm={() => {
+            setShowAiDocForm(false);
+            setEditingAiDoc(null);
+            setAiDocForm({ title: '', category: '', content: '' });
+          }}
+          onEdit={(doc: any) => {
+            setEditingAiDoc(doc);
+            setAiDocForm({ title: doc.title, category: doc.category, content: doc.content });
+            setShowAiDocForm(false);
+          }}
+          onCancelEdit={() => {
+            setEditingAiDoc(null);
+            setAiDocForm({ title: '', category: '', content: '' });
+          }}
+          onFormChange={(field: string, value: string) =>
+            setAiDocForm((prev) => ({ ...prev, [field]: value }))
+          }
+          onCreate={handleCreateAiDoc}
+          onUpdate={handleUpdateAiDoc}
+          onDelete={handleDeleteAiDoc}
+        />
+      )}
     </PageWrapper>
   );
 }
@@ -688,6 +811,250 @@ const contentDNACards = [
     available: true,
   },
 ];
+
+/* ──────────────────────────────────────────── */
+/* AI Preferences Tab                           */
+/* ──────────────────────────────────────────── */
+
+function AiPreferencesTab({
+  aiDocs,
+  aiDocsLoading,
+  showAiDocForm,
+  editingAiDoc,
+  aiDocForm,
+  aiDocSaving,
+  onShowForm,
+  onHideForm,
+  onEdit,
+  onCancelEdit,
+  onFormChange,
+  onCreate,
+  onUpdate,
+  onDelete,
+}: {
+  aiDocs: any[];
+  aiDocsLoading: boolean;
+  showAiDocForm: boolean;
+  editingAiDoc: any;
+  aiDocForm: { title: string; category: string; content: string };
+  aiDocSaving: boolean;
+  onShowForm: () => void;
+  onHideForm: () => void;
+  onEdit: (doc: any) => void;
+  onCancelEdit: () => void;
+  onFormChange: (field: string, value: string) => void;
+  onCreate: () => void;
+  onUpdate: () => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-6 animate-fadeIn">
+      {/* Header */}
+      <section className="rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-bg-card)] p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">AI Preferences</h2>
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">Customize how AI generates content for you</p>
+          </div>
+          {!showAiDocForm && !editingAiDoc && (
+            <button
+              onClick={onShowForm}
+              className="shrink-0 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-opacity hover:opacity-90"
+            >
+              Add Preference
+            </button>
+          )}
+        </div>
+
+        {/* Create form */}
+        {showAiDocForm && (
+          <div className="mt-6 space-y-4 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-5">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">New AI Preference</h3>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">Title</label>
+              <input
+                type="text"
+                value={aiDocForm.title}
+                onChange={(e) => onFormChange('title', e.target.value)}
+                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
+                placeholder="e.g. Avoid these topics"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">Category</label>
+              <select
+                value={aiDocForm.category}
+                onChange={(e) => onFormChange('category', e.target.value)}
+                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
+              >
+                <option value="">Select a category</option>
+                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">Content</label>
+              <textarea
+                value={aiDocForm.content}
+                onChange={(e) => onFormChange('content', e.target.value)}
+                rows={5}
+                className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
+                placeholder="Add any preferences for how your content should be generated, e.g. language, style, topics to avoid..."
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={onHideForm}
+                className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onCreate}
+                disabled={aiDocSaving || !aiDocForm.title || !aiDocForm.category || !aiDocForm.content}
+                className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-opacity hover:opacity-90 disabled:bg-[#555] disabled:text-[#999]"
+              >
+                {aiDocSaving ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Saving...
+                  </span>
+                ) : 'Save'}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Loading skeletons */}
+      {aiDocsLoading && (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-28 animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-bg-card)]"
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!aiDocsLoading && aiDocs.length === 0 && (
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-bg-card)] p-10 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-bg-elevated)] text-[var(--color-text-muted)]">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+            </svg>
+          </div>
+          <p className="text-sm font-medium text-[var(--color-text-primary)]">No AI preferences set yet</p>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">Add preferences to customize how AI generates content for you.</p>
+        </div>
+      )}
+
+      {/* AI Doc cards */}
+      {!aiDocsLoading && aiDocs.length > 0 && (
+        <div className="space-y-4">
+          {aiDocs.map((doc) => (
+            <div key={doc._id} className="rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-bg-card)] p-5">
+              {editingAiDoc?._id === doc._id ? (
+                /* Edit form inline */
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Edit Preference</h3>
+                  <div>
+                    <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">Title</label>
+                    <input
+                      type="text"
+                      value={aiDocForm.title}
+                      onChange={(e) => onFormChange('title', e.target.value)}
+                      className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">
+                      Category
+                      <span className="ml-1.5 text-[var(--color-text-muted)]">(cannot be changed)</span>
+                    </label>
+                    <div className="h-11 flex items-center rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-secondary)] px-3.5 text-sm text-[var(--color-text-secondary)]">
+                      {CATEGORY_LABELS[doc.category] || doc.category}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">Content</label>
+                    <textarea
+                      value={aiDocForm.content}
+                      onChange={(e) => onFormChange('content', e.target.value)}
+                      rows={5}
+                      className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
+                      placeholder="Add any preferences for how your content should be generated, e.g. language, style, topics to avoid..."
+                    />
+                  </div>
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      onClick={onCancelEdit}
+                      className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={onUpdate}
+                      disabled={aiDocSaving || !aiDocForm.title || !aiDocForm.content}
+                      className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-opacity hover:opacity-90 disabled:bg-[#555] disabled:text-[#999]"
+                    >
+                      {aiDocSaving ? (
+                        <span className="flex items-center gap-2">
+                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          Saving...
+                        </span>
+                      ) : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Card view */
+                <div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{doc.title}</h3>
+                        <span className="rounded-[var(--radius-full)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-2.5 py-0.5 text-[11px] font-medium text-white">
+                          {CATEGORY_LABELS[doc.category] || doc.category}
+                        </span>
+                      </div>
+                      <p className="text-sm text-[var(--color-text-secondary)] line-clamp-3 whitespace-pre-line">
+                        {doc.content}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        onClick={() => onEdit(doc)}
+                        className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                        title="Edit"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => onDelete(doc._id)}
+                        className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-error)] hover:text-[var(--color-error)]"
+                        title="Delete"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ContentDNATab() {
   return (
