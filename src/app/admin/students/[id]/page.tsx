@@ -936,16 +936,18 @@ export default function StudentDetailPage() {
                   Risk Flags
                 </h3>
                 {student.riskFlags && student.riskFlags.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                  <ul className="space-y-1">
                     {student.riskFlags.map((flag, i) => (
-                      <span
-                        key={i}
-                        className="rounded-full bg-amber-600 px-3 py-1 text-xs font-medium text-white"
-                      >
-                        {flag}
-                      </span>
+                      <li key={i} className="flex items-start gap-1.5">
+                        <span className="mt-[3px] shrink-0 text-amber-500">•</span>
+                        <span
+                          className="text-[11px] leading-snug text-amber-200/80"
+                        >
+                          {flag}
+                        </span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 ) : (
                   <p className="text-sm italic text-[var(--color-text-muted)]">No risk flags</p>
                 )}
