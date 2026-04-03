@@ -14,8 +14,11 @@ export default function BrainDumpFAB() {
   const [transcribing, setTranscribing] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const chunkTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingTranscriptions = useRef<number>(0);
+  const stoppingRef = useRef<boolean>(false);
 
   // Write state
   const [writeText, setWriteText] = useState('');
@@ -87,56 +90,122 @@ export default function BrainDumpFAB() {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // ─── Voice Recording ────────────────────────────────────────────────
+  // ─── Voice Recording (chunked, every 2 minutes) ─────────────────────
+
+  const CHUNK_INTERVAL_MS = 120_000;
+
+  const transcribeBlob = async (blob: Blob) => {
+    if (blob.size === 0) return;
+    pendingTranscriptions.current += 1;
+    setTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', blob, 'recording.webm');
+      const res = await fetch('/api/voice-storming/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text) {
+          setVoiceTranscript((prev) => (prev ? prev + ' ' + data.text : data.text));
+        }
+      }
+    } catch (err) {
+      console.error('Transcription failed:', err);
+      setError('Transcription failed. Please try again.');
+    } finally {
+      pendingTranscriptions.current -= 1;
+      if (pendingTranscriptions.current <= 0) {
+        pendingTranscriptions.current = 0;
+        setTranscribing(false);
+      }
+    }
+  };
+
+  const createRecorder = (stream: MediaStream) => {
+    const recorder = new MediaRecorder(stream);
+    const localChunks: Blob[] = [];
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) localChunks.push(e.data);
+    };
+
+    recorder.onstop = () => {
+      if (localChunks.length > 0) {
+        const blob = new Blob(localChunks, { type: 'audio/webm' });
+        transcribeBlob(blob);
+      }
+      // If this was the final stop (user clicked stop), kill the stream
+      if (stoppingRef.current) {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((t) => t.stop());
+          streamRef.current = null;
+        }
+        stoppingRef.current = false;
+      }
+    };
+
+    return recorder;
+  };
+
+  const cycleRecorder = () => {
+    const recorder = mediaRecorderRef.current;
+    const stream = streamRef.current;
+    if (!recorder || !stream || recorder.state !== 'recording') return;
+
+    // Stop current recorder; its onstop will transcribe its own local chunks
+    // stoppingRef is false here so the stream stays alive
+    recorder.stop();
+
+    // Start a fresh recorder on the same stream
+    const newRecorder = createRecorder(stream);
+    newRecorder.start();
+    mediaRecorderRef.current = newRecorder;
+  };
 
   const startRecording = async () => {
+    stoppingRef.current = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      recorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        stream.getTracks().forEach((t) => t.stop());
-
-        setTranscribing(true);
-        try {
-          const formData = new FormData();
-          formData.append('audio', blob, 'recording.webm');
-          const res = await fetch('/api/voice-storming/transcribe', {
-            method: 'POST',
-            body: formData,
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.text) {
-              setVoiceTranscript((prev) => (prev ? prev + '\n\n' + data.text : data.text));
-            }
-          }
-        } catch (err) {
-          console.error('Transcription failed:', err);
-          setError('Transcription failed. Please try again.');
-        } finally {
-          setTranscribing(false);
-        }
-      };
+      streamRef.current = stream;
+      const recorder = createRecorder(stream);
 
       recorder.start();
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+
+      // Auto-cycle every 2 minutes for chunked transcription
+      chunkTimerRef.current = setInterval(cycleRecorder, CHUNK_INTERVAL_MS);
     } catch {
       setError('Could not access microphone. Please allow microphone access.');
     }
   };
 
   const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
+    // Stop the chunk cycle timer first to prevent race conditions
+    if (chunkTimerRef.current) {
+      clearInterval(chunkTimerRef.current);
+      chunkTimerRef.current = null;
+    }
+
+    // Mark as final stop so onstop callback knows to kill the stream
+    stoppingRef.current = true;
+
+    // Stop the recorder (onstop will handle transcription + stream cleanup)
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    } else {
+      // Recorder already stopped (e.g. cycle just happened), clean up stream directly
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      stoppingRef.current = false;
+    }
+
     setIsRecording(false);
     if (timerRef.current) clearInterval(timerRef.current);
   };
@@ -426,7 +495,7 @@ export default function BrainDumpFAB() {
               <div className="flex items-center justify-center gap-4">
                 <button
                   onClick={isRecording ? stopRecording : startRecording}
-                  disabled={transcribing}
+                  disabled={transcribing && !isRecording}
                   className={`flex items-center justify-center h-14 w-14 rounded-full transition-all ${
                     isRecording
                       ? 'bg-red-500 animate-pulse'
@@ -459,25 +528,24 @@ export default function BrainDumpFAB() {
                 {!isRecording && recordingTime > 0 && !transcribing && (
                   <p className="text-xs text-[var(--color-text-muted)]">Recorded {formatTime(recordingTime)}</p>
                 )}
+                {transcribing && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-[var(--color-accent)]">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Transcribing...
+                  </div>
+                )}
               </div>
 
-              {/* Transcribing indicator */}
-              {transcribing && (
-                <div className="flex items-center justify-center gap-2 text-sm text-[var(--color-accent)]">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Transcribing...
-                </div>
-              )}
-
-              {/* Transcript display */}
-              {voiceTranscript && (
-                <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-3 max-h-32 overflow-y-auto">
-                  <p className="text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap">{voiceTranscript}</p>
-                </div>
-              )}
+              {/* Always-visible transcript textarea */}
+              <textarea
+                readOnly
+                value={voiceTranscript}
+                rows={4}
+                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] resize-none outline-none ring-0 max-h-40 overflow-y-auto"
+              />
 
               {/* Error */}
               {error && <p className="text-xs text-[var(--color-error)] text-center">{error}</p>}
