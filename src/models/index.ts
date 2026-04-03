@@ -28,8 +28,8 @@ export type { ISideQuest, SideQuestType } from './SideQuest';
 export { default as BugReport } from './BugReport';
 export type { IBugReport, BugSeverity, BugStatus } from './BugReport';
 
-export { default as CustomPrompt } from './CustomPrompt';
-export type { ICustomPrompt, CustomPromptCategory } from './CustomPrompt';
+export { default as AIDocument } from './AIDocument';
+export type { IAIDocument, AIDocumentCategory, AIDocumentScope } from './AIDocument';
 
 export { default as UserXP } from './UserXP';
 export type { IUserXP, IXPHistoryEntry } from './UserXP';
