@@ -58,6 +58,7 @@ const PERSONAL_BASELINE_VARIABLE_MAP: Record<string, string> = {
 export interface CompileStudentProfileResult {
   success: true;
   compiledAt: Date;
+  compiledContent: string;
 }
 
 export interface CompileStudentProfileError {
@@ -160,5 +161,5 @@ export async function compileStudentProfile(
     }
   );
 
-  return { success: true, compiledAt };
+  return { success: true, compiledAt, compiledContent: textBlock.text };
 }

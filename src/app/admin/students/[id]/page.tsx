@@ -284,6 +284,12 @@ export default function StudentDetailPage() {
   const [brandBrainLoading, setBrandBrainLoading] = useState(false);
   const [brandBrainLoaded, setBrandBrainLoaded] = useState(false);
 
+  // Compiled profile state
+  const [compiledProfile, setCompiledProfile] = useState<{ content: string; compiledAt: string } | null>(null);
+  const [compiledProfileLoading, setCompiledProfileLoading] = useState(false);
+  const [compiledProfileLoaded, setCompiledProfileLoaded] = useState(false);
+  const [compilingProfile, setCompilingProfile] = useState(false);
+
   const [aiDocuments, setAiDocuments] = useState<any[]>([]);
   const [aiDocsLoading, setAiDocsLoading] = useState(false);
   const [aiDocsLoaded, setAiDocsLoaded] = useState(false);
@@ -475,6 +481,25 @@ export default function StudentDetailPage() {
         .finally(() => setBrandBrainLoading(false));
     }
   }, [activeTab, id, brandBrainLoaded]);
+
+  useEffect(() => {
+    if (activeTab === "brandBrain" && !compiledProfileLoaded) {
+      setCompiledProfileLoading(true);
+      fetch(`/api/compile-profile?userId=${id}`)
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (data?.compiledProfile) {
+            setCompiledProfile({
+              content: data.compiledProfile.content,
+              compiledAt: data.compiledProfile.compiledAt,
+            });
+          }
+          setCompiledProfileLoaded(true);
+        })
+        .catch(() => {})
+        .finally(() => setCompiledProfileLoading(false));
+    }
+  }, [activeTab, id, compiledProfileLoaded]);
 
   useEffect(() => {
     if (activeTab === "aiDocuments" && !aiDocsLoaded) {
@@ -712,6 +737,29 @@ export default function StudentDetailPage() {
 
   // Suppress unused warning for handleAddComment — used by TaskCard internally
   void handleAddComment;
+
+  async function handleCompileProfile() {
+    setCompilingProfile(true);
+    try {
+      const res = await fetch("/api/compile-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.compiledProfile) {
+        setCompiledProfile({
+          content: data.compiledProfile.content,
+          compiledAt: data.compiledProfile.compiledAt,
+        });
+        setCompiledProfileLoaded(true);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setCompilingProfile(false);
+    }
+  }
 
   return (
     <PageWrapper
@@ -1871,6 +1919,58 @@ export default function StudentDetailPage() {
         {/* ========== BRAND BRAIN TAB ========== */}
         {activeTab === "brandBrain" && (
           <div className="space-y-6">
+
+            {/* ── Compiled Profile ── */}
+            <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                  Compiled Profile
+                </h3>
+                <button
+                  onClick={handleCompileProfile}
+                  disabled={compilingProfile || compiledProfileLoading}
+                  className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {compilingProfile
+                    ? "Compiling..."
+                    : compiledProfile
+                    ? "Recompile"
+                    : "Compile Now"}
+                </button>
+              </div>
+
+              {compiledProfileLoading && (
+                <div className="h-6 animate-pulse rounded bg-[var(--color-bg-secondary)]" />
+              )}
+
+              {!compiledProfileLoading && !compiledProfile && (
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  Not yet compiled. Click Compile Now to generate this student&apos;s profile.
+                </p>
+              )}
+
+              {!compiledProfileLoading && compiledProfile && (
+                <div className="space-y-2">
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    Last compiled:{" "}
+                    {new Date(compiledProfile.compiledAt).toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <textarea
+                    readOnly
+                    value={compiledProfile.content}
+                    rows={12}
+                    className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 font-mono text-xs leading-relaxed text-[var(--color-text-primary)] outline-none ring-0"
+                  />
+                </div>
+              )}
+            </div>
+
             {brandBrainLoading && <LoadingSkeleton />}
             {!brandBrainLoading && !brandBrain && (
               <EmptyState message="This student has not set up their Brand Brain yet." />

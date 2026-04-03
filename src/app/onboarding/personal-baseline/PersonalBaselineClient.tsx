@@ -34,7 +34,11 @@ export default function PersonalBaselineClient() {
 
       <div className="w-full max-w-2xl">
         <PersonalBaselineQuestionnaire
-          onComplete={() => router.push('/dashboard')}
+          onComplete={() => {
+            // Fire-and-forget compile — both questionnaires are now complete
+            fetch('/api/compile-profile', { method: 'POST' });
+            router.push('/dashboard');
+          }}
         />
       </div>
     </main>

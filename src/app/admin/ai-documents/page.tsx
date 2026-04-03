@@ -221,6 +221,19 @@ function DocumentModal({
                 </option>
               ))}
             </select>
+            {form.category === "student_profile" && (
+              <p className="mt-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-xs text-[var(--color-text-muted)]">
+                Template document. Use{" "}
+                <span className="font-mono text-[var(--color-accent)]">{"{{C1}}"}</span>
+                {"-"}
+                <span className="font-mono text-[var(--color-accent)]">{"{{C16}}"}</span>{" "}
+                for Content DNA answers and{" "}
+                <span className="font-mono text-[var(--color-accent)]">{"{{P1}}"}</span>
+                {"-"}
+                <span className="font-mono text-[var(--color-accent)]">{"{{P17}}"}</span>{" "}
+                for Personal Baseline answers. See the variable mapping in the spec.
+              </p>
+            )}
           </div>
 
           {/* Google Doc import */}
@@ -304,6 +317,10 @@ export default function AIDocumentsPage() {
   const [form, setForm] = useState<typeof emptyForm>({ ...emptyForm });
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+
+  // Recompile all state
+  const [recompiling, setRecompiling] = useState(false);
+  const [recompileStatus, setRecompileStatus] = useState<string | null>(null);
 
   // ── Fetch documents ──────────────────────────────────────────────────────
   const fetchDocuments = useCallback(async () => {
@@ -434,6 +451,55 @@ export default function AIDocumentsPage() {
     }
   }
 
+  // ── Recompile all students ────────────────────────────────────────────────
+  async function handleRecompileAll() {
+    if (recompiling) return;
+    setRecompiling(true);
+    setRecompileStatus("Fetching student list...");
+    try {
+      const res = await fetch("/api/admin/compile-all-profiles", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setRecompileStatus(`Error: ${data.error ?? "Failed to fetch students."}`);
+        setRecompiling(false);
+        return;
+      }
+      const userIds: string[] = data.userIds ?? [];
+      const total = userIds.length;
+      if (total === 0) {
+        setRecompileStatus("No students to compile.");
+        setRecompiling(false);
+        return;
+      }
+      let compiled = 0;
+      let failed = 0;
+      for (const userId of userIds) {
+        setRecompileStatus(`Compiling ${compiled + failed + 1}/${total}...`);
+        try {
+          const r = await fetch("/api/compile-profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId }),
+          });
+          if (r.ok) {
+            compiled++;
+          } else {
+            failed++;
+          }
+        } catch {
+          failed++;
+        }
+      }
+      setRecompileStatus(`Done! ${compiled} compiled, ${failed} failed.`);
+    } catch {
+      setRecompileStatus("Network error. Please try again.");
+    } finally {
+      setRecompiling(false);
+    }
+  }
+
+  const hasStudentProfileDoc = documents.some((d) => d.category === "student_profile");
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <>
@@ -460,6 +526,30 @@ export default function AIDocumentsPage() {
 
             <div className="flex-1" />
 
+            {/* Recompile All Students button — only when a student_profile doc exists */}
+            {hasStudentProfileDoc && (
+              <button
+                onClick={handleRecompileAll}
+                disabled={recompiling}
+                className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] disabled:opacity-50"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                  />
+                </svg>
+                {recompiling ? "Recompiling..." : "Recompile All Students"}
+              </button>
+            )}
+
             {/* Add button */}
             <button
               onClick={openCreate}
@@ -481,6 +571,13 @@ export default function AIDocumentsPage() {
               Add Document
             </button>
           </div>
+
+          {/* Recompile status message */}
+          {recompileStatus && (
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
+              {recompileStatus}
+            </div>
+          )}
 
           {/* Document list */}
           {loading ? (
