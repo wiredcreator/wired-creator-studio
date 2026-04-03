@@ -37,7 +37,8 @@ export type AIFeature =
   | 'idea_alternative_titles'
   | 'idea_outline'
   | 'content_pillar_generation'
-  | 'personal_baseline_processing';
+  | 'personal_baseline_processing'
+  | 'student_profile_compile';
 
 interface AnthropicResponse {
   model: string;
