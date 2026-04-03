@@ -124,6 +124,11 @@ export interface IBrandBrain extends Document {
   approvedIdeas: Types.ObjectId[];
   contentDNAResponse?: Types.ObjectId;
   sideQuestInsights: ISideQuestInsight[];
+  compiledProfile: {
+    content: string;
+    templateUpdatedAt?: Date;
+    compiledAt?: Date;
+  };
   version: number;
   previousVersions: IBrandBrainSnapshot[];
   createdAt: Date;
@@ -169,6 +174,11 @@ const BrandBrainSchema = new Schema<IBrandBrain>(
       ref: 'ContentDNAResponse',
     },
     sideQuestInsights: [SideQuestInsightSchema],
+    compiledProfile: {
+      content: { type: String, default: '' },
+      templateUpdatedAt: { type: Date },
+      compiledAt: { type: Date },
+    },
     version: { type: Number, default: 1 },
     previousVersions: [BrandBrainSnapshotSchema],
   },

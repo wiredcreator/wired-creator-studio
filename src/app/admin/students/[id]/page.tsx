@@ -2252,6 +2252,7 @@ export default function StudentDetailPage() {
                           content_pillar_generation: "Content Pillar Generation",
                           personal_baseline_processing: "Personal Baseline Processing",
                           title_generation: "Title Generation",
+                          student_profile: "Student Profile Template",
                         };
                         return (
                           <div
@@ -2321,6 +2322,7 @@ export default function StudentDetailPage() {
                           content_pillar_generation: "Content Pillar Generation",
                           personal_baseline_processing: "Personal Baseline Processing",
                           title_generation: "Title Generation",
+                          student_profile: "Student Profile Template",
                         };
                         return (
                           <div

@@ -9,6 +9,7 @@ export const AI_DOCUMENT_CATEGORIES = [
   'content_pillar_generation',
   'personal_baseline_processing',
   'title_generation',
+  'student_profile',
 ] as const;
 
 export type AIDocumentCategory = (typeof AI_DOCUMENT_CATEGORIES)[number];

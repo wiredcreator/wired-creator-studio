@@ -14,6 +14,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   content_pillar_generation: "Content Pillar Generation",
   personal_baseline_processing: "Personal Baseline Processing",
   title_generation: "Title Generation",
+  student_profile: "Student Profile Template",
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
