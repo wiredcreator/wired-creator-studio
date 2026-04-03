@@ -104,7 +104,7 @@ interface VoiceStormItem {
   createdAt: string;
 }
 
-type TabKey = "tasks" | "ideas" | "scripts" | "brainDumps" | "voiceStorming" | "brandBrain";
+type TabKey = "tasks" | "ideas" | "scripts" | "brainDumps" | "voiceStorming" | "brandBrain" | "aiDocuments";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "tasks", label: "Tasks" },
@@ -113,6 +113,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "brainDumps", label: "Brain Dumps" },
   { key: "voiceStorming", label: "Voice Storming" },
   { key: "brandBrain", label: "Brand Brain" },
+  { key: "aiDocuments", label: "AI Documents" },
 ];
 
 const TASK_TYPES = [
@@ -282,6 +283,14 @@ export default function StudentDetailPage() {
   const [brandBrain, setBrandBrain] = useState<BrandBrainData | null>(null);
   const [brandBrainLoading, setBrandBrainLoading] = useState(false);
   const [brandBrainLoaded, setBrandBrainLoaded] = useState(false);
+
+  const [aiDocuments, setAiDocuments] = useState<any[]>([]);
+  const [aiDocsLoading, setAiDocsLoading] = useState(false);
+  const [aiDocsLoaded, setAiDocsLoaded] = useState(false);
+  const [globalAiDocs, setGlobalAiDocs] = useState<any[]>([]);
+  const [aiDocForm, setAiDocForm] = useState<{ title: string; category: string; content: string } | null>(null);
+  const [aiDocEditingId, setAiDocEditingId] = useState<string | null>(null);
+  const [aiDocSaving, setAiDocSaving] = useState(false);
 
   // Transcript ingest form state
   const [ingestTranscript, setIngestTranscript] = useState("");
@@ -466,6 +475,23 @@ export default function StudentDetailPage() {
         .finally(() => setBrandBrainLoading(false));
     }
   }, [activeTab, id, brandBrainLoaded]);
+
+  useEffect(() => {
+    if (activeTab === "aiDocuments" && !aiDocsLoaded) {
+      setAiDocsLoading(true);
+      Promise.all([
+        fetch(`/api/admin/ai-documents?scope=user&userId=${id}`).then((res) => res.ok ? res.json() : []),
+        fetch(`/api/admin/ai-documents?scope=global`).then((res) => res.ok ? res.json() : []),
+      ])
+        .then(([userData, globalData]) => {
+          setAiDocuments(Array.isArray(userData) ? userData : []);
+          setGlobalAiDocs(Array.isArray(globalData) ? globalData : []);
+          setAiDocsLoaded(true);
+        })
+        .catch(() => {})
+        .finally(() => setAiDocsLoading(false));
+    }
+  }, [activeTab, id, aiDocsLoaded]);
 
   // Tone of Voice review actions
   const handleTovStatusChange = async (newStatus: TovStatus) => {
@@ -2091,6 +2117,224 @@ export default function StudentDetailPage() {
                     </p>
                   </div>
                 )}
+              </>
+            )}
+          </div>
+        )}
+
+        {activeTab === "aiDocuments" && (
+          <div className="space-y-8">
+            {aiDocsLoading && <LoadingSkeleton />}
+            {!aiDocsLoading && (
+              <>
+                {/* Student Documents */}
+                <div>
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Student Documents</h3>
+                    <button
+                      onClick={() => {
+                        setAiDocEditingId(null);
+                        setAiDocForm({ title: "", category: "idea_generation", content: "" });
+                      }}
+                      className="rounded-[var(--radius-md)] bg-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[var(--color-primary-hover)]"
+                    >
+                      + Add
+                    </button>
+                  </div>
+
+                  {/* Add/Edit form */}
+                  {aiDocForm && (
+                    <div className="mb-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
+                      <h4 className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">
+                        {aiDocEditingId ? "Edit Document" : "New Document"}
+                      </h4>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">Title</label>
+                          <input
+                            type="text"
+                            value={aiDocForm.title}
+                            onChange={(e) => setAiDocForm({ ...aiDocForm, title: e.target.value })}
+                            placeholder="Document title"
+                            className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">Category</label>
+                          <select
+                            value={aiDocForm.category}
+                            onChange={(e) => setAiDocForm({ ...aiDocForm, category: e.target.value })}
+                            className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0"
+                          >
+                            <option value="idea_generation">Idea Generation</option>
+                            <option value="script_generation">Script Generation</option>
+                            <option value="brain_dump_processing">Brain Dump Processing</option>
+                            <option value="tone_of_voice">Tone of Voice</option>
+                            <option value="side_quest_generation">Side Quest Generation</option>
+                            <option value="content_pillar_generation">Content Pillar Generation</option>
+                            <option value="personal_baseline_processing">Personal Baseline Processing</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">Content</label>
+                          <textarea
+                            value={aiDocForm.content}
+                            onChange={(e) => setAiDocForm({ ...aiDocForm, content: e.target.value })}
+                            placeholder="Document content..."
+                            rows={6}
+                            className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            disabled={aiDocSaving || !aiDocForm.title.trim() || !aiDocForm.content.trim()}
+                            onClick={async () => {
+                              setAiDocSaving(true);
+                              try {
+                                const isEdit = !!aiDocEditingId;
+                                const url = isEdit
+                                  ? `/api/admin/ai-documents/${aiDocEditingId}`
+                                  : "/api/admin/ai-documents";
+                                const method = isEdit ? "PUT" : "POST";
+                                const body = isEdit
+                                  ? { title: aiDocForm.title, category: aiDocForm.category, content: aiDocForm.content }
+                                  : { title: aiDocForm.title, category: aiDocForm.category, content: aiDocForm.content, scope: "user", userId: id };
+                                const res = await fetch(url, {
+                                  method,
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify(body),
+                                });
+                                if (res.ok) {
+                                  const saved = await res.json();
+                                  if (isEdit) {
+                                    setAiDocuments((prev) => prev.map((d) => d._id === aiDocEditingId ? saved : d));
+                                  } else {
+                                    setAiDocuments((prev) => [saved, ...prev]);
+                                  }
+                                  setAiDocForm(null);
+                                  setAiDocEditingId(null);
+                                }
+                              } catch (err) {
+                                console.error("Failed to save AI document:", err);
+                              } finally {
+                                setAiDocSaving(false);
+                              }
+                            }}
+                            className="rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {aiDocSaving ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            onClick={() => { setAiDocForm(null); setAiDocEditingId(null); }}
+                            className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {aiDocuments.length === 0 && !aiDocForm ? (
+                    <EmptyState message="No student-specific AI documents yet." />
+                  ) : (
+                    <div className="space-y-3">
+                      {aiDocuments.map((doc) => {
+                        const CATEGORY_LABELS: Record<string, string> = {
+                          idea_generation: "Idea Generation",
+                          script_generation: "Script Generation",
+                          brain_dump_processing: "Brain Dump Processing",
+                          tone_of_voice: "Tone of Voice",
+                          side_quest_generation: "Side Quest Generation",
+                          content_pillar_generation: "Content Pillar Generation",
+                          personal_baseline_processing: "Personal Baseline Processing",
+                        };
+                        return (
+                          <div
+                            key={doc._id}
+                            className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 shadow-[var(--shadow-sm)]"
+                          >
+                            <div className="mb-2 flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium text-[var(--color-text-primary)]">{doc.title}</span>
+                                <span className="rounded-full bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-xs text-white">
+                                  {CATEGORY_LABELS[doc.category] ?? doc.category}
+                                </span>
+                              </div>
+                              <div className="flex shrink-0 gap-2">
+                                <button
+                                  onClick={() => {
+                                    setAiDocEditingId(doc._id);
+                                    setAiDocForm({ title: doc.title, category: doc.category, content: doc.content });
+                                  }}
+                                  className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2.5 py-1 text-xs text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)]"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm("Delete this document?")) return;
+                                    try {
+                                      const res = await fetch(`/api/admin/ai-documents/${doc._id}`, { method: "DELETE" });
+                                      if (res.ok) {
+                                        setAiDocuments((prev) => prev.filter((d) => d._id !== doc._id));
+                                      }
+                                    } catch (err) {
+                                      console.error("Failed to delete AI document:", err);
+                                    }
+                                  }}
+                                  className="rounded-[var(--radius-sm)] border border-red-800 bg-red-900/30 px-2.5 py-1 text-xs text-red-400 transition-colors hover:bg-red-900/50"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                            <p className="line-clamp-3 text-xs text-[var(--color-text-muted)]">{doc.content}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Global Documents (read-only) */}
+                <div>
+                  <div className="mb-4 flex items-center gap-3">
+                    <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Global Documents</h3>
+                    <span className="text-xs text-[var(--color-text-muted)]">(read-only, applies to all students)</span>
+                  </div>
+                  {globalAiDocs.length === 0 ? (
+                    <EmptyState message="No global AI documents configured." />
+                  ) : (
+                    <div className="space-y-3">
+                      {globalAiDocs.map((doc) => {
+                        const CATEGORY_LABELS: Record<string, string> = {
+                          idea_generation: "Idea Generation",
+                          script_generation: "Script Generation",
+                          brain_dump_processing: "Brain Dump Processing",
+                          tone_of_voice: "Tone of Voice",
+                          side_quest_generation: "Side Quest Generation",
+                          content_pillar_generation: "Content Pillar Generation",
+                          personal_baseline_processing: "Personal Baseline Processing",
+                        };
+                        return (
+                          <div
+                            key={doc._id}
+                            className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 shadow-[var(--shadow-sm)]"
+                          >
+                            <div className="mb-2 flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium text-[var(--color-text-primary)]">{doc.title}</span>
+                              <span className="rounded-full bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-xs text-white">
+                                {CATEGORY_LABELS[doc.category] ?? doc.category}
+                              </span>
+                            </div>
+                            <p className="line-clamp-3 text-xs text-[var(--color-text-muted)]">{doc.content}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
