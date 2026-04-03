@@ -939,9 +939,10 @@ export default function StudentDetailPage() {
                   <ul className="space-y-1">
                     {student.riskFlags.map((flag, i) => (
                       <li key={i} className="flex items-start gap-1.5">
-                        <span className="mt-[3px] shrink-0 text-amber-600">•</span>
+                        <span className="mt-[3px] shrink-0" style={{ color: 'var(--color-accent)' }}>•</span>
                         <span
-                          className="text-[11px] leading-snug text-amber-900 dark:text-amber-200"
+                          className="text-[11px] leading-snug"
+                          style={{ color: 'var(--color-text)' }}
                         >
                           {flag}
                         </span>
