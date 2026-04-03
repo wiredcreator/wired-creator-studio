@@ -46,7 +46,6 @@ const emptyForm = {
   title: "",
   category: "idea_generation",
   content: "",
-  sortOrder: 0,
 };
 
 // ─── Helper components ────────────────────────────────────────────────────────
@@ -205,19 +204,6 @@ function DocumentModal({
             />
           </div>
 
-          {/* Sort Order */}
-          <div>
-            <label className={labelClass}>Sort Order</label>
-            <input
-              type="number"
-              value={form.sortOrder}
-              onChange={(e) =>
-                onChange({ sortOrder: parseInt(e.target.value, 10) || 0 })
-              }
-              className={`${inputClass} w-28`}
-            />
-          </div>
-
           {/* Error */}
           {error && (
             <p className="text-sm text-red-400">{error}</p>
@@ -295,7 +281,6 @@ export default function AIDocumentsPage() {
       title: doc.title,
       category: doc.category,
       content: doc.content,
-      sortOrder: doc.sortOrder,
     });
     setModalError(null);
     setShowModal(true);
@@ -334,7 +319,6 @@ export default function AIDocumentsPage() {
         scope: "global",
         userId: null,
         content: form.content.trim(),
-        sortOrder: form.sortOrder,
       };
 
       let res: Response;
@@ -539,9 +523,6 @@ function DocumentCard({
               scope={doc.scope}
               userName={doc.userId?.name}
             />
-            <span className="text-xs text-[var(--color-text-muted)]">
-              Sort: {doc.sortOrder}
-            </span>
           </div>
         </div>
 
