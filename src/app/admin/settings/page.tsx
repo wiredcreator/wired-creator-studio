@@ -170,8 +170,8 @@ export default function AdminSettingsPage() {
             {!loading && draft && (
               <div className="space-y-5">
                 {XP_FIELDS.map((field) => (
-                  <div key={field.key} className="flex items-center gap-4">
-                    <div className="flex-1 min-w-0">
+                  <div key={field.key} className="flex items-start gap-4">
+                    <div className="flex-1 min-w-0 pt-1.5">
                       <label
                         htmlFor={field.key}
                         className="block text-sm font-medium text-[var(--color-text-primary)]"
@@ -182,7 +182,7 @@ export default function AdminSettingsPage() {
                         {field.description}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 pt-0.5">
                       <input
                         id={field.key}
                         type="number"

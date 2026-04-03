@@ -11,7 +11,6 @@ interface AdminSidebarProps {
 }
 
 const navItems = [
-  { href: "/admin", label: "Overview", exact: true },
   { href: "/admin/students", label: "Students" },
   { href: "/admin/ai-documents", label: "AI Documents" },
   { href: "/admin/ai-usage", label: "AI Usage" },
@@ -59,8 +58,7 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
     display: 'block',
   };
 
-  function isActive(href: string, exact?: boolean) {
-    if (exact) return pathname === href;
+  function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + '/');
   }
 
@@ -80,7 +78,7 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
           <div key={item.href}>
             <Link
               href={item.href}
-              style={isActive(item.href, item.exact) ? activeStyle : inactiveStyle}
+              style={isActive(item.href) ? activeStyle : inactiveStyle}
             >
               {item.label}
             </Link>
