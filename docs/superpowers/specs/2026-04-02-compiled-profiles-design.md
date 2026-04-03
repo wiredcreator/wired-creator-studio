@@ -85,7 +85,7 @@ Located in a new file `src/lib/ai/compile-profile.ts`.
 
 1. Fetch the global `student_profile` AI Document (the template). If none exists, return early (no-op).
 2. Fetch the student's Content DNA responses (Q1-Q16) and Personal Baseline responses (Q1-Q17) from the database.
-3. Parse the template content for `{{C1}}`...`{{C16}}` and `{{P1}}`...`{{P15}}` markers.
+3. Parse the template content for `{{C1}}`...`{{C16}}` and `{{P1}}`...`{{P17}}` markers.
 4. Replace each marker with the student's raw answer text. Missing answers become "(not provided)".
 5. Send the populated template to Claude in one API call. The template's own instructions tell Claude how to format each field.
 6. Store Claude's output in `brandBrain.compiledProfile`:
@@ -159,7 +159,7 @@ It is injected for **every category** (idea_generation, script_generation, title
 ### Admin AI Documents Page
 
 - Add `student_profile: 'Student Profile Template'` to `CATEGORY_LABELS`
-- When creating/editing a document with this category, show a helper note: "Template document. Use {{C1}}-{{C16}} for Content DNA answers and {{P1}}-{{P15}} for Personal Baseline answers."
+- When creating/editing a document with this category, show a helper note: "Template document. Use {{C1}}-{{C16}} for Content DNA answers and {{P1}}-{{P17}} for Personal Baseline answers."
 - Add a "Recompile All Students" button that appears when a `student_profile` document exists. Triggers the recompile loop.
 
 ### Admin Student Detail Page
