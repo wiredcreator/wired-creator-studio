@@ -171,12 +171,15 @@ export default function DraftSidebar({
             </div>
             <div className="flex items-center gap-2">
               {panel.id === 'notes' && (
-                <button
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => { e.stopPropagation(); setShowNoteInput(true); setExpanded((prev) => ({ ...prev, notes: true })); }}
-                  className="text-xs text-[var(--color-accent)] hover:underline"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setShowNoteInput(true); setExpanded((prev) => ({ ...prev, notes: true })); } }}
+                  className="text-xs text-[var(--color-accent)] hover:underline cursor-pointer"
                 >
                   + Add
-                </button>
+                </span>
               )}
               <svg
                 className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform ${expanded[panel.id] ? 'rotate-180' : ''}`}

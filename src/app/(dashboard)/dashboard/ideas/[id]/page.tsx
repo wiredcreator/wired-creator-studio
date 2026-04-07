@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import PageWrapper from '@/components/PageWrapper';
 import DraftSidebar from '@/components/focus-mode/draft/DraftSidebar';
@@ -72,7 +73,7 @@ export default function IdeaParkingLotPage() {
 
   // Resources state
   const [resources, setResources] = useState<IResource[]>([]);
-  const [showAddResource, setShowAddResource] = useState(false);
+  const [resourceModal, setResourceModal] = useState<'picker' | 'text' | 'upload' | 'voicestorm' | 'braindump' | null>(null);
   const [newResourceName, setNewResourceName] = useState('');
   const [newResourceContent, setNewResourceContent] = useState('');
   const [expandedResource, setExpandedResource] = useState<string | null>(null);
@@ -264,7 +265,7 @@ export default function IdeaParkingLotPage() {
     setResources(updated);
     setNewResourceName('');
     setNewResourceContent('');
-    setShowAddResource(false);
+    setResourceModal(null);
     saveIdea({ resources: updated } as Partial<IdeaData>);
   };
 
@@ -444,8 +445,8 @@ export default function IdeaParkingLotPage() {
               resources={resources}
               expandedResource={expandedResource}
               setExpandedResource={setExpandedResource}
-              showAddResource={showAddResource}
-              setShowAddResource={setShowAddResource}
+              resourceModal={resourceModal}
+              setResourceModal={setResourceModal}
               newResourceName={newResourceName}
               setNewResourceName={setNewResourceName}
               newResourceContent={newResourceContent}
@@ -456,8 +457,14 @@ export default function IdeaParkingLotPage() {
               setFindSourcesOpen={setFindSourcesOpen}
               ideaTitle={title}
               conceptAnswers={conceptAnswers}
+              ideaId={ideaId}
               onSourcesFound={(newResources) => {
                 setResources((prev) => [...prev, ...newResources]);
+              }}
+              onAddResource={(resource) => {
+                const updated = [...resources, resource];
+                setResources(updated);
+                saveIdea({ resources: updated } as Partial<IdeaData>);
               }}
             />
           )}
@@ -653,8 +660,8 @@ interface ResourcesStepProps {
   resources: IResource[];
   expandedResource: string | null;
   setExpandedResource: (v: string | null) => void;
-  showAddResource: boolean;
-  setShowAddResource: (v: boolean) => void;
+  resourceModal: 'picker' | 'text' | 'upload' | 'voicestorm' | 'braindump' | null;
+  setResourceModal: (v: 'picker' | 'text' | 'upload' | 'voicestorm' | 'braindump' | null) => void;
   newResourceName: string;
   setNewResourceName: (v: string) => void;
   newResourceContent: string;
@@ -665,7 +672,9 @@ interface ResourcesStepProps {
   setFindSourcesOpen: (v: boolean) => void;
   ideaTitle: string;
   conceptAnswers: IConceptAnswers;
+  ideaId: string;
   onSourcesFound: (resources: IResource[]) => void;
+  onAddResource: (resource: IResource) => void;
 }
 
 function getResourceBadge(resource: IResource): { label: string; borderColor: string; bgColor: string; textColor: string } {
@@ -683,8 +692,8 @@ function ResourcesStep({
   resources,
   expandedResource,
   setExpandedResource,
-  showAddResource,
-  setShowAddResource,
+  resourceModal,
+  setResourceModal,
   newResourceName,
   setNewResourceName,
   newResourceContent,
@@ -695,8 +704,143 @@ function ResourcesStep({
   setFindSourcesOpen,
   ideaTitle,
   conceptAnswers,
+  ideaId,
   onSourcesFound,
+  onAddResource,
 }: ResourcesStepProps) {
+  const [uploadError, setUploadError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Voice storm recording state
+  const [vsIsRecording, setVsIsRecording] = useState(false);
+  const [vsRecordingTime, setVsRecordingTime] = useState(0);
+  const [vsTranscribing, setVsTranscribing] = useState(false);
+  const [vsTranscript, setVsTranscript] = useState('');
+  const vsMediaRecorder = useRef<MediaRecorder | null>(null);
+  const vsStream = useRef<MediaStream | null>(null);
+  const vsTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const vsChunks = useRef<Blob[]>([]);
+
+  const vsFormatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  const vsStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      vsStream.current = stream;
+      const recorder = new MediaRecorder(stream);
+      vsChunks.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) vsChunks.current.push(e.data); };
+      recorder.onstop = async () => {
+        const blob = new Blob(vsChunks.current, { type: 'audio/webm' });
+        stream.getTracks().forEach((t) => t.stop());
+        if (blob.size > 0) {
+          setVsTranscribing(true);
+          try {
+            const fd = new FormData();
+            fd.append('audio', blob, 'recording.webm');
+            const res = await fetch('/api/voice-storming/transcribe', { method: 'POST', body: fd });
+            if (res.ok) {
+              const data = await res.json();
+              setVsTranscript((prev) => prev ? prev + '\n\n' + (data.text || '') : data.text || '');
+            }
+          } catch { /* ignore */ } finally { setVsTranscribing(false); }
+        }
+      };
+      recorder.start();
+      vsMediaRecorder.current = recorder;
+      setVsIsRecording(true);
+      setVsRecordingTime(0);
+      vsTimer.current = setInterval(() => setVsRecordingTime((t) => t + 1), 1000);
+    } catch {
+      alert('Could not access microphone. Please allow microphone access.');
+    }
+  };
+
+  const vsStopRecording = () => {
+    vsMediaRecorder.current?.stop();
+    setVsIsRecording(false);
+    if (vsTimer.current) { clearInterval(vsTimer.current); vsTimer.current = null; }
+  };
+
+  // Brain dump selector state
+  const [brainDumps, setBrainDumps] = useState<{ _id: string; transcript: string; createdAt: string; tags: string[] }[]>([]);
+  const [brainDumpSearch, setBrainDumpSearch] = useState('');
+  const [selectedDumps, setSelectedDumps] = useState<Set<string>>(new Set());
+  const [loadingDumps, setLoadingDumps] = useState(false);
+
+  useEffect(() => {
+    if (resourceModal === 'braindump') {
+      setLoadingDumps(true);
+      fetch('/api/brain-dump?limit=50')
+        .then((r) => r.json())
+        .then((data) => setBrainDumps(data.data || []))
+        .catch(() => {})
+        .finally(() => setLoadingDumps(false));
+    }
+  }, [resourceModal]);
+
+  const filteredDumps = brainDumps.filter((d) => {
+    if (!brainDumpSearch.trim()) return true;
+    const q = brainDumpSearch.toLowerCase();
+    return d.transcript.toLowerCase().includes(q) || d.tags?.some((t) => t.toLowerCase().includes(q));
+  });
+
+  const toggleDump = (id: string) => {
+    setSelectedDumps((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const addSelectedDumps = () => {
+    const selected = brainDumps.filter((d) => selectedDumps.has(d._id));
+    for (const dump of selected) {
+      onAddResource({
+        type: 'text',
+        name: `Brain Dump ${new Date(dump.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+        content: dump.transcript,
+        createdAt: new Date(),
+      });
+    }
+    setSelectedDumps(new Set());
+    setResourceModal(null);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/admin/ai-documents/upload-file', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setUploadError(errData.error || 'Upload failed. Please try again.');
+        return;
+      }
+      const data = await res.json();
+      const extractedText = data.text || data.content || '';
+      const newResource: IResource = {
+        type: 'text',
+        name: file.name,
+        content: extractedText,
+        createdAt: new Date(),
+      };
+      onAddResource(newResource);
+      setResourceModal(null);
+    } catch {
+      setUploadError('Upload failed. Please try again.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -727,7 +871,7 @@ function ResourcesStep({
           </button>
           <button
             type="button"
-            onClick={() => setShowAddResource(!showAddResource)}
+            onClick={() => setResourceModal('picker')}
             className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)]"
           >
             + Add resource
@@ -735,56 +879,389 @@ function ResourcesStep({
         </div>
       </div>
 
-      {/* Add resource form */}
-      {showAddResource && (
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
-          <h4 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
-            New Text Resource
-          </h4>
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
-                Name
-              </label>
-              <input
-                type="text"
-                value={newResourceName}
-                onChange={(e) => setNewResourceName(e.target.value)}
-                placeholder="e.g. Research notes, Interview transcript..."
-                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
-              />
+      {/* Resource picker modal (portaled to body to escape overflow clipping) */}
+      {resourceModal !== null && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setResourceModal(null)}
+            aria-hidden="true"
+          />
+
+          {/* Modal panel */}
+          <div className="relative z-10 w-full max-w-lg rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
+              <div className="flex items-center gap-2">
+                {resourceModal !== 'picker' && (
+                  <button
+                    type="button"
+                    onClick={() => { setResourceModal('picker'); setVsTranscript(''); setVsRecordingTime(0); setSelectedDumps(new Set()); setBrainDumpSearch(''); setUploadError(''); }}
+                    className="rounded-[var(--radius-md)] p-1 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                    </svg>
+                  </button>
+                )}
+                <div>
+                  <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                    {resourceModal === 'picker' && 'Add resource'}
+                    {resourceModal === 'text' && 'Write Text'}
+                    {resourceModal === 'upload' && 'Upload File'}
+                    {resourceModal === 'voicestorm' && 'Record Voice Storm'}
+                    {resourceModal === 'braindump' && 'Select Brain Dumps'}
+                  </h2>
+                  {resourceModal === 'picker' && (
+                    <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Choose how you'd like to add a resource</p>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResourceModal(null)}
+                className="rounded-[var(--radius-md)] p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)]"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
-                Content
-              </label>
-              <textarea
-                value={newResourceContent}
-                onChange={(e) => setNewResourceContent(e.target.value)}
-                rows={6}
-                placeholder="Paste or type your notes, ideas, research, transcripts..."
-                className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
-              />
+
+            {/* Body */}
+            <div className="px-6 py-5">
+              {/* Picker grid */}
+              {resourceModal === 'picker' && (
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Voice Storm */}
+                  <button
+                    type="button"
+                    onClick={() => setResourceModal('voicestorm')}
+                    className="flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 text-left transition-colors hover:border-[var(--color-accent)] cursor-pointer"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)]">
+                      <svg className="h-5 w-5 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)]">Voice Storm</p>
+                      <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Record your thoughts out loud</p>
+                    </div>
+                  </button>
+
+                  {/* Write Text */}
+                  <button
+                    type="button"
+                    onClick={() => setResourceModal('text')}
+                    className="flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 text-left transition-colors hover:border-[var(--color-accent)] cursor-pointer"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)]">
+                      <svg className="h-5 w-5 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)]">Write Text</p>
+                      <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Type a note or paste content</p>
+                    </div>
+                  </button>
+
+                  {/* Upload File */}
+                  <button
+                    type="button"
+                    onClick={() => setResourceModal('upload')}
+                    className="flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 text-left transition-colors hover:border-[var(--color-accent)] cursor-pointer"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)]">
+                      <svg className="h-5 w-5 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)]">Upload File</p>
+                      <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Attach a doc, image or PDF</p>
+                    </div>
+                  </button>
+
+                  {/* Brain Dump */}
+                  <button
+                    type="button"
+                    onClick={() => setResourceModal('braindump')}
+                    className="flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 text-left transition-colors hover:border-[var(--color-accent)] cursor-pointer"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)]">
+                      <svg className="h-5 w-5 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)]">Brain Dump</p>
+                      <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Pull from your saved dumps</p>
+                    </div>
+                  </button>
+                </div>
+              )}
+
+              {/* Text resource form */}
+              {resourceModal === 'text' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">Name</label>
+                    <input
+                      type="text"
+                      value={newResourceName}
+                      onChange={(e) => setNewResourceName(e.target.value)}
+                      placeholder="e.g. Research notes, Interview transcript..."
+                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">Content</label>
+                    <textarea
+                      value={newResourceContent}
+                      onChange={(e) => setNewResourceContent(e.target.value)}
+                      rows={6}
+                      placeholder="Paste or type your notes, ideas, research, transcripts..."
+                      className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={onAddTextResource}
+                      disabled={!newResourceName.trim() || !newResourceContent.trim()}
+                      className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
+                    >
+                      Add Resource
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResourceModal(null)}
+                      className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-secondary)]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Upload file form */}
+              {resourceModal === 'upload' && (
+                <div className="space-y-4">
+                  <label className="flex flex-col items-center justify-center gap-3 rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] px-6 py-10 cursor-pointer transition-colors hover:border-[var(--color-accent)]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-bg-secondary)]">
+                      <svg className="h-5 w-5 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                      </svg>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                        {isUploading ? 'Uploading...' : 'Click to choose a file'}
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                        PDF, TXT, DOCX, DOC, MD, JPG, PNG
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.txt,.docx,.doc,.md,.jpg,.jpeg,.png"
+                      onChange={handleFileUpload}
+                      disabled={isUploading}
+                      className="sr-only"
+                    />
+                  </label>
+                  {uploadError && (
+                    <p className="rounded-[var(--radius-md)] bg-red-900 px-3 py-2 text-xs text-red-200">
+                      {uploadError}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setResourceModal(null); setUploadError(''); }}
+                      className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-secondary)]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Voice storm recorder */}
+              {resourceModal === 'voicestorm' && (
+                <div className="space-y-4">
+                  {/* Mic button */}
+                  <div className="flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={vsIsRecording ? vsStopRecording : vsStartRecording}
+                      disabled={vsTranscribing && !vsIsRecording}
+                      className={`flex h-14 w-14 items-center justify-center rounded-full transition-all ${
+                        vsIsRecording ? 'bg-red-500 animate-pulse' : 'bg-[var(--color-accent)] hover:opacity-90'
+                      } disabled:opacity-50`}
+                    >
+                      {vsIsRecording ? (
+                        <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <rect x="6" y="6" width="12" height="12" rx="2" />
+                        </svg>
+                      ) : (
+                        <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Status text */}
+                  <div className="text-center">
+                    {vsIsRecording && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-red-400">
+                        <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                        Recording {vsFormatTime(vsRecordingTime)}
+                      </div>
+                    )}
+                    {!vsIsRecording && vsRecordingTime === 0 && !vsTranscribing && !vsTranscript && (
+                      <p className="text-xs text-[var(--color-text-muted)]">Tap to start recording</p>
+                    )}
+                    {!vsIsRecording && vsRecordingTime > 0 && !vsTranscribing && (
+                      <p className="text-xs text-[var(--color-text-muted)]">Recorded {vsFormatTime(vsRecordingTime)}</p>
+                    )}
+                    {vsTranscribing && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-[var(--color-accent)]">
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Transcribing...
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Transcript preview */}
+                  <textarea
+                    readOnly
+                    value={vsTranscript}
+                    rows={4}
+                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2.5 text-sm text-[var(--color-text-primary)] resize-none outline-none ring-0 max-h-40 overflow-y-auto"
+                  />
+
+                  {/* Save / Redo / Cancel */}
+                  <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border)] pt-3">
+                    {vsTranscript && !vsIsRecording && (
+                      <button
+                        type="button"
+                        onClick={() => { setVsTranscript(''); setVsRecordingTime(0); }}
+                        disabled={vsTranscribing}
+                        className="rounded-[var(--radius-md)] border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:opacity-50"
+                      >
+                        Re-record
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { setResourceModal(null); setVsTranscript(''); setVsRecordingTime(0); }}
+                      className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-secondary)]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!vsTranscript.trim()) return;
+                        onAddResource({
+                          type: 'text',
+                          name: `Voice Storm ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+                          content: vsTranscript.trim(),
+                          createdAt: new Date(),
+                        });
+                        setVsTranscript('');
+                        setVsRecordingTime(0);
+                        setResourceModal(null);
+                      }}
+                      disabled={!vsTranscript.trim() || vsTranscribing}
+                      className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
+                    >
+                      Save resource
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Brain dump selector */}
+              {resourceModal === 'braindump' && (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={brainDumpSearch}
+                    onChange={(e) => setBrainDumpSearch(e.target.value)}
+                    placeholder="Search your brain dumps..."
+                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                  />
+
+                  <div className="max-h-80 overflow-y-auto space-y-2">
+                    {loadingDumps ? (
+                      <div className="py-8 text-center text-sm text-[var(--color-text-muted)]">Loading...</div>
+                    ) : filteredDumps.length === 0 ? (
+                      <div className="py-8 text-center text-sm text-[var(--color-text-muted)]">
+                        {brainDumps.length === 0 ? 'No brain dumps yet.' : 'No matches found.'}
+                      </div>
+                    ) : (
+                      filteredDumps.map((dump) => {
+                        const isSelected = selectedDumps.has(dump._id);
+                        const dateStr = new Date(dump.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        const preview = dump.transcript.slice(0, 120) + (dump.transcript.length > 120 ? '...' : '');
+                        return (
+                          <button
+                            key={dump._id}
+                            type="button"
+                            onClick={() => toggleDump(dump._id)}
+                            className={`w-full rounded-[var(--radius-lg)] border p-3 text-left transition-colors ${
+                              isSelected
+                                ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10'
+                                : 'border-[var(--color-border)] hover:border-[var(--color-accent)]'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${isSelected ? 'border-[var(--color-accent)] bg-[var(--color-accent)]' : 'border-[var(--color-border)]'}`} />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                                  {dump.transcript.split('\n')[0]?.slice(0, 60) || 'Brain dump'}
+                                </p>
+                                <p className="text-xs text-[var(--color-accent)] mt-0.5">{dateStr}</p>
+                                <p className="text-xs text-[var(--color-text-muted)] mt-1 line-clamp-2">{preview}</p>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border)] pt-3">
+                    <button
+                      type="button"
+                      onClick={() => { setResourceModal('picker'); setSelectedDumps(new Set()); setBrainDumpSearch(''); }}
+                      className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-secondary)]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addSelectedDumps}
+                      disabled={selectedDumps.size === 0}
+                      className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
+                    >
+                      Add brain dumps ({selectedDumps.size})
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onAddTextResource}
-              disabled={!newResourceName.trim() || !newResourceContent.trim()}
-              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
-            >
-              Add Resource
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAddResource(false)}
-              className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-secondary)]"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Resource list */}
