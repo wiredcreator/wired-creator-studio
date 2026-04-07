@@ -153,7 +153,7 @@ export default function DraftSidebar({
                     {tags.map((tag) => (
                       <span
                         key={tag}
-                        className="inline-flex items-center gap-1 rounded-full bg-[var(--color-bg-secondary)] px-2.5 py-0.5 text-xs text-white"
+                        className="inline-flex items-center gap-1 rounded-full bg-[var(--color-accent)] px-2.5 py-0.5 text-xs text-white"
                       >
                         {tag}
                         <button

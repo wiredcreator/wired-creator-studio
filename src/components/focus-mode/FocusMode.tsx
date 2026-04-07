@@ -76,7 +76,7 @@ export default function FocusMode({ onClose }: FocusModeProps) {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
               </svg>
-              Back
+              Change mode
             </button>
           ) : (
             <div className="flex items-center gap-2.5">
@@ -139,7 +139,9 @@ export default function FocusMode({ onClose }: FocusModeProps) {
       </div>
 
       {/* Content Area */}
-      <div className="relative z-10 flex flex-1 items-center justify-center overflow-y-auto px-6 pb-32">
+      <div className={`relative z-10 flex flex-1 overflow-y-auto px-6 ${
+        path === 'content-sprint' ? 'items-start pt-6' : 'items-center justify-center pb-32'
+      }`}>
         {path === 'select' && <PathSelector onSelect={setPath} />}
         {path === 'complete-task' && <CompleteTaskPath />}
         {path === 'content-sprint' && <ContentSprintPath />}
