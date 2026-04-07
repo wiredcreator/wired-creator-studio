@@ -13,6 +13,9 @@ interface DraftSidebarProps {
   setNotes: (v: INote[]) => void;
   comments: IComment[];
   onMarkChanged: () => void;
+  onSwapTitle?: (altTitle: string) => void;
+  onRegenerateTitles?: () => void;
+  onAddComment?: (text: string) => void;
 }
 
 interface PanelConfig {
@@ -40,11 +43,16 @@ export default function DraftSidebar({
   setNotes,
   comments,
   onMarkChanged,
+  onSwapTitle,
+  onRegenerateTitles,
+  onAddComment,
 }: DraftSidebarProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ cta: true });
   const [tagInput, setTagInput] = useState('');
+  const [showTagInput, setShowTagInput] = useState(false);
   const [noteInput, setNoteInput] = useState('');
   const [showNoteInput, setShowNoteInput] = useState(false);
+  const [commentInput, setCommentInput] = useState('');
 
   const togglePanel = useCallback((id: string) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -73,6 +81,14 @@ export default function DraftSidebar({
       setShowNoteInput(false);
     }
   }, [noteInput, notes, setNotes, onMarkChanged]);
+
+  const handleAddComment = useCallback(() => {
+    const trimmed = commentInput.trim();
+    if (trimmed && onAddComment) {
+      onAddComment(trimmed);
+      setCommentInput('');
+    }
+  }, [commentInput, onAddComment]);
 
   const formatRelativeTime = (date?: Date) => {
     if (!date) return '';
@@ -138,13 +154,21 @@ export default function DraftSidebar({
           {expanded[panel.id] && (
             <div className="border-t border-[var(--color-border)] px-4 py-3">
               {panel.id === 'cta' && (
-                <input
-                  type="text"
-                  value={callToAction}
-                  onChange={(e) => { setCallToAction(e.target.value); onMarkChanged(); }}
-                  placeholder="e.g. Subscribe for more..."
-                  className="w-full bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
-                />
+                <div className="space-y-2">
+                  <textarea
+                    value={callToAction}
+                    onChange={(e) => { setCallToAction(e.target.value); onMarkChanged(); }}
+                    placeholder="What should viewers do next?"
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+                  />
+                  <button
+                    onClick={onMarkChanged}
+                    className="rounded-md border border-[var(--color-border)] px-3 py-1 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] transition-colors"
+                  >
+                    Save changes
+                  </button>
+                </div>
               )}
 
               {panel.id === 'tags' && (
@@ -165,24 +189,56 @@ export default function DraftSidebar({
                       </span>
                     ))}
                   </div>
-                  <input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
-                    placeholder="Type + Enter to add"
-                    className="w-full bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
-                  />
+                  {showTagInput ? (
+                    <input
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); setShowTagInput(false); } if (e.key === 'Escape') setShowTagInput(false); }}
+                      onBlur={() => { if (!tagInput.trim()) setShowTagInput(false); }}
+                      placeholder="Type + Enter to add"
+                      className="w-full bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+                      autoFocus
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setShowTagInput(true)}
+                      className="text-xs text-[var(--color-accent)] hover:underline"
+                    >
+                      + Add tag
+                    </button>
+                  )}
                 </div>
               )}
 
               {panel.id === 'alt-titles' && (
                 <div className="space-y-2">
+                  {onRegenerateTitles && (
+                    <button
+                      onClick={onRegenerateTitles}
+                      className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors mb-1"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M2.985 19.644l3.181-3.182" />
+                      </svg>
+                      Regenerate
+                    </button>
+                  )}
                   {alternativeTitles.length === 0 ? (
                     <p className="text-xs text-[var(--color-text-muted)]">No alternative titles yet.</p>
                   ) : (
                     alternativeTitles.map((t, i) => (
-                      <p key={i} className="text-sm text-[var(--color-text)]">{t}</p>
+                      <div key={i} className="flex items-center justify-between gap-2">
+                        <p className="text-sm text-[var(--color-text)] flex-1">{t}</p>
+                        {onSwapTitle && (
+                          <button
+                            onClick={() => onSwapTitle(t)}
+                            className="shrink-0 rounded-md border border-[var(--color-border)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] transition-colors"
+                          >
+                            Swap Title
+                          </button>
+                        )}
+                      </div>
                     ))
                   )}
                 </div>
@@ -211,23 +267,77 @@ export default function DraftSidebar({
                     </div>
                   )}
                   {notes.length === 0 && !showNoteInput && (
-                    <p className="text-xs text-[var(--color-text-muted)]">No notes yet.</p>
+                    <p className="text-center text-xs text-[var(--color-text-muted)] whitespace-pre-line">
+                      {"No notes yet.\nAdd a custom note or connect a sticky note."}
+                    </p>
                   )}
                 </div>
               )}
 
               {panel.id === 'comments' && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {comments.length === 0 ? (
                     <p className="text-xs text-[var(--color-text-muted)]">No comments yet.</p>
                   ) : (
-                    comments.map((c, i) => (
-                      <div key={i} className="text-sm">
-                        <p className="text-[var(--color-text)]">{c.text}</p>
-                        <p className="text-[10px] text-[var(--color-text-muted)]">{formatRelativeTime(c.createdAt)}</p>
-                      </div>
-                    ))
+                    comments.map((c, i) => {
+                      const avatarColors = ['#E05A47', '#3B82F6', '#22C55E', '#F59E0B', '#6366F1', '#EC4899'];
+                      const color = avatarColors[i % avatarColors.length];
+                      const initial = c.text?.charAt(0)?.toUpperCase() || 'C';
+                      return (
+                        <div key={i} className="flex items-start gap-2">
+                          <div
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                            style={{ backgroundColor: color }}
+                          >
+                            {initial}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] text-[var(--color-text-muted)] mb-1">
+                              Coach · {formatRelativeTime(c.createdAt) || '2 days ago'}
+                            </p>
+                            <div className="rounded-lg bg-[var(--color-bg-secondary)] p-3">
+                              <p className="text-sm text-[var(--color-text)]">{c.text}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
+
+                  {/* Comment input area */}
+                  <div className="space-y-2 pt-1">
+                    <textarea
+                      value={commentInput}
+                      onChange={(e) => setCommentInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddComment();
+                        }
+                      }}
+                      placeholder="Leave a comment... type @ to tag someone"
+                      rows={2}
+                      className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+                    />
+                    <div className="flex items-center justify-between">
+                      <button className="text-xs text-[var(--color-accent)] hover:underline">
+                        @ Mention
+                      </button>
+                      <button
+                        onClick={handleAddComment}
+                        disabled={!commentInput.trim()}
+                        className="flex items-center gap-1 rounded-md bg-[var(--color-accent)] px-3 py-1 text-xs text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                      >
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                        </svg>
+                        Send
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-[var(--color-text-muted)]">
+                      Cmd+Enter to send · @ to mention
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

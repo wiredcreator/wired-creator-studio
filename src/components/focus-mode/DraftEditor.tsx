@@ -208,115 +208,134 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft }: DraftEditorP
 
   return (
     <div className="w-full max-w-6xl mx-auto animate-fadeIn">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
-          </button>
+      <div className="bg-[var(--color-bg-card)] rounded-2xl shadow-sm border border-[var(--color-border)] p-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
           <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
             Focus Mode &middot; Draft
           </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onNewDraft}
+              className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-hover)]"
+            >
+              + New draft
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving || !hasChanges}
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+              style={{ backgroundColor: '#E05A47' }}
+            >
+              {isSaving ? 'Saving...' : 'Save draft'}
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onNewDraft}
-            className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-hover)]"
-          >
-            + New draft
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving || !hasChanges}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
-            style={{ backgroundColor: '#E05A47' }}
-          >
-            {isSaving ? 'Saving...' : 'Save draft'}
-          </button>
+
+        {/* Title */}
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => { setTitle(e.target.value); markChanged(); }}
+          placeholder="Idea title..."
+          className="mb-6 w-full bg-transparent text-2xl font-semibold text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none border-none"
+        />
+
+        {/* Tabs */}
+        <div className="mb-6 grid grid-cols-3 rounded-lg border border-[var(--color-border)] overflow-hidden">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-2.5 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-[#4A6CF7] text-white'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-      </div>
 
-      {/* Title */}
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => { setTitle(e.target.value); markChanged(); }}
-        placeholder="Idea title..."
-        className="mb-6 w-full bg-transparent text-2xl font-semibold text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none border-none"
-      />
-
-      {/* Tabs */}
-      <div className="mb-6 inline-flex rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)] p-1">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`rounded-full px-5 py-1.5 text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? 'bg-[var(--color-accent)] text-white'
-                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content + Sidebar */}
-      <div className="flex gap-6">
-        <div className="flex-1 min-w-0">
-          {activeTab === 'concept' && (
-            <ConceptTab
-              conceptAnswers={conceptAnswers}
-              setConceptAnswers={setConceptAnswers}
-              rawNotes={rawNotes}
-              setRawNotes={setRawNotes}
-              onSave={handleSave}
-              onAutoGenerate={handleAutoGenerateConcept}
-              isSaving={isSaving}
-              isGenerating={isGeneratingConcept}
+        {/* Content + Sidebar */}
+        <div className="flex gap-6">
+          <div className="flex-1 min-w-0">
+            {activeTab === 'concept' && (
+              <ConceptTab
+                conceptAnswers={conceptAnswers}
+                setConceptAnswers={setConceptAnswers}
+                rawNotes={rawNotes}
+                setRawNotes={setRawNotes}
+                onSave={handleSave}
+                onAutoGenerate={handleAutoGenerateConcept}
+                isSaving={isSaving}
+                isGenerating={isGeneratingConcept}
+                onMarkChanged={markChanged}
+              />
+            )}
+            {activeTab === 'resources' && (
+              <ResourcesTab
+                resources={resources}
+                setResources={setResources}
+                onFindSources={() => setShowFindSources(true)}
+                onMarkChanged={markChanged}
+              />
+            )}
+            {activeTab === 'outline' && (
+              <OutlineTab
+                outlineSections={outlineSections}
+                setOutlineSections={setOutlineSections}
+                onSave={handleSave}
+                onAutoGenerate={handleAutoGenerateOutline}
+                onTurnIntoScript={handleTurnIntoScript}
+                isSaving={isSaving}
+                isGenerating={isGeneratingOutline}
+                isGeneratingScript={isGeneratingScript}
+                onMarkChanged={markChanged}
+              />
+            )}
+          </div>
+          <div className="w-[280px] flex-shrink-0 hidden lg:block">
+            <DraftSidebar
+              callToAction={callToAction}
+              setCallToAction={setCallToAction}
+              tags={tags}
+              setTags={setTags}
+              alternativeTitles={alternativeTitles}
+              notes={notes}
+              setNotes={setNotes}
+              comments={comments}
               onMarkChanged={markChanged}
+              onSwapTitle={(altTitle) => {
+                const oldTitle = title;
+                setTitle(altTitle);
+                setAlternativeTitles(alternativeTitles.map((t) => t === altTitle ? oldTitle : t));
+                markChanged();
+              }}
+              onRegenerateTitles={async () => {
+                if (!ideaId) return;
+                try {
+                  const res = await fetch(`/api/ideas/${ideaId}/ai`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'alternativeTitles' }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.alternativeTitles) {
+                      setAlternativeTitles(data.alternativeTitles);
+                      markChanged();
+                    }
+                  }
+                } catch { /* failed */ }
+              }}
+              onAddComment={(text) => {
+                setComments([...comments, { text, createdAt: new Date() } as any]);
+                markChanged();
+              }}
             />
-          )}
-          {activeTab === 'resources' && (
-            <ResourcesTab
-              resources={resources}
-              setResources={setResources}
-              onFindSources={() => setShowFindSources(true)}
-              onMarkChanged={markChanged}
-            />
-          )}
-          {activeTab === 'outline' && (
-            <OutlineTab
-              outlineSections={outlineSections}
-              setOutlineSections={setOutlineSections}
-              onSave={handleSave}
-              onAutoGenerate={handleAutoGenerateOutline}
-              onTurnIntoScript={handleTurnIntoScript}
-              isSaving={isSaving}
-              isGenerating={isGeneratingOutline}
-              isGeneratingScript={isGeneratingScript}
-              onMarkChanged={markChanged}
-            />
-          )}
-        </div>
-        <div className="w-[280px] flex-shrink-0 hidden lg:block">
-          <DraftSidebar
-            callToAction={callToAction}
-            setCallToAction={setCallToAction}
-            tags={tags}
-            setTags={setTags}
-            alternativeTitles={alternativeTitles}
-            notes={notes}
-            setNotes={setNotes}
-            comments={comments}
-            onMarkChanged={markChanged}
-          />
+          </div>
         </div>
       </div>
 

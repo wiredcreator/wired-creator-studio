@@ -128,7 +128,7 @@ export default function OutlineTab({
                 type="text"
                 value={section.title}
                 onChange={(e) => updateSection(section.id, { title: e.target.value })}
-                className="text-sm font-bold text-[var(--color-text)] bg-transparent outline-none ring-0 w-full"
+                className="text-sm font-bold text-[var(--color-text)] bg-transparent outline-none ring-0 w-full border-b border-[var(--color-border)] pb-2"
               />
               {/* Bullets */}
               {section.bullets.map((bullet, bIdx) => (
