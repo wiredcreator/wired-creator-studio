@@ -91,8 +91,16 @@ Respond with ONLY valid JSON:
 
       case 'alternativeTitles': {
         const startMs = Date.now();
+        const { fetchGoogleDocText } = await import('@/lib/google-doc-fetcher');
+        const titleGuide = await fetchGoogleDocText('1zKZDrQzg1NIiFT9QOea6i5sNBFGmxphn1OGevQp6Sik');
+        console.log(`[alt-titles] YouTube title guide: ${titleGuide ? `loaded (${titleGuide.length} chars)` : 'MISSING - falling back to base prompt'}`);
+        const titleExpertPrompt = [
+          'You are a YouTube title expert. Generate compelling, click-worthy alternative titles that maintain the core topic but offer different angles, hooks, or framings.',
+          titleGuide ? `\n## YouTube Title & Idea Guide\nFollow the rules, formats, and frameworks in this guide:\n\n${titleGuide}` : '',
+          `\n\n${brandBrainContext}`,
+        ].join('');
         const augmentedSystemPrompt = await buildSystemPrompt(
-          `You are a YouTube title expert. Generate compelling, click-worthy alternative titles that maintain the core topic but offer different angles, hooks, or framings.\n\n${brandBrainContext}`,
+          titleExpertPrompt,
           'title_generation',
           user.id
         );

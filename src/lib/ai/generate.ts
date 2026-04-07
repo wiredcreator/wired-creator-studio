@@ -393,7 +393,15 @@ export async function generateIdeas(
     '\nGenerate 6-8 concrete, ready-to-film video ideas based on the above context.',
   ].join('\n');
 
-  const ideaSystemPrompt = await buildSystemPrompt(IDEA_GENERATION_SYSTEM_PROMPT, 'idea_generation', userId);
+  // Dynamically inject the YouTube title guide from Renee's public Google Doc
+  const { fetchGoogleDocText } = await import('@/lib/google-doc-fetcher');
+  const titleGuide = await fetchGoogleDocText('1zKZDrQzg1NIiFT9QOea6i5sNBFGmxphn1OGevQp6Sik');
+  console.log(`[idea-gen] YouTube title guide: ${titleGuide ? `loaded (${titleGuide.length} chars)` : 'MISSING - falling back to base prompt'}`);
+  const promptWithGuide = titleGuide
+    ? `${IDEA_GENERATION_SYSTEM_PROMPT}\n\n## YouTube Title & Idea Guide\nFollow the rules, formats, and frameworks in this guide when crafting titles and ideas:\n\n${titleGuide}`
+    : IDEA_GENERATION_SYSTEM_PROMPT;
+
+  const ideaSystemPrompt = await buildSystemPrompt(promptWithGuide, 'idea_generation', userId);
 
   const startMs = Date.now();
   const response = await withRetry(() =>
