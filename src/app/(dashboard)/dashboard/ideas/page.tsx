@@ -138,6 +138,10 @@ export default function IdeasPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIdea, setSelectedIdea] = useState<IdeaCardData | null>(null);
 
+  // Multi-select for suggested ideas (checkbox mode)
+  const [selectedSuggestedIds, setSelectedSuggestedIds] = useState<Set<string>>(new Set());
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
+
   // Brand Brain pillars
   const [brandBrainPillars, setBrandBrainPillars] = useState<string[]>([]);
 
@@ -382,6 +386,52 @@ export default function IdeasPage() {
     router.push(`/scripts?ideaId=${id}`);
   };
 
+  // --- Multi-select handlers for suggested ideas ---
+  const toggleSuggestedSelect = (id: string) => {
+    setSelectedSuggestedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleBulkSaveSelected = async () => {
+    if (selectedSuggestedIds.size === 0) return;
+    setIsBulkSaving(true);
+
+    const idsToSave = Array.from(selectedSuggestedIds);
+
+    // Optimistic: move selected ideas to pipeline
+    const movedIdeas = suggestedIdeas.filter((i) => idsToSave.includes(i._id));
+    setSuggestedIdeas((prev) => prev.filter((i) => !idsToSave.includes(i._id)));
+    setIdeas((prev) => [
+      ...movedIdeas.map((i) => ({ ...i, status: 'saved' as ContentIdeaStatus })),
+      ...prev,
+    ]);
+    setSelectedSuggestedIds(new Set());
+
+    // Bulk update on server
+    try {
+      const res = await fetch('/api/ideas/bulk', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ideaIds: idsToSave, status: 'saved' }),
+      });
+      if (!res.ok) {
+        // Rollback on failure
+        fetchIdeas();
+      }
+    } catch {
+      fetchIdeas();
+    } finally {
+      setIsBulkSaving(false);
+    }
+  };
+
   // --- Manual idea creation ---
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -556,7 +606,7 @@ export default function IdeasPage() {
   }
 
   return (
-    <PageWrapper title={currentView === 'entry' ? undefined : 'Ideas'}>
+    <PageWrapper title={currentView === 'entry' || currentView === 'own-idea' ? undefined : 'Ideas'}>
 
       {/* ================================================================ */}
       {/* ENTRY POINTS VIEW                                                */}
@@ -608,7 +658,7 @@ export default function IdeasPage() {
           <BackButton onClick={() => setCurrentView('entry')} />
 
           <div className="mx-auto max-w-lg text-center">
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-accent-light)]">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#9B7FD4] bg-[#9B7FD4]/10">
               <span className="text-3xl">💡</span>
             </div>
 
@@ -627,7 +677,7 @@ export default function IdeasPage() {
                   onChange={(e) => setManualTitle(e.target.value)}
                   placeholder="e.g. How I plan a month of content in one day"
                   required
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 pr-12 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 pr-12 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
                 />
                 <button
                   type="button"
@@ -683,7 +733,7 @@ export default function IdeasPage() {
               <select
                 value={manualPillar}
                 onChange={(e) => setManualPillar(e.target.value)}
-                className="w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
+                className="w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
               >
                 <option value="">No pillar (optional)</option>
                 {availablePillars.map((p) => (
@@ -694,13 +744,13 @@ export default function IdeasPage() {
               </select>
 
               <p className="text-xs text-[var(--color-text-muted)]">
-                Type your idea or tap the mic to speak it. Press Enter to save.
+                Type your idea or click the mic to speak it — press ↵ Enter to save.
               </p>
 
               <button
                 type="submit"
                 disabled={isSubmittingManual || !manualTitle.trim()}
-                className="w-full rounded-[var(--radius-md)] bg-[var(--color-accent)] px-5 py-3 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
+                className="w-full rounded-[var(--radius-md)] bg-[#9B7FD4] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-[#8A6BC5] disabled:bg-[#555] disabled:text-[#999]"
               >
                 {isSubmittingManual ? 'Saving...' : '💡 Save Idea'}
               </button>
@@ -783,6 +833,30 @@ export default function IdeasPage() {
               {/* Suggested ideas cards */}
               {suggestedIdeas.length > 0 && !isGenerating && (
                 <div>
+                  {/* Bulk action bar */}
+                  {selectedSuggestedIds.size > 0 && (
+                    <div className="mb-3 flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-bg-secondary)] px-4 py-2.5">
+                      <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                        {selectedSuggestedIds.size} idea{selectedSuggestedIds.size > 1 ? 's' : ''} selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleBulkSaveSelected}
+                        disabled={isBulkSaving}
+                        className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-1.5 text-xs font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
+                      >
+                        {isBulkSaving ? 'Saving...' : 'Save to Parking Lot'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSuggestedIds(new Set())}
+                        className="text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+                      >
+                        Clear selection
+                      </button>
+                    </div>
+                  )}
+
                   <div className="grid gap-3 sm:grid-cols-2">
                     {suggestedIdeas.map((idea, index) => (
                       <div
@@ -797,6 +871,8 @@ export default function IdeasPage() {
                           onSave={handleSave}
                           onReject={handleReject}
                           onClick={setSelectedIdea}
+                          isSelected={selectedSuggestedIds.has(idea._id)}
+                          onToggleSelect={toggleSuggestedSelect}
                           animationClass={
                             animatingIds.has(idea._id) ? 'idea-card-exit' : ''
                           }
@@ -907,7 +983,8 @@ export default function IdeasPage() {
                   idea={idea}
                   variant="pipeline"
                   onStatusChange={updateIdeaStatus}
-                  onClick={setSelectedIdea}
+                  onClick={(idea) => router.push(`/dashboard/ideas/${idea._id}`)}
+                  onDelete={handleDeleteIdea}
                   animationClass={
                     animatingIds.has(idea._id) ? 'idea-card-enter' : ''
                   }

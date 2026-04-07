@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { IConceptAnswers, IResource } from '@/models/ContentIdea';
 
 interface FindSourcesPanelProps {
@@ -109,29 +110,27 @@ export default function FindSourcesPanel({
     setSelectedCategories((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
-  const handleSearch = useCallback(async () => {
-    setIsSearching(true);
-    // TODO: Implement actual AI source search
-    // For now, simulate a brief delay and show that it's a stub
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSearching(false);
-    // No sources found yet (stub)
+  const handleSearch = useCallback(() => {
+    alert('Coming soon! AI-powered source finding is not yet available.');
   }, []);
 
-  if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm transition-opacity duration-300"
+        className={`fixed inset-0 z-[999] bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
         onClick={onClose}
       />
 
       {/* Panel */}
       <div
-        className="fixed right-0 top-0 z-[201] flex h-full w-full max-w-lg flex-col bg-[var(--color-bg-card)] shadow-2xl transition-transform duration-400"
-        style={{ transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
+        className={`fixed right-0 top-0 z-[1000] flex h-full w-full max-w-lg flex-col bg-[var(--color-bg-card)] shadow-2xl transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
@@ -279,6 +278,7 @@ export default function FindSourcesPanel({
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

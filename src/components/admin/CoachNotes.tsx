@@ -218,7 +218,7 @@ export default function CoachNotes({ studentId }: { studentId: string }) {
               onChange={(e) => setNewText(e.target.value)}
               placeholder="Add a private note about this student..."
               rows={3}
-              className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0 resize-none"
+              className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0 resize-none"
             />
             <div className="flex justify-end">
               <button

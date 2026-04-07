@@ -266,8 +266,16 @@ Respond ONLY with a valid JSON object:
   "title": "The video title",
   "fullScript": "The complete script text...",
   "bulletPoints": ["Key point 1", "Key point 2", "..."],
-  "teleprompterVersion": "Hook: ... \\nPoint 1: ... \\nStory: ... \\nCTA: ..."
-}`;
+  "teleprompterVersion": "Hook: ... \\nPoint 1: ... \\nStory: ... \\nCTA: ...",
+  "sections": [
+    { "title": "Hook", "content": "The opening hook script text..." },
+    { "title": "Part 1 - The Problem", "content": "Script text for this section..." },
+    { "title": "Part 2 - The Solution", "content": "Script text for this section..." },
+    { "title": "CTA", "content": "Call to action script text..." }
+  ]
+}
+
+The "sections" array breaks the full script into editable sections. Each section should have a descriptive title and the corresponding portion of the script as content. The sections should cover the entire script when combined.`;
 
 // ---------------------------------------------------------------------------
 // Voice Storming Processing

@@ -41,25 +41,18 @@ export default function ResourcesTab({
     onMarkChanged();
   }, [resources, setResources, onMarkChanged]);
 
-  if (resources.length === 0 && !showAddForm) {
-    return (
-      <div className="rounded-xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] p-12 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-bg-secondary)]">
-          <svg className="h-6 w-6 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
-          </svg>
+  return (
+    <div>
+      {/* Header — always visible */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <span className="text-sm font-semibold text-[var(--color-text)]">Resources</span>
+          <span className="ml-2 text-sm text-[var(--color-text-muted)]">{resources.length} item{resources.length !== 1 ? 's' : ''}</span>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            Reference material, notes and sources for this idea.
+          </p>
         </div>
-        <h3 className="text-sm font-semibold text-[var(--color-text)]">No resources yet</h3>
-        <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-          Add a voice storm, text note, file, or brain dump, or let AI find online sources for you.
-        </p>
-        <div className="mt-6 flex items-center justify-center gap-3">
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
-          >
-            + Add resource
-          </button>
+        <div className="flex items-center gap-2">
           <button
             onClick={onFindSources}
             className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-hover)]"
@@ -69,39 +62,44 @@ export default function ResourcesTab({
             </svg>
             Find online sources
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-semibold text-[var(--color-text)]">Resources</h3>
-          <p className="text-xs text-[var(--color-text-muted)]">
-            Reference material, notes and sources for this idea. {resources.length} item{resources.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onFindSources}
-            className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text)] transition-colors hover:bg-[var(--color-hover)]"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
-            </svg>
-            Find online sources
-          </button>
           <button
             onClick={() => setShowAddForm(true)}
-            className="rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:opacity-90"
+            className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
           >
             + Add resource
           </button>
         </div>
       </div>
+
+      {/* Empty state */}
+      {resources.length === 0 && !showAddForm && (
+        <div className="rounded-xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] p-12 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-bg-secondary)]">
+            <svg className="h-6 w-6 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
+            </svg>
+          </div>
+          <h3 className="text-sm font-semibold text-[var(--color-text)]">No resources yet</h3>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+            Add a voice storm, text note, file, or brain dump — or<br />
+            let AI find online sources for you.
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+            >
+              + Add resource
+            </button>
+            <button
+              onClick={onFindSources}
+              className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-hover)]"
+            >
+              Find online sources
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Resource list */}
       <div className="space-y-2">

@@ -197,7 +197,7 @@ export default function AdminSettingsPage() {
                               : prev
                           );
                         }}
-                        className="w-20 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] text-center outline-none ring-0"
+                        className="w-20 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] text-center outline-none ring-0"
                       />
                       <span className="text-xs text-[var(--color-text-muted)] w-6">
                         XP

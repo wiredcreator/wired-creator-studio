@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import PageWrapper from '@/components/PageWrapper';
-import type { IConceptAnswers, IResource, IOutlineSection } from '@/models/ContentIdea';
+import DraftSidebar from '@/components/focus-mode/draft/DraftSidebar';
+import FindSourcesPanel from '@/components/focus-mode/draft/FindSourcesPanel';
+import type { IConceptAnswers, INote, IComment, IResource, IOutlineSection } from '@/models/ContentIdea';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 
 // ---------------------------------------------------------------------------
@@ -20,6 +22,9 @@ interface IdeaData {
   conceptAnswers?: IConceptAnswers;
   callToAction: string;
   alternativeTitles: string[];
+  tags: string[];
+  notes: INote[];
+  comments: IComment[];
   resources: IResource[];
   outline: string;
   outlineSections?: IOutlineSection[];
@@ -59,6 +64,9 @@ export default function IdeaParkingLotPage() {
   });
   const [callToAction, setCallToAction] = useState('');
   const [alternativeTitles, setAlternativeTitles] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [notes, setNotes] = useState<INote[]>([]);
+  const [comments, setComments] = useState<IComment[]>([]);
   const [isGeneratingConcept, setIsGeneratingConcept] = useState(false);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
 
@@ -68,6 +76,7 @@ export default function IdeaParkingLotPage() {
   const [newResourceName, setNewResourceName] = useState('');
   const [newResourceContent, setNewResourceContent] = useState('');
   const [expandedResource, setExpandedResource] = useState<string | null>(null);
+  const [findSourcesOpen, setFindSourcesOpen] = useState(false);
 
   // Outline state
   const [outline, setOutline] = useState('');
@@ -80,6 +89,9 @@ export default function IdeaParkingLotPage() {
   const [voiceStormChecked, setVoiceStormChecked] = useState(false);
   const [showVoiceStormPrompt, setShowVoiceStormPrompt] = useState(false);
   const [voiceStormPromptSkipped, setVoiceStormPromptSkipped] = useState(false);
+
+  // Error state
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Unsaved changes tracking
   const [hasChanges, setHasChanges] = useState(false);
@@ -103,6 +115,9 @@ export default function IdeaParkingLotPage() {
       });
       setCallToAction(data.callToAction || '');
       setAlternativeTitles(data.alternativeTitles || []);
+      setTags(data.tags || []);
+      setNotes(data.notes || []);
+      setComments(data.comments || []);
       setResources(data.resources || []);
       setOutline(data.outline || '');
       setOutlineSections(data.outlineSections || []);
@@ -136,6 +151,11 @@ export default function IdeaParkingLotPage() {
     checkVoiceStorm();
   }, [ideaId]);
 
+  const showError = (msg: string) => {
+    setErrorMessage(msg);
+    setTimeout(() => setErrorMessage(''), 6000);
+  };
+
   const markChanged = () => {
     if (!hasChanges) setHasChanges(true);
   };
@@ -159,9 +179,12 @@ export default function IdeaParkingLotPage() {
         const updated = await res.json();
         setIdea(updated);
         showSaved();
+      } else {
+        showError('Failed to save changes. Please try again.');
       }
     } catch (err) {
       console.error('Failed to save idea:', err);
+      showError('Failed to save changes. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -169,7 +192,7 @@ export default function IdeaParkingLotPage() {
 
   // --- Concept actions ---
   const handleSaveConcept = () => {
-    saveIdea({ title, conceptAnswers, callToAction, alternativeTitles });
+    saveIdea({ title, conceptAnswers });
   };
 
   const handleGenerateConcept = async () => {
@@ -185,9 +208,12 @@ export default function IdeaParkingLotPage() {
         if (data.conceptAnswers) {
           setConceptAnswers(data.conceptAnswers);
         }
+      } else {
+        showError('Failed to generate concept. Please try again.');
       }
     } catch (err) {
       console.error('Failed to generate concept:', err);
+      showError('Failed to generate concept. Please try again.');
     } finally {
       setIsGeneratingConcept(false);
     }
@@ -206,9 +232,12 @@ export default function IdeaParkingLotPage() {
         if (data.alternativeTitles) {
           setAlternativeTitles(data.alternativeTitles);
         }
+      } else {
+        showError('Failed to generate titles. Please try again.');
       }
     } catch (err) {
       console.error('Failed to generate titles:', err);
+      showError('Failed to generate titles. Please try again.');
     } finally {
       setIsGeneratingTitles(false);
     }
@@ -262,9 +291,12 @@ export default function IdeaParkingLotPage() {
         if (data.outline) {
           setOutline(data.outline);
         }
+      } else {
+        showError('Failed to generate outline. Please try again.');
       }
     } catch (err) {
       console.error('Failed to generate outline:', err);
+      showError('Failed to generate outline. Please try again.');
     } finally {
       setIsGeneratingOutline(false);
     }
@@ -308,9 +340,12 @@ export default function IdeaParkingLotPage() {
           body: JSON.stringify({ status: 'scripted' }),
         });
         router.push('/dashboard/scripts');
+      } else {
+        showError('Failed to generate script. Please try again.');
       }
     } catch (err) {
       console.error('Failed to generate script:', err);
+      showError('Failed to generate script. Please try again.');
     } finally {
       setIsGeneratingScript(false);
     }
@@ -333,149 +368,188 @@ export default function IdeaParkingLotPage() {
   if (!idea) return null;
 
   return (
-    <PageWrapper>
-      {/* Back button + title */}
-      <div className="mb-6">
-        <button
-          type="button"
-          onClick={() => router.push('/dashboard/ideas')}
-          className="mb-4 flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-          </svg>
-          Back to Ideas
-        </button>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
-              Idea Parking Lot
-            </h1>
-            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-              Complete each step before generating your script.
-            </p>
+    <PageWrapper wide>
+      {/* Back button */}
+      <button
+        type="button"
+        onClick={() => router.push('/dashboard/ideas')}
+        className="mb-4 flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+        </svg>
+        Back
+      </button>
+
+      {/* Idea title as page heading (editable) */}
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => { setTitle(e.target.value); markChanged(); }}
+        onBlur={() => { if (title !== idea.title) saveIdea({ title }); }}
+        className="mb-1 w-full bg-transparent text-2xl font-bold text-[var(--color-text-primary)] outline-none ring-0"
+      />
+
+      {/* Status messages */}
+      <div className="mb-6 flex items-center gap-2">
+        {errorMessage && (
+          <span className="rounded-[var(--radius-md)] bg-red-900 px-3 py-1.5 text-xs font-medium text-red-200">
+            {errorMessage}
+          </span>
+        )}
+        {saveMessage && (
+          <span className="rounded-[var(--radius-md)] bg-green-900 px-3 py-1.5 text-xs font-medium text-green-200">
+            {saveMessage}
+          </span>
+        )}
+      </div>
+
+      {/* Layout: main content + sidebar */}
+      <div className="flex gap-6">
+        {/* Main content area */}
+        <div className="flex-1 min-w-0">
+          {/* Full-width filled tabs */}
+          <div className="mb-6 flex rounded-[var(--radius-md)] overflow-hidden border border-[var(--color-border)]">
+            {STEPS.map((step) => (
+              <button
+                key={step.key}
+                type="button"
+                onClick={() => setActiveStep(step.key)}
+                className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                  activeStep === step.key
+                    ? 'bg-[var(--color-accent)] text-white'
+                    : 'bg-[var(--color-bg-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                }`}
+              >
+                {step.label}
+              </button>
+            ))}
           </div>
-          {saveMessage && (
-            <span className="rounded-[var(--radius-md)] bg-green-900 px-3 py-1.5 text-xs font-medium text-green-200">
-              {saveMessage}
-            </span>
+
+          {/* Step content */}
+          {activeStep === 'concept' && (
+            <ConceptStep
+              conceptAnswers={conceptAnswers}
+              setConceptAnswers={setConceptAnswers}
+              isGeneratingConcept={isGeneratingConcept}
+              onGenerateConcept={handleGenerateConcept}
+              onSave={handleSaveConcept}
+              isSaving={isSaving}
+              onMarkChanged={markChanged}
+            />
+          )}
+
+          {activeStep === 'resources' && (
+            <ResourcesStep
+              resources={resources}
+              expandedResource={expandedResource}
+              setExpandedResource={setExpandedResource}
+              showAddResource={showAddResource}
+              setShowAddResource={setShowAddResource}
+              newResourceName={newResourceName}
+              setNewResourceName={setNewResourceName}
+              newResourceContent={newResourceContent}
+              setNewResourceContent={setNewResourceContent}
+              onAddTextResource={handleAddTextResource}
+              onRemoveResource={handleRemoveResource}
+              findSourcesOpen={findSourcesOpen}
+              setFindSourcesOpen={setFindSourcesOpen}
+              ideaTitle={title}
+              conceptAnswers={conceptAnswers}
+              onSourcesFound={(newResources) => {
+                setResources((prev) => [...prev, ...newResources]);
+              }}
+            />
+          )}
+
+          {activeStep === 'outline' && (
+            <OutlineStep
+              outline={outline}
+              setOutline={setOutline}
+              outlineSections={outlineSections}
+              setOutlineSections={setOutlineSections}
+              isGeneratingOutline={isGeneratingOutline}
+              isGeneratingScript={isGeneratingScript}
+              onGenerateOutline={handleGenerateOutline}
+              onSave={handleSaveOutline}
+              onGenerateScript={handleGenerateScript}
+              isSaving={isSaving}
+              onMarkChanged={markChanged}
+              conceptAnswers={conceptAnswers}
+              showVoiceStormPrompt={showVoiceStormPrompt}
+              onSkipVoiceStorm={() => {
+                setVoiceStormPromptSkipped(true);
+                setShowVoiceStormPrompt(false);
+              }}
+              onSkipAndGenerateScript={async () => {
+                setVoiceStormPromptSkipped(true);
+                setShowVoiceStormPrompt(false);
+                setIsGeneratingScript(true);
+                try {
+                  if (outlineSections.length > 0) {
+                    await saveIdea({ outlineSections } as unknown as Partial<IdeaData>);
+                  } else {
+                    await saveIdea({ outline });
+                  }
+                  const res = await fetch('/api/scripts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ideaId }),
+                  });
+                  if (res.ok) {
+                    await fetch(`/api/ideas/${ideaId}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ status: 'scripted' }),
+                    });
+                    router.push('/dashboard/scripts');
+                  } else {
+                    showError('Failed to generate script. Please try again.');
+                  }
+                } catch (err) {
+                  console.error('Failed to generate script:', err);
+                  showError('Failed to generate script. Please try again.');
+                } finally {
+                  setIsGeneratingScript(false);
+                }
+              }}
+              ideaId={ideaId}
+            />
           )}
         </div>
-      </div>
 
-      {/* Step tabs */}
-      <div className="mb-8 flex gap-1 rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] p-1">
-        {STEPS.map((step) => (
-          <button
-            key={step.key}
-            type="button"
-            onClick={() => setActiveStep(step.key)}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] px-4 py-2.5 text-sm font-medium transition-colors ${
-              activeStep === step.key
-                ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)] shadow-[var(--shadow-sm)]'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
-            }`}
-          >
-            <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
-              activeStep === step.key
-                ? 'bg-[var(--color-bg-dark)] text-[var(--color-accent)]'
-                : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]'
-            }`}>
-              {step.number}
-            </span>
-            {step.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Step content */}
-      {activeStep === 'concept' && (
-        <ConceptStep
-          title={title}
-          setTitle={setTitle}
-          conceptAnswers={conceptAnswers}
-          setConceptAnswers={setConceptAnswers}
-          callToAction={callToAction}
-          setCallToAction={setCallToAction}
-          alternativeTitles={alternativeTitles}
-          onSwapTitle={handleSwapTitle}
-          isGeneratingConcept={isGeneratingConcept}
-          isGeneratingTitles={isGeneratingTitles}
-          onGenerateConcept={handleGenerateConcept}
-          onGenerateTitles={handleGenerateTitles}
-          onSave={handleSaveConcept}
-          isSaving={isSaving}
-          onMarkChanged={markChanged}
-        />
-      )}
-
-      {activeStep === 'resources' && (
-        <ResourcesStep
-          resources={resources}
-          expandedResource={expandedResource}
-          setExpandedResource={setExpandedResource}
-          showAddResource={showAddResource}
-          setShowAddResource={setShowAddResource}
-          newResourceName={newResourceName}
-          setNewResourceName={setNewResourceName}
-          newResourceContent={newResourceContent}
-          setNewResourceContent={setNewResourceContent}
-          onAddTextResource={handleAddTextResource}
-          onRemoveResource={handleRemoveResource}
-        />
-      )}
-
-      {activeStep === 'outline' && (
-        <OutlineStep
-          outline={outline}
-          setOutline={setOutline}
-          outlineSections={outlineSections}
-          setOutlineSections={setOutlineSections}
-          isGeneratingOutline={isGeneratingOutline}
-          isGeneratingScript={isGeneratingScript}
-          onGenerateOutline={handleGenerateOutline}
-          onSave={handleSaveOutline}
-          onGenerateScript={handleGenerateScript}
-          isSaving={isSaving}
-          onMarkChanged={markChanged}
-          conceptAnswers={conceptAnswers}
-          showVoiceStormPrompt={showVoiceStormPrompt}
-          onSkipVoiceStorm={() => {
-            setVoiceStormPromptSkipped(true);
-            setShowVoiceStormPrompt(false);
-          }}
-          onSkipAndGenerateScript={async () => {
-            setVoiceStormPromptSkipped(true);
-            setShowVoiceStormPrompt(false);
-            setIsGeneratingScript(true);
-            try {
-              if (outlineSections.length > 0) {
-                await saveIdea({ outlineSections } as unknown as Partial<IdeaData>);
-              } else {
-                await saveIdea({ outline });
-              }
-              const res = await fetch('/api/scripts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ideaId }),
-              });
-              if (res.ok) {
-                await fetch(`/api/ideas/${ideaId}`, {
+        {/* Right sidebar with accordion panels */}
+        <div className="w-72 shrink-0">
+          <DraftSidebar
+            callToAction={callToAction}
+            setCallToAction={setCallToAction}
+            tags={tags}
+            setTags={(newTags) => { setTags(newTags); saveIdea({ tags: newTags } as unknown as Partial<IdeaData>); }}
+            alternativeTitles={alternativeTitles}
+            notes={notes}
+            setNotes={(newNotes) => { setNotes(newNotes); saveIdea({ notes: newNotes } as unknown as Partial<IdeaData>); }}
+            comments={comments}
+            onMarkChanged={markChanged}
+            onSwapTitle={handleSwapTitle}
+            onRegenerateTitles={handleGenerateTitles}
+            onAddComment={async (text) => {
+              try {
+                const res = await fetch(`/api/ideas/${ideaId}`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ status: 'scripted' }),
+                  body: JSON.stringify({ comments: [...comments, { text, createdAt: new Date() }] }),
                 });
-                router.push('/dashboard/scripts');
+                if (res.ok) {
+                  const updated = await res.json();
+                  setComments(updated.comments || []);
+                }
+              } catch (err) {
+                console.error('Failed to add comment:', err);
               }
-            } catch (err) {
-              console.error('Failed to generate script:', err);
-            } finally {
-              setIsGeneratingScript(false);
-            }
-          }}
-          ideaId={ideaId}
-        />
-      )}
+            }}
+          />
+        </div>
+      </div>
     </PageWrapper>
   );
 }
@@ -485,36 +559,20 @@ export default function IdeaParkingLotPage() {
 // ---------------------------------------------------------------------------
 
 interface ConceptStepProps {
-  title: string;
-  setTitle: (v: string) => void;
   conceptAnswers: IConceptAnswers;
   setConceptAnswers: (v: IConceptAnswers) => void;
-  callToAction: string;
-  setCallToAction: (v: string) => void;
-  alternativeTitles: string[];
-  onSwapTitle: (title: string) => void;
   isGeneratingConcept: boolean;
-  isGeneratingTitles: boolean;
   onGenerateConcept: () => void;
-  onGenerateTitles: () => void;
   onSave: () => void;
   isSaving: boolean;
   onMarkChanged: () => void;
 }
 
 function ConceptStep({
-  title,
-  setTitle,
   conceptAnswers,
   setConceptAnswers,
-  callToAction,
-  setCallToAction,
-  alternativeTitles,
-  onSwapTitle,
   isGeneratingConcept,
-  isGeneratingTitles,
   onGenerateConcept,
-  onGenerateTitles,
   onSave,
   isSaving,
   onMarkChanged,
@@ -538,155 +596,50 @@ function ConceptStep({
   ];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      {/* Left column: Title + Questions + CTA */}
-      <div className="lg:col-span-2 space-y-5">
-        {/* Title */}
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-            Video Title
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => { setTitle(e.target.value); onMarkChanged(); }}
-            className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-base font-medium text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
-            placeholder="Enter your video title..."
-          />
+    <div>
+      {/* Concept questions in a card with left accent border */}
+      <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6">
+        <div className="space-y-8">
+          {conceptQuestions.map((q) => (
+            <div key={q.key}>
+              <label className="mb-1 block text-sm font-semibold text-[var(--color-text-primary)]">
+                {q.label}
+              </label>
+              <p className="mb-2 text-xs text-[var(--color-text-muted)]">
+                {q.placeholder}
+              </p>
+              <textarea
+                value={conceptAnswers[q.key]}
+                onChange={(e) => {
+                  setConceptAnswers({ ...conceptAnswers, [q.key]: e.target.value });
+                  onMarkChanged();
+                }}
+                rows={4}
+                className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+              />
+            </div>
+          ))}
         </div>
+      </div>
 
-        {/* Concept questions */}
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              Concept Questions
-            </label>
-            <button
-              type="button"
-              onClick={onGenerateConcept}
-              disabled={isGeneratingConcept}
-              className="flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-tertiary)] disabled:text-[var(--color-text-muted)]"
-            >
-              {isGeneratingConcept ? (
-                <>
-                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
-                  </svg>
-                  Auto-fill with AI
-                </>
-              )}
-            </button>
-          </div>
-          <div className="space-y-4">
-            {conceptQuestions.map((q) => (
-              <div key={q.key}>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]">
-                  {q.label}
-                </label>
-                <textarea
-                  value={conceptAnswers[q.key]}
-                  onChange={(e) => {
-                    setConceptAnswers({ ...conceptAnswers, [q.key]: e.target.value });
-                    onMarkChanged();
-                  }}
-                  rows={3}
-                  placeholder={q.placeholder}
-                  className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Call to action */}
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-            Call to Action
-          </label>
-          <input
-            type="text"
-            value={callToAction}
-            onChange={(e) => { setCallToAction(e.target.value); onMarkChanged(); }}
-            placeholder="e.g. Sign up for my free webinar this month..."
-            className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
-          />
-          <p className="mt-2 text-xs text-[var(--color-text-muted)]">
-            This CTA will be included at the end of the generated script for this video.
-          </p>
-        </div>
-
-        {/* Save */}
+      {/* Save + Auto-generate buttons */}
+      <div className="mt-5 flex items-center gap-3">
         <button
           type="button"
           onClick={onSave}
           disabled={isSaving}
-          className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-5 py-2.5 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
+          className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:text-[var(--color-text-muted)]"
         >
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          {isSaving ? 'Saving...' : 'Save changes'}
         </button>
-      </div>
-
-      {/* Right column: Alternative titles */}
-      <div>
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              Alternative Titles
-            </label>
-            <button
-              type="button"
-              onClick={onGenerateTitles}
-              disabled={isGeneratingTitles}
-              className="flex items-center gap-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-tertiary)] disabled:text-[var(--color-text-muted)]"
-            >
-              {isGeneratingTitles ? (
-                <>
-                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
-                  ...
-                </>
-              ) : (
-                <>
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M15.015 4.371V9.35" />
-                  </svg>
-                  Generate
-                </>
-              )}
-            </button>
-          </div>
-
-          {alternativeTitles.length > 0 ? (
-            <div className="space-y-2">
-              {alternativeTitles.map((altTitle, i) => (
-                <div
-                  key={i}
-                  className="group flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3"
-                >
-                  <p className="flex-1 text-sm text-[var(--color-text-primary)]">
-                    {altTitle}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => onSwapTitle(altTitle)}
-                    title="Use this title"
-                    className="shrink-0 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2 py-1 text-xs font-medium text-[var(--color-accent)] opacity-0 transition-all hover:bg-[var(--color-accent)] hover:text-[var(--color-bg-dark)] group-hover:opacity-100"
-                  >
-                    Swap
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-xs text-[var(--color-text-muted)] py-6">
-              Click &quot;Generate&quot; to get alternative title suggestions.
-            </p>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={onGenerateConcept}
+          disabled={isGeneratingConcept}
+          className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:text-[var(--color-text-muted)]"
+        >
+          {isGeneratingConcept ? 'Generating...' : 'Auto-generate'}
+        </button>
       </div>
     </div>
   );
@@ -708,6 +661,22 @@ interface ResourcesStepProps {
   setNewResourceContent: (v: string) => void;
   onAddTextResource: () => void;
   onRemoveResource: (index: number) => void;
+  findSourcesOpen: boolean;
+  setFindSourcesOpen: (v: boolean) => void;
+  ideaTitle: string;
+  conceptAnswers: IConceptAnswers;
+  onSourcesFound: (resources: IResource[]) => void;
+}
+
+function getResourceBadge(resource: IResource): { label: string; borderColor: string; bgColor: string; textColor: string } {
+  const name = resource.name.toLowerCase();
+  if (name.includes('voice storm') || name.includes('voicestorm')) {
+    return { label: 'Voice Storm', borderColor: '#F59E0B', bgColor: '#78350F', textColor: '#FDE68A' };
+  }
+  if (resource.type === 'file') {
+    return { label: resource.fileType?.toUpperCase() || 'File', borderColor: 'var(--color-accent)', bgColor: '#1E3A5F', textColor: '#93C5FD' };
+  }
+  return { label: 'Online Resource', borderColor: 'var(--color-accent)', bgColor: '#1E3A5F', textColor: '#93C5FD' };
 }
 
 function ResourcesStep({
@@ -722,26 +691,48 @@ function ResourcesStep({
   setNewResourceContent,
   onAddTextResource,
   onRemoveResource,
+  findSourcesOpen,
+  setFindSourcesOpen,
+  ideaTitle,
+  conceptAnswers,
+  onSourcesFound,
 }: ResourcesStepProps) {
   return (
     <div className="space-y-5">
-      {/* Header with add button */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-            Resources
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-[var(--color-text-primary)]">
+              Resources
+            </h3>
+            <span className="text-xs text-[var(--color-text-muted)]">
+              {resources.length} {resources.length === 1 ? 'item' : 'items'}
+            </span>
+          </div>
           <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-            Add notes, transcripts, research, or files to inform your script.
+            Reference material, notes and sources for this idea.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAddResource(!showAddResource)}
-          className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)]"
-        >
-          + Add Resource
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFindSourcesOpen(true)}
+            className="flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-secondary)]"
+          >
+            <svg className="h-4 w-4 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+            </svg>
+            Find online sources
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAddResource(!showAddResource)}
+            className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+          >
+            + Add resource
+          </button>
+        </div>
       </div>
 
       {/* Add resource form */}
@@ -760,7 +751,7 @@ function ResourcesStep({
                 value={newResourceName}
                 onChange={(e) => setNewResourceName(e.target.value)}
                 placeholder="e.g. Research notes, Interview transcript..."
-                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
               />
             </div>
             <div>
@@ -772,7 +763,7 @@ function ResourcesStep({
                 onChange={(e) => setNewResourceContent(e.target.value)}
                 rows={6}
                 placeholder="Paste or type your notes, ideas, research, transcripts..."
-                className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
               />
             </div>
           </div>
@@ -781,7 +772,7 @@ function ResourcesStep({
               type="button"
               onClick={onAddTextResource}
               disabled={!newResourceName.trim() || !newResourceContent.trim()}
-              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
+              className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
             >
               Add Resource
             </button>
@@ -802,56 +793,80 @@ function ResourcesStep({
           {resources.map((resource, index) => {
             const resourceKey = `${resource.name}-${index}`;
             const isExpanded = expandedResource === resourceKey;
+            const badge = getResourceBadge(resource);
+            const dateStr = resource.createdAt
+              ? new Date(resource.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              : '';
 
             return (
               <div
                 key={resourceKey}
-                className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden"
+                className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)]"
+                style={{ borderLeftWidth: '3px', borderLeftColor: badge.borderColor }}
               >
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)]">
-                      {resource.type === 'text' ? (
-                        <svg className="h-4 w-4 text-[var(--color-text-primary)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                        </svg>
-                      ) : (
-                        <svg className="h-4 w-4 text-[var(--color-text-primary)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
-                        </svg>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                        {resource.name}
-                      </p>
-                      <p className="text-xs text-[var(--color-text-muted)]">
-                        {resource.type === 'text' ? 'Text note' : resource.fileType?.toUpperCase() || 'File'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedResource(isExpanded ? null : resourceKey)
-                      }
-                      className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-tertiary)]"
+                {/* Main row */}
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                      style={{ backgroundColor: badge.bgColor, color: badge.textColor }}
                     >
-                      {isExpanded ? 'Collapse' : 'View Content'}
-                    </button>
+                      {badge.label}
+                    </span>
+                    <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                      {resource.name}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    {dateStr && (
+                      <span className="text-xs text-[var(--color-text-muted)]">{dateStr}</span>
+                    )}
                     <button
                       type="button"
                       onClick={() => onRemoveResource(index)}
-                      className="rounded-[var(--radius-md)] border border-red-800 bg-[var(--color-bg-secondary)] px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-900"
+                      className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-secondary)] hover:text-red-400"
+                      title="Remove resource"
                     >
-                      Remove
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                      </svg>
                     </button>
                   </div>
                 </div>
 
+                {/* Action row */}
+                <div className="flex items-center justify-between border-t border-[var(--color-border)] px-4 py-2">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedResource(isExpanded ? null : resourceKey)}
+                    className="flex items-center gap-1 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+                  >
+                    <svg
+                      className={`h-3.5 w-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                    </svg>
+                    View content
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isExpanded) setExpandedResource(resourceKey);
+                      else setExpandedResource(null);
+                    }}
+                    className="text-xs font-medium text-[var(--color-accent)] transition-colors hover:opacity-80"
+                  >
+                    Edit
+                  </button>
+                </div>
+
+                {/* Expanded content */}
                 {isExpanded && (
-                  <div className="border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3">
+                  <div className="border-t border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3">
                     <p className="whitespace-pre-wrap text-sm text-[var(--color-text-primary)]">
                       {resource.content}
                     </p>
@@ -873,6 +888,15 @@ function ResourcesStep({
           </p>
         </div>
       )}
+
+      {/* Find Sources Panel */}
+      <FindSourcesPanel
+        isOpen={findSourcesOpen}
+        onClose={() => setFindSourcesOpen(false)}
+        ideaTitle={ideaTitle}
+        conceptAnswers={conceptAnswers}
+        onSourcesFound={onSourcesFound}
+      />
     </div>
   );
 }
@@ -921,6 +945,8 @@ function OutlineStep({
   ideaId,
 }: OutlineStepProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [dragState, setDragState] = useState<{ sectionId: string; bulletIdx: number } | null>(null);
+  const [dragOverState, setDragOverState] = useState<{ sectionId: string; bulletIdx: number } | null>(null);
   const hasStructuredSections = outlineSections && outlineSections.length > 0;
   const hasContent = hasStructuredSections || outline.trim();
 
@@ -998,6 +1024,20 @@ function OutlineStep({
       order: outlineSections.length,
     };
     setOutlineSections([...outlineSections, newSection]);
+    onMarkChanged();
+  };
+
+  const reorderBullets = (sectionId: string, fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    setOutlineSections(
+      outlineSections.map((s) => {
+        if (s.id !== sectionId) return s;
+        const bullets = [...s.bullets];
+        const [moved] = bullets.splice(fromIdx, 1);
+        bullets.splice(toIdx, 0, moved);
+        return { ...s, bullets };
+      })
+    );
     onMarkChanged();
   };
 
@@ -1107,48 +1147,93 @@ function OutlineStep({
               .map((section) => (
                 <div
                   key={section.id}
-                  className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4"
+                  className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5"
                 >
-                  {/* Section header */}
-                  <div className="mb-3 flex items-center gap-2">
+                  {/* Section header: editable title + trash icon */}
+                  <div className="mb-4 flex items-center justify-between">
                     <input
                       type="text"
                       value={section.title}
                       onChange={(e) => updateSectionTitle(section.id, e.target.value)}
                       placeholder="Section title..."
-                      className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm font-semibold text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                      className="flex-1 bg-transparent text-base font-bold text-[var(--color-text-primary)] outline-none ring-0 placeholder:text-[var(--color-text-muted)]"
                     />
                     <button
                       type="button"
                       onClick={() => removeSection(section.id)}
                       title="Remove section"
-                      className="shrink-0 rounded-[var(--radius-sm)] border border-red-800 bg-[var(--color-bg-card)] p-1.5 text-red-400 transition-colors hover:bg-red-900"
+                      className="shrink-0 ml-3 p-1.5 text-[var(--color-text-muted)] transition-colors hover:text-red-400"
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                       </svg>
                     </button>
                   </div>
 
                   {/* Bullet points */}
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {section.bullets.map((bullet, bulletIdx) => (
-                      <div key={bulletIdx} className="flex items-start gap-2">
-                        <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-accent)]" />
+                      <div
+                        key={bulletIdx}
+                        draggable
+                        onDragStart={(e) => {
+                          setDragState({ sectionId: section.id, bulletIdx });
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                          if (dragState && dragState.sectionId === section.id) {
+                            setDragOverState({ sectionId: section.id, bulletIdx });
+                          }
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (dragState && dragState.sectionId === section.id) {
+                            reorderBullets(section.id, dragState.bulletIdx, bulletIdx);
+                          }
+                          setDragState(null);
+                          setDragOverState(null);
+                        }}
+                        onDragEnd={() => {
+                          setDragState(null);
+                          setDragOverState(null);
+                        }}
+                        className={`group flex items-center gap-2 rounded-[var(--radius-sm)] px-1 py-1.5 transition-colors hover:bg-[var(--color-bg-secondary)] ${
+                          dragState?.sectionId === section.id && dragState?.bulletIdx === bulletIdx ? 'opacity-40' : ''
+                        } ${
+                          dragOverState?.sectionId === section.id && dragOverState?.bulletIdx === bulletIdx && dragState?.bulletIdx !== bulletIdx
+                            ? 'border-t-2 border-[var(--color-accent)]'
+                            : ''
+                        }`}
+                      >
+                        {/* Drag handle dots */}
+                        <span className="shrink-0 cursor-grab text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">
+                          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+                            <circle cx="5.5" cy="3.5" r="1.2" />
+                            <circle cx="10.5" cy="3.5" r="1.2" />
+                            <circle cx="5.5" cy="8" r="1.2" />
+                            <circle cx="10.5" cy="8" r="1.2" />
+                            <circle cx="5.5" cy="12.5" r="1.2" />
+                            <circle cx="10.5" cy="12.5" r="1.2" />
+                          </svg>
+                        </span>
+                        {/* Bullet text (editable inline) */}
                         <input
                           type="text"
                           value={bullet}
                           onChange={(e) => updateBullet(section.id, bulletIdx, e.target.value)}
                           placeholder="Talking point..."
-                          className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                          className="flex-1 bg-transparent px-1 py-0.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 placeholder:text-[var(--color-text-muted)]"
                         />
+                        {/* Remove bullet X */}
                         <button
                           type="button"
                           onClick={() => removeBullet(section.id, bulletIdx)}
-                          title="Remove bullet"
-                          className="shrink-0 rounded-[var(--radius-sm)] p-1.5 text-[var(--color-text-muted)] transition-colors hover:text-red-400"
+                          title="Remove point"
+                          className="shrink-0 p-1 text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400"
                         >
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                           </svg>
                         </button>
@@ -1156,30 +1241,30 @@ function OutlineStep({
                     ))}
                   </div>
 
-                  {/* Add bullet button */}
+                  {/* + Add point link */}
                   <button
                     type="button"
                     onClick={() => addBullet(section.id)}
-                    className="mt-2 flex items-center gap-1 rounded-[var(--radius-sm)] px-2 py-1 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)]"
+                    className="mt-3 flex items-center gap-1.5 text-sm font-medium text-[var(--color-accent)] transition-colors hover:text-[var(--color-accent-hover)]"
                   >
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
-                    Add bullet
+                    Add point
                   </button>
                 </div>
               ))}
 
-            {/* Add section button */}
+            {/* + Add section (dashed border card, full width) */}
             <button
               type="button"
               onClick={addSection}
-              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-5 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-              Add Section
+              Add section
             </button>
           </div>
         ) : isEditing || !outline.trim() ? (
@@ -1189,12 +1274,12 @@ function OutlineStep({
             onChange={(e) => { setOutline(e.target.value); onMarkChanged(); }}
             rows={16}
             placeholder="Your video outline will appear here. Click 'Auto-generate' to create one from your concept and resources, or write your own."
-            className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 font-mono text-sm leading-relaxed text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+            className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 font-mono text-sm leading-relaxed text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
           />
         ) : (
           /* Legacy markdown preview */
           <div
-            className="min-h-[16rem] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-5 py-4"
+            className="min-h-[16rem] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-5 py-4"
             dangerouslySetInnerHTML={{ __html: renderedOutline }}
           />
         )}
@@ -1206,9 +1291,9 @@ function OutlineStep({
           type="button"
           onClick={onSave}
           disabled={isSaving}
-          className="rounded-[var(--radius-md)] bg-[var(--color-bg-card)] border border-[var(--color-border)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:text-[var(--color-text-muted)]"
+          className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:text-[var(--color-text-muted)]"
         >
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          {isSaving ? 'Saving...' : 'Save changes'}
         </button>
 
         <button
@@ -1232,11 +1317,14 @@ function OutlineStep({
           )}
         </button>
 
+        {/* Spacer to push Generate Script to the right */}
+        <div className="flex-1" />
+
         <button
           type="button"
           onClick={onGenerateScript}
           disabled={isGeneratingScript || !canGenerateScript}
-          className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-5 py-2.5 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:bg-[#555] disabled:text-[#999]"
+          className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[#E05A47] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#C94D3C] disabled:bg-[#555] disabled:text-[#999]"
         >
           {isGeneratingScript ? (
             <>

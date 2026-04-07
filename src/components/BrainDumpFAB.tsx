@@ -38,6 +38,7 @@ export default function BrainDumpFAB() {
   const [pendingMode, setPendingMode] = useState<Mode>(null);
   const [error, setError] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const isSubmittingRef = useRef(false);
 
   // Close on outside click
   useEffect(() => {
@@ -287,10 +288,14 @@ export default function BrainDumpFAB() {
   // ─── Routing Handlers — submit to API with chosen destination ──────
 
   const handleRouteSubmit = async (destination: 'ideas' | 'brand_brain' | 'both') => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setRoutingSaving(true);
     setError('');
     try {
-      if (pendingMode === 'voice') {
+      const isVoice = pendingMode === 'voice';
+
+      if (isVoice) {
         // Save voice storming session first
         const vsRes = await fetch('/api/voice-storming', {
           method: 'POST',
@@ -310,6 +315,7 @@ export default function BrainDumpFAB() {
       }
 
       // Submit brain dump with chosen destination
+      // For voice mode, skip AI processing and XP since voice-storming/process handles that
       const res = await fetch('/api/brain-dump', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -317,6 +323,7 @@ export default function BrainDumpFAB() {
           transcript: savedContent,
           callType: 'brain_dump',
           destination,
+          ...(isVoice && { skipAiProcessing: true, skipXp: true }),
         }),
       });
       if (!res.ok) throw new Error('Failed to save');
@@ -328,6 +335,7 @@ export default function BrainDumpFAB() {
       setError('Failed to save. Please try again.');
     } finally {
       setRoutingSaving(false);
+      isSubmittingRef.current = false;
     }
   };
 

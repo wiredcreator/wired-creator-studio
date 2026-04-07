@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     const body = await request.json();
-    const { transcript, callType, destination } = body;
+    const { transcript, callType, destination, skipAiProcessing, skipXp } = body;
 
     if (!transcript) {
       return NextResponse.json(
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     let extracted = { contentIdeas: [] as { title: string; description: string; contentPillar?: string }[], stories: [] as { summary: string; fullText: string }[], themes: [] as { theme: string }[] };
     const savedIdeas = [];
 
-    if (shouldExtractIdeas) {
+    if (!skipAiProcessing && shouldExtractIdeas) {
       // Fetch the user's content pillars from Brand Brain
       let contentPillars: string[] = [];
       const brandBrain = await BrandBrain.findOne({ userId }).lean();
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Write back to Brand Brain ---
-    if (shouldSaveToBrandBrain) {
+    if (!skipAiProcessing && shouldSaveToBrandBrain) {
       callTranscript.ingestedIntoBrandBrain = true;
       try {
         await BrandBrain.findOneAndUpdate(
@@ -119,10 +119,12 @@ export async function POST(request: NextRequest) {
 
     await callTranscript.save();
 
-    // Fire-and-forget XP award
-    awardXP(userId, 'brain_dump', { sessionId: callTranscript._id.toString() }).catch((err) =>
-      console.error('[XP] Failed to award brain_dump XP:', err)
-    );
+    // Fire-and-forget XP award (skip if voice-storming already handles XP)
+    if (!skipXp) {
+      awardXP(userId, 'brain_dump', { sessionId: callTranscript._id.toString() }).catch((err) =>
+        console.error('[XP] Failed to award brain_dump XP:', err)
+      );
+    }
 
     return NextResponse.json(
       {

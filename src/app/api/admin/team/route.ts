@@ -67,24 +67,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const targetUser = await User.findOne({ email: email.toLowerCase() });
+    let targetUser = await User.findOne({ email: email.toLowerCase() });
 
-    if (!targetUser) {
-      return NextResponse.json(
-        { error: 'No account found with that email. The user must sign up first.' },
-        { status: 404 }
-      );
+    if (targetUser) {
+      if (targetUser.role === role) {
+        return NextResponse.json(
+          { error: `${targetUser.name || targetUser.email} is already a ${role}` },
+          { status: 409 }
+        );
+      }
+
+      targetUser.role = role;
+      await targetUser.save();
+    } else {
+      // Auto-create account for new admins
+      const namePart = email.split('@')[0];
+      const name = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+
+      targetUser = await User.create({
+        email: email.toLowerCase(),
+        name,
+        role: 'admin',
+        accessStatus: 'active',
+      });
     }
-
-    if (targetUser.role === role) {
-      return NextResponse.json(
-        { error: `${targetUser.name} is already a ${role}` },
-        { status: 409 }
-      );
-    }
-
-    targetUser.role = role;
-    await targetUser.save();
 
     return NextResponse.json({
       success: true,

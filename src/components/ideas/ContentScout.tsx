@@ -387,44 +387,35 @@ function VideoDetailModal({
 
 function UniqueIdeaRow({
   idea,
-  onSave,
+  isSelected,
+  onToggleSelect,
 }: {
   idea: ScoutIdea;
-  onSave: (idea: ScoutIdea) => void;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
 }) {
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    setSaving(true);
-    await onSave(idea);
-    setSaving(false);
-    setSaved(true);
-  };
+  const rowId = idea._id || idea.title;
 
   return (
-    <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 transition-colors hover:border-[var(--color-border-light)]">
-      {/* Save circle button */}
+    <div
+      className={`flex items-center gap-3 rounded-[var(--radius-md)] border bg-[var(--color-bg-card)] px-4 py-3 transition-colors hover:border-[var(--color-border-light)] ${
+        isSelected ? 'border-[var(--color-accent)]' : 'border-[var(--color-border)]'
+      }`}
+    >
+      {/* Checkbox circle -- toggles selection, does NOT auto-save */}
       <button
         type="button"
-        onClick={handleSave}
-        disabled={saved || saving}
-        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] outline-none ring-0 transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-60"
+        onClick={() => onToggleSelect(rowId)}
+        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 outline-none ring-0 transition-all duration-200"
         style={{
-          backgroundColor: saved ? 'var(--color-accent-light)' : 'transparent',
-          color: saved ? 'var(--color-accent)' : 'var(--color-text-muted)',
+          borderColor: isSelected ? 'var(--color-accent)' : 'var(--color-border)',
+          backgroundColor: isSelected ? 'var(--color-accent)' : 'transparent',
         }}
-        title={saved ? 'Saved to parking lot' : 'Save to parking lot'}
+        title={isSelected ? 'Selected' : 'Select to save'}
       >
-        {saving ? (
-          <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        ) : saved ? (
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+        {isSelected && (
+          <svg className="h-3.5 w-3.5 text-[var(--color-bg-dark)]" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-          </svg>
-        ) : (
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
         )}
       </button>
@@ -644,7 +635,7 @@ function ChannelSelectionScreen({
             onChange={(e) => { setManualUrl(e.target.value); setManualError(''); }}
             onKeyDown={(e) => e.key === 'Enter' && handleAddManual()}
             placeholder="@handle or youtube.com/..."
-            className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 placeholder:text-[var(--color-text-muted)]"
+            className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 placeholder:text-[var(--color-text-muted)]"
           />
           <button
             type="button"
@@ -791,7 +782,7 @@ function EditSourcesPanel({
                 onChange={(e) => { setNewUrl(e.target.value); setError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
                 placeholder="@handle or youtube.com/..."
-                className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 placeholder:text-[var(--color-text-muted)]"
+                className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 placeholder:text-[var(--color-text-muted)]"
               />
               <button
                 type="button"
@@ -893,6 +884,10 @@ export default function ContentScout({ userId }: { userId: string }) {
   const [candidates, setCandidates] = useState<DiscoveredCandidate[]>([]);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [recencyDays, setRecencyDays] = useState<7 | 14>(14);
+
+  // Multi-select for unique ideas
+  const [selectedUniqueIds, setSelectedUniqueIds] = useState<Set<string>>(new Set());
+  const [isBulkSavingUnique, setIsBulkSavingUnique] = useState(false);
 
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -1023,24 +1018,54 @@ export default function ContentScout({ userId }: { userId: string }) {
     }
   };
 
-  // --- Save unique idea to parking lot ---
-  const handleSaveUniqueIdea = async (idea: ScoutIdea) => {
+  // --- Multi-select handlers for unique ideas ---
+  const toggleUniqueSelect = (id: string) => {
+    setSelectedUniqueIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleBulkSaveUniqueIdeas = async () => {
+    if (selectedUniqueIds.size === 0) return;
+    setIsBulkSavingUnique(true);
+
+    const ideasToSave = uniqueIdeas.filter(
+      (idea) => selectedUniqueIds.has(idea._id || idea.title)
+    );
+
+    // Save each selected idea
     try {
-      const res = await fetch('/api/ideas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          title: idea.title,
-          description: idea.description || '',
-          source: 'content-scout',
-          status: 'saved',
-          contentPillar: idea.category || '',
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to save idea');
+      await Promise.all(
+        ideasToSave.map((idea) =>
+          fetch('/api/ideas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              title: idea.title,
+              description: idea.description || '',
+              source: 'content-scout',
+              status: 'saved',
+              contentPillar: idea.category || '',
+            }),
+          })
+        )
+      );
+      // Remove saved ideas from the unique list
+      setUniqueIdeas((prev) =>
+        prev.filter((idea) => !selectedUniqueIds.has(idea._id || idea.title))
+      );
+      setSelectedUniqueIds(new Set());
     } catch (err) {
-      console.error('Failed to save unique idea:', err);
+      console.error('Failed to bulk save unique ideas:', err);
+    } finally {
+      setIsBulkSavingUnique(false);
     }
   };
 
@@ -1223,14 +1248,41 @@ export default function ContentScout({ userId }: { userId: string }) {
         </div>
 
         {uniqueIdeas.length > 0 ? (
-          <div className="space-y-2">
-            {uniqueIdeas.map((idea, idx) => (
-              <UniqueIdeaRow
-                key={idea._id || idx}
-                idea={idea}
-                onSave={handleSaveUniqueIdea}
-              />
-            ))}
+          <div>
+            {/* Bulk action bar */}
+            {selectedUniqueIds.size > 0 && (
+              <div className="mb-3 flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-bg-secondary)] px-4 py-2.5">
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                  {selectedUniqueIds.size} idea{selectedUniqueIds.size > 1 ? 's' : ''} selected
+                </span>
+                <button
+                  type="button"
+                  onClick={handleBulkSaveUniqueIdeas}
+                  disabled={isBulkSavingUnique}
+                  className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-1.5 text-xs font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
+                >
+                  {isBulkSavingUnique ? 'Saving...' : 'Save to Parking Lot'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedUniqueIds(new Set())}
+                  className="text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+                >
+                  Clear selection
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {uniqueIdeas.map((idea, idx) => (
+                <UniqueIdeaRow
+                  key={idea._id || idx}
+                  idea={idea}
+                  isSelected={selectedUniqueIds.has(idea._id || idea.title)}
+                  onToggleSelect={toggleUniqueSelect}
+                />
+              ))}
+            </div>
           </div>
         ) : (
           <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 text-center">

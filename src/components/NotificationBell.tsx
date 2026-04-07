@@ -251,7 +251,9 @@ export default function NotificationBell() {
     }
   };
 
-  const allNotifications = [...newlyRetrieved, ...notifications];
+  const allNotifications = [...newlyRetrieved, ...notifications].filter(
+    (n, i, arr) => arr.findIndex((x) => x._id === n._id) === i
+  );
   const hasUnread = allNotifications.some((n) => !n.read);
 
   return (

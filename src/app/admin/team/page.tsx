@@ -190,7 +190,7 @@ export default function TeamPage() {
                 Add Team Member
               </h3>
               <p className="mb-5 text-sm text-[var(--color-text-muted)]">
-                Enter the email of an existing user to promote them to admin.
+                Enter an email to promote to admin. If no account exists, one will be created automatically.
               </p>
 
               <div className="space-y-4">
@@ -203,7 +203,7 @@ export default function TeamPage() {
                     value={addEmail}
                     onChange={(e) => setAddEmail(e.target.value)}
                     placeholder="user@example.com"
-                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
                     onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                   />
                 </div>

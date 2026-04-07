@@ -640,7 +640,7 @@ export default function BrainDumpPage() {
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={handleTagKeyDown}
               placeholder="Add tag..."
-              className="px-2.5 py-1 text-xs rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none ring-0 w-24"
+              className="px-2.5 py-1 text-xs rounded-[var(--radius-full)] bg-[var(--color-bg-card)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none ring-0 w-24"
             />
           </div>
         </div>
@@ -978,7 +978,7 @@ export default function BrainDumpPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="text-xs rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-primary)] px-2.5 py-1.5 outline-none ring-0 cursor-pointer"
+                className="text-xs rounded-[var(--radius-md)] bg-[var(--color-bg-card)] border border-[var(--color-border)] text-[var(--color-text-primary)] px-2.5 py-1.5 outline-none ring-0 cursor-pointer"
               >
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
@@ -990,7 +990,7 @@ export default function BrainDumpPage() {
                 <select
                   value={filterTag}
                   onChange={(e) => setFilterTag(e.target.value)}
-                  className="text-xs rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-primary)] px-2.5 py-1.5 outline-none ring-0 cursor-pointer"
+                  className="text-xs rounded-[var(--radius-md)] bg-[var(--color-bg-card)] border border-[var(--color-border)] text-[var(--color-text-primary)] px-2.5 py-1.5 outline-none ring-0 cursor-pointer"
                 >
                   <option value="">All tags</option>
                   {allTags.map((tag) => (

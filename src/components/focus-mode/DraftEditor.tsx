@@ -14,6 +14,9 @@ interface DraftEditorProps {
   ideaId: string | null;
   onBack: () => void;
   onNewDraft: () => void;
+  /** Lazily create the draft in the DB when the user first saves. Returns the new ideaId or null on failure. */
+  createDraftIfNeeded?: (title: string) => Promise<string | null>;
+  isCreatingDraft?: boolean;
 }
 
 interface IdeaData {
@@ -38,7 +41,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'outline', label: 'Outline' },
 ];
 
-export default function DraftEditor({ ideaId, onBack, onNewDraft }: DraftEditorProps) {
+export default function DraftEditor({ ideaId, onBack, onNewDraft, createDraftIfNeeded, isCreatingDraft }: DraftEditorProps) {
   const [idea, setIdea] = useState<IdeaData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('concept');
@@ -79,7 +82,7 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft }: DraftEditorP
         if (res.ok) {
           const data: IdeaData = await res.json();
           setIdea(data);
-          setTitle(data.title || '');
+          setTitle(data.title === 'Untitled Draft' ? '' : (data.title || ''));
           setConceptAnswers(data.conceptAnswers || { whoIsThisFor: '', whatWillTheyLearn: '', whyShouldTheyCare: '' });
           setCallToAction(data.callToAction || '');
           setAlternativeTitles(data.alternativeTitles || []);
@@ -102,10 +105,19 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft }: DraftEditorP
   const markChanged = useCallback(() => setHasChanges(true), []);
 
   const handleSave = useCallback(async () => {
-    if (!ideaId || isSaving) return;
+    if (isSaving) return;
+
+    // If no ideaId yet, lazily create the draft in the DB first
+    let targetId = ideaId;
+    if (!targetId && createDraftIfNeeded) {
+      targetId = await createDraftIfNeeded(title || 'Untitled Draft');
+      if (!targetId) return; // creation failed
+    }
+    if (!targetId) return;
+
     setIsSaving(true);
     try {
-      await fetch(`/api/ideas/${ideaId}`, {
+      await fetch(`/api/ideas/${targetId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -127,69 +139,19 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft }: DraftEditorP
     } finally {
       setIsSaving(false);
     }
-  }, [ideaId, isSaving, title, conceptAnswers, callToAction, alternativeTitles, tags, resources, outlineSections, rawNotes, notes, comments]);
+  }, [ideaId, isSaving, title, conceptAnswers, callToAction, alternativeTitles, tags, resources, outlineSections, rawNotes, notes, comments, createDraftIfNeeded]);
 
-  const handleAutoGenerateConcept = useCallback(async () => {
-    if (!ideaId || isGeneratingConcept) return;
-    setIsGeneratingConcept(true);
-    try {
-      const res = await fetch(`/api/ideas/${ideaId}/ai`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'concept' }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.conceptAnswers) {
-          setConceptAnswers(data.conceptAnswers);
-          setHasChanges(true);
-        }
-      }
-    } catch {
-      // Generation failed
-    } finally {
-      setIsGeneratingConcept(false);
-    }
-  }, [ideaId, isGeneratingConcept]);
+  const handleAutoGenerateConcept = useCallback(() => {
+    alert('Coming soon! AI concept generation is not yet available.');
+  }, []);
 
-  const handleAutoGenerateOutline = useCallback(async () => {
-    if (!ideaId || isGeneratingOutline) return;
-    setIsGeneratingOutline(true);
-    try {
-      const res = await fetch(`/api/ideas/${ideaId}/ai`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'outline' }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.outlineSections) {
-          setOutlineSections(data.outlineSections);
-          setHasChanges(true);
-        }
-      }
-    } catch {
-      // Generation failed
-    } finally {
-      setIsGeneratingOutline(false);
-    }
-  }, [ideaId, isGeneratingOutline]);
+  const handleAutoGenerateOutline = useCallback(() => {
+    alert('Coming soon! AI outline generation is not yet available.');
+  }, []);
 
-  const handleTurnIntoScript = useCallback(async () => {
-    if (!ideaId || isGeneratingScript) return;
-    setIsGeneratingScript(true);
-    try {
-      await fetch(`/api/ideas/${ideaId}/ai`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'generateScript' }),
-      });
-    } catch {
-      // Script generation failed
-    } finally {
-      setIsGeneratingScript(false);
-    }
-  }, [ideaId, isGeneratingScript]);
+  const handleTurnIntoScript = useCallback(() => {
+    alert('Coming soon! Turn into Script is not yet available.');
+  }, []);
 
   const handleSourcesFound = useCallback((newResources: IResource[]) => {
     setResources((prev) => [...prev, ...newResources]);
@@ -223,11 +185,11 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft }: DraftEditorP
             </button>
             <button
               onClick={handleSave}
-              disabled={isSaving || !hasChanges}
+              disabled={isSaving || isCreatingDraft || !hasChanges}
               className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
               style={{ backgroundColor: '#E05A47' }}
             >
-              {isSaving ? 'Saving...' : 'Save draft'}
+              {isCreatingDraft ? 'Creating...' : isSaving ? 'Saving...' : 'Save draft'}
             </button>
           </div>
         </div>
@@ -313,22 +275,8 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft }: DraftEditorP
                 setAlternativeTitles(alternativeTitles.map((t) => t === altTitle ? oldTitle : t));
                 markChanged();
               }}
-              onRegenerateTitles={async () => {
-                if (!ideaId) return;
-                try {
-                  const res = await fetch(`/api/ideas/${ideaId}/ai`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'alternativeTitles' }),
-                  });
-                  if (res.ok) {
-                    const data = await res.json();
-                    if (data.alternativeTitles) {
-                      setAlternativeTitles(data.alternativeTitles);
-                      markChanged();
-                    }
-                  }
-                } catch { /* failed */ }
+              onRegenerateTitles={() => {
+                alert('Coming soon! AI title generation is not yet available.');
               }}
               onAddComment={(text) => {
                 setComments([...comments, { text, createdAt: new Date() } as any]);

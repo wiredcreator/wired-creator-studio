@@ -1965,7 +1965,7 @@ export default function StudentDetailPage() {
                     readOnly
                     value={compiledProfile.content}
                     rows={12}
-                    className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 font-mono text-xs leading-relaxed text-[var(--color-text-primary)] outline-none ring-0"
+                    className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 font-mono text-xs leading-relaxed text-[var(--color-text-primary)] outline-none ring-0"
                   />
                 </div>
               )}
@@ -2116,7 +2116,7 @@ export default function StudentDetailPage() {
                         value={ingestTitle}
                         onChange={(e) => setIngestTitle(e.target.value)}
                         placeholder="e.g. Week 3 coaching call"
-                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
                       />
                     </div>
                     <div>
@@ -2126,7 +2126,7 @@ export default function StudentDetailPage() {
                       <select
                         value={ingestCallType}
                         onChange={(e) => setIngestCallType(e.target.value as "1on1" | "group")}
-                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0"
+                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0"
                       >
                         <option value="1on1">1-on-1 Coaching</option>
                         <option value="group">Group Call</option>
@@ -2141,7 +2141,7 @@ export default function StudentDetailPage() {
                         onChange={(e) => setIngestTranscript(e.target.value)}
                         placeholder="Paste the call transcript here..."
                         rows={6}
-                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0 resize-y"
+                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0 resize-y"
                       />
                     </div>
                     {ingestFeedback && (
@@ -2259,7 +2259,7 @@ export default function StudentDetailPage() {
                             value={aiDocForm.title}
                             onChange={(e) => setAiDocForm({ ...aiDocForm, title: e.target.value })}
                             placeholder="Document title"
-                            className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                            className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
                           />
                         </div>
                         <div>
@@ -2267,7 +2267,7 @@ export default function StudentDetailPage() {
                           <select
                             value={aiDocForm.category}
                             onChange={(e) => setAiDocForm({ ...aiDocForm, category: e.target.value })}
-                            className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0"
+                            className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0"
                           >
                             <option value="idea_generation">Idea Generation</option>
                             <option value="script_generation">Script Generation</option>
@@ -2285,7 +2285,7 @@ export default function StudentDetailPage() {
                             onChange={(e) => setAiDocForm({ ...aiDocForm, content: e.target.value })}
                             placeholder="Document content..."
                             rows={6}
-                            className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                            className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
                           />
                         </div>
                         <div className="flex gap-2">

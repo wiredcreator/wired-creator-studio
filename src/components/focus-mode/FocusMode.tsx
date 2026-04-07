@@ -55,7 +55,7 @@ export default function FocusMode({ onClose }: FocusModeProps) {
 
   return (
     <div
-      className={`fixed inset-0 z-[100] flex flex-col transition-all duration-300 ${
+      className={`fixed inset-0 z-[100] overflow-y-auto transition-all duration-300 ${
         isVisible ? 'opacity-100' : 'opacity-0'
       }`}
       style={{
@@ -64,7 +64,7 @@ export default function FocusMode({ onClose }: FocusModeProps) {
           : 'linear-gradient(180deg, #EEF1F7 0%, #6CC7E5 50%, #2683EB 100%)',
       }}
     >
-      {/* Top Bar — z-20 so timer dropdown renders above content area (z-10) */}
+      {/* Top Bar — scrolls with content */}
       <div className="relative z-20 flex items-center justify-between px-6 py-4">
         {/* Left: Logo or Back */}
         <div className="flex items-center gap-3">
@@ -139,8 +139,8 @@ export default function FocusMode({ onClose }: FocusModeProps) {
       </div>
 
       {/* Content Area */}
-      <div className={`relative z-10 flex flex-1 overflow-y-auto px-6 ${
-        path === 'content-sprint' ? 'items-start pt-6' : 'items-center justify-center pb-32'
+      <div className={`relative z-10 flex min-h-[calc(100vh-80px)] px-6 pb-32 ${
+        path === 'complete-task' ? 'items-start justify-center pt-8' : 'items-center justify-center'
       }`}>
         {path === 'select' && <PathSelector onSelect={setPath} />}
         {path === 'complete-task' && <CompleteTaskPath />}
@@ -149,7 +149,7 @@ export default function FocusMode({ onClose }: FocusModeProps) {
       </div>
 
       {/* Cloud images along the bottom — hidden in dark mode */}
-      <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-0 h-48 transition-opacity duration-300 ${isDark ? 'opacity-0' : 'opacity-100'}`}>
+      <div className={`pointer-events-none fixed inset-x-0 bottom-0 z-0 h-48 transition-opacity duration-300 ${isDark ? 'opacity-0' : 'opacity-100'}`}>
         <Image
           src="/images/clouds/left.png"
           alt=""

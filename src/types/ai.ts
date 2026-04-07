@@ -33,12 +33,19 @@ export interface GeneratedIdea {
   angle: string;
 }
 
+/** A section within a generated script. */
+export interface GeneratedScriptSection {
+  title: string;
+  content: string;
+}
+
 /** A fully-generated script including teleprompter and bullet-point variants. */
 export interface GeneratedScript {
   title: string;
   fullScript: string;
   bulletPoints: string[];
   teleprompterVersion: string;
+  sections?: GeneratedScriptSection[];
 }
 
 // ---------------------------------------------------------------------------

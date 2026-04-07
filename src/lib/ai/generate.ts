@@ -541,6 +541,7 @@ export async function generateScript(
     fullScript: parsed.fullScript,
     bulletPoints: parsed.bulletPoints,
     teleprompterVersion: parsed.teleprompterVersion,
+    sections: Array.isArray(parsed.sections) ? parsed.sections : undefined,
   };
 }
 

@@ -181,7 +181,7 @@ export default function WeeklyProgress() {
         >
           <option value="week">Select</option>
           <option value="month">Month</option>
-          <option value="ytd">YTD</option>
+          <option value="ytd">Year to Date</option>
         </select>
       </div>
 

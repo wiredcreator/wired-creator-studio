@@ -63,7 +63,7 @@ export default function ConceptTab({
               value={conceptAnswers[field.key]}
               onChange={(e) => handleFieldChange(field.key, e.target.value)}
               rows={3}
-              className="mt-2 w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+              className="mt-2 w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
               placeholder="Start typing..."
             />
           </div>
@@ -81,7 +81,7 @@ export default function ConceptTab({
             value={rawNotes}
             onChange={(e) => { setRawNotes(e.target.value); onMarkChanged(); }}
             rows={5}
-            className="mt-2 w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+            className="mt-2 w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
             placeholder="Start writing... get it out, don't worry about making it perfect."
           />
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{wordCount} words</p>

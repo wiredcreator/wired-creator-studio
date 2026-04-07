@@ -119,6 +119,17 @@ export async function POST(request: NextRequest) {
       idea.conceptAnswers || undefined,
     );
 
+    // Build sections from AI output (with IDs and order)
+    const sections = Array.isArray(generated.sections)
+      ? generated.sections.map((s, i) => ({
+          id: `section_${Date.now()}_${i}`,
+          title: s.title || `Section ${i + 1}`,
+          content: s.content || '',
+          source: 'ai' as const,
+          order: i,
+        }))
+      : [];
+
     // Save to DB
     const script = await Script.create({
       userId,
@@ -127,6 +138,7 @@ export async function POST(request: NextRequest) {
       fullScript: generated.fullScript,
       bulletPoints: generated.bulletPoints,
       teleprompterVersion: generated.teleprompterVersion,
+      sections,
       voiceStormTranscriptId: voiceStormTranscriptId || undefined,
       status: 'draft',
       version: 1,
