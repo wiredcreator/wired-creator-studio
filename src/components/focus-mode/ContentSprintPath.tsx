@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import DraftEditor from './DraftEditor';
 
 interface ContentIdea {
   _id: string;
@@ -33,7 +33,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function ContentSprintPath() {
   const [ideas, setIdeas] = useState<ContentIdea[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchIdeas() {
@@ -57,9 +57,34 @@ export default function ContentSprintPath() {
   }, []);
 
   const handleSelect = useCallback((ideaId: string) => {
-    // Navigate to the idea detail page
-    router.push(`/dashboard/ideas?idea=${ideaId}`);
-  }, [router]);
+    setSelectedIdeaId(ideaId);
+  }, []);
+
+  const handleNewDraft = useCallback(async () => {
+    try {
+      const res = await fetch('/api/ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Untitled Draft', source: 'manual' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedIdeaId(data._id);
+      }
+    } catch {
+      // Failed to create
+    }
+  }, []);
+
+  if (selectedIdeaId) {
+    return (
+      <DraftEditor
+        ideaId={selectedIdeaId}
+        onBack={() => setSelectedIdeaId(null)}
+        onNewDraft={handleNewDraft}
+      />
+    );
+  }
 
   if (loading) {
     return (

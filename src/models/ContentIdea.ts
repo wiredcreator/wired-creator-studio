@@ -69,6 +69,21 @@ const ConceptAnswersSchema = new Schema<IConceptAnswers>(
   { _id: false }
 );
 
+// --- Note Sub-document ---
+export interface INote {
+  _id?: Types.ObjectId;
+  text: string;
+  createdAt?: Date;
+}
+
+// --- Comment Sub-document ---
+export interface IComment {
+  _id?: Types.ObjectId;
+  userId: Types.ObjectId;
+  text: string;
+  createdAt?: Date;
+}
+
 // --- Outline Section Sub-document ---
 export interface IOutlineSection {
   id: string;
@@ -107,6 +122,9 @@ export interface IContentIdea extends Document {
   resources: IResource[];
   outline: string;
   outlineSections: IOutlineSection[];
+  rawNotes: string;
+  notes: INote[];
+  comments: IComment[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -142,6 +160,16 @@ const ContentIdeaSchema = new Schema<IContentIdea>(
     resources: [{ type: ResourceSchema }],
     outline: { type: String, default: '' },
     outlineSections: [{ type: OutlineSectionSchema }],
+    rawNotes: { type: String, default: '' },
+    notes: [{
+      text: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now },
+    }],
+    comments: [{
+      userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+      text: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now },
+    }],
     sourceSessionId: {
       type: Schema.Types.ObjectId,
       ref: 'VoiceStormingTranscript',

@@ -120,6 +120,9 @@ export async function PUT(
     if (body.alternativeTitles !== undefined) idea.alternativeTitles = body.alternativeTitles;
     if (body.resources !== undefined) idea.resources = body.resources;
     if (body.outline !== undefined) idea.outline = body.outline;
+    if (body.rawNotes !== undefined) idea.rawNotes = body.rawNotes;
+    if (body.notes !== undefined) idea.notes = body.notes;
+    if (body.comments !== undefined) idea.comments = body.comments;
     if (body.outlineSections !== undefined) {
       idea.outlineSections = body.outlineSections;
       // Regenerate markdown from sections for backwards compatibility
