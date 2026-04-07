@@ -260,14 +260,14 @@ export default function ToneOfVoiceEditor({
                           type="text"
                           value={editKey}
                           onChange={(e) => setEditKey(e.target.value)}
-                          className="w-full px-2 py-1 text-sm font-medium text-[var(--color-text-primary)] border border-[var(--color-border)] rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                          className="w-full px-2 py-1 text-sm font-medium text-[var(--color-text-primary)] border border-[var(--color-border)] rounded focus:outline-none focus:border-[var(--color-accent)] ring-0"
                           placeholder="Parameter key"
                         />
                         <textarea
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
                           rows={2}
-                          className="w-full px-2 py-1 text-sm text-[var(--color-text-primary)] border border-[var(--color-border)] rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
+                          className="w-full px-2 py-1 text-sm text-[var(--color-text-primary)] border border-[var(--color-border)] rounded focus:outline-none focus:border-[var(--color-accent)] ring-0 resize-none"
                           placeholder="Parameter value"
                         />
                         <div className="flex gap-2">
@@ -363,7 +363,7 @@ export default function ToneOfVoiceEditor({
                   onChange={(e) =>
                     setNewCategory(e.target.value as ToneParameterCategory)
                   }
-                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-card)]"
+                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:border-[var(--color-accent)] ring-0 bg-transparent"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c.key} value={c.key}>
@@ -379,7 +379,7 @@ export default function ToneOfVoiceEditor({
                   value={newKey}
                   onChange={(e) => setNewKey(e.target.value)}
                   placeholder="e.g. opening_style"
-                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:border-[var(--color-accent)] ring-0"
                 />
               </div>
             </div>
@@ -390,7 +390,7 @@ export default function ToneOfVoiceEditor({
                 onChange={(e) => setNewValue(e.target.value)}
                 rows={2}
                 placeholder="Specific, actionable guidance..."
-                className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
+                className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:border-[var(--color-accent)] ring-0 resize-none"
               />
             </div>
             <div className="flex gap-2">

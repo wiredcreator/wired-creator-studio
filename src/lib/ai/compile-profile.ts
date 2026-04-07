@@ -1,5 +1,6 @@
 import { getAnthropicClient, CLAUDE_MODEL } from './client';
 import { trackAIUsage } from './usage-tracker';
+import { STUDENT_PROFILE_TEMPLATE } from './student-profile-template';
 import dbConnect from '@/lib/db';
 import AIDocument from '@/models/AIDocument';
 import BrandBrain from '@/models/BrandBrain';
@@ -84,9 +85,8 @@ export async function compileStudentProfile(
     scope: 'global',
   }).lean();
 
-  if (!templateDoc) {
-    return { success: false, error: 'No student profile template found' };
-  }
+  // Fall back to the built-in template if no AI Document override exists
+  const templateContent = templateDoc?.content ?? STUDENT_PROFILE_TEMPLATE;
 
   // --- 2. Fetch questionnaire data ---
   const [contentDNA, personalBaseline] = await Promise.all([
@@ -114,7 +114,7 @@ export async function compileStudentProfile(
   }
 
   // --- 4. Replace template variables with actual answers ---
-  let populatedTemplate = templateDoc.content;
+  let populatedTemplate = templateContent;
 
   // Replace Content DNA variables {{C1}} - {{C16}}
   for (const [variable, questionId] of Object.entries(CONTENT_DNA_VARIABLE_MAP)) {
@@ -155,7 +155,7 @@ export async function compileStudentProfile(
     {
       $set: {
         'compiledProfile.content': textBlock.text,
-        'compiledProfile.templateUpdatedAt': templateDoc.updatedAt,
+        'compiledProfile.templateUpdatedAt': templateDoc?.updatedAt ?? new Date(),
         'compiledProfile.compiledAt': compiledAt,
       },
     }

@@ -72,13 +72,13 @@ function ScopeBadge({
 }) {
   if (scope === "global") {
     return (
-      <span className="inline-flex shrink-0 items-center rounded-full bg-[var(--color-bg-secondary)] px-2.5 py-0.5 text-xs font-medium text-white">
+      <span className="inline-flex shrink-0 items-center rounded-full bg-slate-600 px-2.5 py-0.5 text-xs font-medium text-white">
         Global
       </span>
     );
   }
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-[var(--color-bg-secondary)] px-2.5 py-0.5 text-xs font-medium text-white">
+    <span className="inline-flex shrink-0 items-center rounded-full bg-sky-700 px-2.5 py-0.5 text-xs font-medium text-white">
       {userName ?? "User"}
     </span>
   );
@@ -124,12 +124,15 @@ function DocumentModal({
 }: ModalProps) {
   const isCreate = editing === null;
   const inputClass =
-    "w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] ring-0";
+    "w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] ring-0";
   const labelClass = "mb-1 block text-xs font-medium text-[var(--color-text-muted)]";
 
   const [gdocUrl, setGdocUrl] = useState("");
   const [gdocFetching, setGdocFetching] = useState(false);
   const [gdocError, setGdocError] = useState<string | null>(null);
+
+  const [fileUploading, setFileUploading] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   async function handleGdocFetch() {
     if (!gdocUrl.trim()) return;
@@ -154,6 +157,35 @@ function DocumentModal({
       setGdocError("Network error. Please try again.");
     } finally {
       setGdocFetching(false);
+    }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileUploading(true);
+    setFileError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/admin/ai-documents/upload-file", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFileError(data.error ?? "Failed to process file.");
+      } else {
+        onChange({ content: data.content ?? "" });
+        if (!form.title.trim() && data.title) {
+          onChange({ title: data.title });
+        }
+      }
+    } catch {
+      setFileError("Network error. Please try again.");
+    } finally {
+      setFileUploading(false);
+      e.target.value = "";
     }
   }
 
@@ -236,33 +268,59 @@ function DocumentModal({
             )}
           </div>
 
-          {/* Google Doc import */}
-          <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3">
-            <p className="mb-2 text-xs font-medium text-[var(--color-text-muted)]">
-              Import from Google Doc
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={gdocUrl}
-                onChange={(e) => {
-                  setGdocUrl(e.target.value);
-                  setGdocError(null);
-                }}
-                placeholder="Paste a Google Doc URL..."
-                className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] ring-0"
-              />
-              <button
-                onClick={handleGdocFetch}
-                disabled={gdocFetching || !gdocUrl.trim()}
-                className="shrink-0 rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-accent)] hover:text-white disabled:opacity-50"
-              >
-                {gdocFetching ? "Fetching..." : "Fetch"}
-              </button>
+          {/* Import options: Google Doc + File Upload side by side */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Google Doc import */}
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] px-4 py-3">
+              <p className="mb-2 text-xs font-medium text-[var(--color-text-muted)]">
+                Import from Google Doc
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={gdocUrl}
+                  onChange={(e) => {
+                    setGdocUrl(e.target.value);
+                    setGdocError(null);
+                  }}
+                  placeholder="Paste a Google Doc URL..."
+                  className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] ring-0"
+                />
+                <button
+                  onClick={handleGdocFetch}
+                  disabled={gdocFetching || !gdocUrl.trim()}
+                  className="shrink-0 rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-accent)] hover:text-white disabled:opacity-50"
+                >
+                  {gdocFetching ? "Fetching..." : "Fetch"}
+                </button>
+              </div>
+              {gdocError && (
+                <p className="mt-2 text-xs text-red-400">{gdocError}</p>
+              )}
             </div>
-            {gdocError && (
-              <p className="mt-2 text-xs text-red-400">{gdocError}</p>
-            )}
+
+            {/* File upload */}
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] px-4 py-3">
+              <p className="mb-2 text-xs font-medium text-[var(--color-text-muted)]">
+                Upload File
+              </p>
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                {fileUploading ? "Processing..." : "PDF, TXT, DOCX"}
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.text,.docx,.doc,.md"
+                  onChange={handleFileUpload}
+                  disabled={fileUploading}
+                  className="hidden"
+                />
+              </label>
+              {fileError && (
+                <p className="mt-2 text-xs text-red-400">{fileError}</p>
+              )}
+            </div>
           </div>
 
           {/* Content */}
