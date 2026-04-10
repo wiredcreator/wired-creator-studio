@@ -477,7 +477,10 @@ export default function IdeaParkingLotPage() {
               conceptAnswers={conceptAnswers}
               ideaId={ideaId}
               onSourcesFound={(newResources) => {
-                setResources((prev) => [...prev, ...newResources]);
+                const updated = [...resources, ...newResources];
+                setResources(updated);
+                setFindSourcesOpen(false);
+                saveIdea({ resources: updated } as Partial<IdeaData>);
               }}
               onAddResource={(resource) => {
                 const updated = [...resources, resource];
@@ -1363,7 +1366,21 @@ function ResourcesStep({
                 {isExpanded && (
                   <div className="border-t border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3">
                     <p className="whitespace-pre-wrap text-sm text-[var(--color-text-primary)]">
-                      {resource.content}
+                      {resource.content.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
+                        /^https?:\/\//.test(part) ? (
+                          <a
+                            key={i}
+                            href={part}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[var(--color-accent)] underline hover:opacity-80 break-all"
+                          >
+                            {part}
+                          </a>
+                        ) : (
+                          <span key={i}>{part}</span>
+                        )
+                      )}
                     </p>
                   </div>
                 )}
@@ -1388,6 +1405,7 @@ function ResourcesStep({
       <FindSourcesPanel
         isOpen={findSourcesOpen}
         onClose={() => setFindSourcesOpen(false)}
+        ideaId={ideaId}
         ideaTitle={ideaTitle}
         conceptAnswers={conceptAnswers}
         onSourcesFound={onSourcesFound}

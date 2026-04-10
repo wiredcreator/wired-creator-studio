@@ -43,6 +43,7 @@ const AIUsageLogSchema = new Schema(
         'idea_outline',
         'content_pillar_generation',
         'personal_baseline_processing',
+        'find_sources',
       ],
     },
     aiModel: { type: String, required: true },

@@ -291,6 +291,7 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft, createDraftIfN
       <FindSourcesPanel
         isOpen={showFindSources}
         onClose={() => setShowFindSources(false)}
+        ideaId={ideaId || ''}
         ideaTitle={title}
         conceptAnswers={conceptAnswers}
         onSourcesFound={handleSourcesFound}

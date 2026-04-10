@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { IConceptAnswers, IResource } from '@/models/ContentIdea';
 
 interface FindSourcesPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  ideaId: string;
   ideaTitle: string;
   conceptAnswers: IConceptAnswers;
   onSourcesFound: (resources: IResource[]) => void;
@@ -85,6 +86,7 @@ const CATEGORIES = [
 export default function FindSourcesPanel({
   isOpen,
   onClose,
+  ideaId,
   ideaTitle,
   conceptAnswers,
   onSourcesFound,
@@ -110,9 +112,65 @@ export default function FindSourcesPanel({
     setSelectedCategories((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
-  const handleSearch = useCallback(() => {
-    alert('Coming soon! AI-powered source finding is not yet available.');
+  const [error, setError] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Clean up cooldown timer on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
   }, []);
+
+  const startCooldown = useCallback((seconds: number) => {
+    setCooldown(seconds);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim() || cooldown > 0) return;
+    setIsSearching(true);
+    setError('');
+    try {
+      const categories = Object.entries(selectedCategories)
+        .filter(([, v]) => v)
+        .map(([k]) => k);
+      const res = await fetch(`/api/ideas/${ideaId}/find-sources`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery, categories }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          startCooldown(60);
+        }
+        setError(data.error || 'Failed to find sources. Please try again.');
+        return;
+      }
+      const data = await res.json();
+      if (data.resources && data.resources.length > 0) {
+        onSourcesFound(data.resources);
+        startCooldown(30);
+      } else {
+        setError('No sources found. Try adjusting your search query or categories.');
+      }
+    } catch {
+      setError('Failed to find sources. Please try again.');
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, selectedCategories, ideaId, onSourcesFound, cooldown, startCooldown]);
 
   if (typeof document === 'undefined') return null;
 
@@ -255,11 +313,18 @@ export default function FindSourcesPanel({
           </div>
         </div>
 
+        {/* Error */}
+        {error && (
+          <div className="mx-6 mb-2 rounded-lg bg-red-900/20 px-4 py-3 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
         {/* Footer */}
         <div className="border-t border-[var(--color-border)] px-6 py-4">
           <button
             onClick={handleSearch}
-            disabled={isSearching}
+            disabled={isSearching || cooldown > 0}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] py-3 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
           >
             {isSearching ? (
@@ -267,6 +332,8 @@ export default function FindSourcesPanel({
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 Searching...
               </>
+            ) : cooldown > 0 ? (
+              <>Search again in {cooldown}s</>
             ) : (
               <>
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
