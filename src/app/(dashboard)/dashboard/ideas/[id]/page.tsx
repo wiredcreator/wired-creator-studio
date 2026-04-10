@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import PageWrapper from '@/components/PageWrapper';
 import DraftSidebar from '@/components/focus-mode/draft/DraftSidebar';
 import FindSourcesPanel from '@/components/focus-mode/draft/FindSourcesPanel';
@@ -45,14 +45,31 @@ const STEPS: { key: Step; label: string; number: number }[] = [
 // Page Component
 // ---------------------------------------------------------------------------
 
+const VALID_STEPS = new Set<Step>(['concept', 'resources', 'outline']);
+
 export default function IdeaParkingLotPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const ideaId = params.id as string;
+
+  const tabParam = searchParams.get('tab') as Step | null;
+  const initialTab = tabParam && VALID_STEPS.has(tabParam) ? tabParam : 'concept';
 
   const [idea, setIdea] = useState<IdeaData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeStep, setActiveStep] = useState<Step>('concept');
+  const [activeStep, setActiveStepRaw] = useState<Step>(initialTab);
+
+  const setActiveStep = useCallback((step: Step) => {
+    setActiveStepRaw(step);
+    const url = new URL(window.location.href);
+    if (step === 'concept') {
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('tab', step);
+    }
+    window.history.replaceState({}, '', url.toString());
+  }, []);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
@@ -286,12 +303,17 @@ export default function IdeaParkingLotPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.outlineSections) {
+        if (data.outlineSections && data.outlineSections.length > 0) {
           setOutlineSections(data.outlineSections);
+          setOutline(data.outline || '');
+          setIsGeneratingOutline(false);
+          return;
         }
         if (data.outline) {
           setOutline(data.outline);
         }
+        // Fallback: re-fetch idea to ensure state is fully synced
+        await fetchIdea();
       } else {
         showError('Failed to generate outline. Please try again.');
       }
@@ -304,11 +326,7 @@ export default function IdeaParkingLotPage() {
   };
 
   const handleSaveOutline = () => {
-    if (outlineSections.length > 0) {
-      saveIdea({ outlineSections } as unknown as Partial<IdeaData>);
-    } else {
-      saveIdea({ outline });
-    }
+    saveIdea({ outlineSections, outline } as unknown as Partial<IdeaData>);
   };
 
   const handleGenerateScript = async () => {
@@ -1424,6 +1442,8 @@ function OutlineStep({
   const [isEditing, setIsEditing] = useState(false);
   const [dragState, setDragState] = useState<{ sectionId: string; bulletIdx: number } | null>(null);
   const [dragOverState, setDragOverState] = useState<{ sectionId: string; bulletIdx: number } | null>(null);
+  const [sectionDragIndex, setSectionDragIndex] = useState<number | null>(null);
+  const [sectionOverIndex, setSectionOverIndex] = useState<number | null>(null);
   const hasStructuredSections = outlineSections && outlineSections.length > 0;
   const hasContent = hasStructuredSections || outline.trim();
 
@@ -1504,18 +1524,71 @@ function OutlineStep({
     onMarkChanged();
   };
 
-  const reorderBullets = (sectionId: string, fromIdx: number, toIdx: number) => {
-    if (fromIdx === toIdx) return;
-    setOutlineSections(
-      outlineSections.map((s) => {
-        if (s.id !== sectionId) return s;
-        const bullets = [...s.bullets];
-        const [moved] = bullets.splice(fromIdx, 1);
-        bullets.splice(toIdx, 0, moved);
-        return { ...s, bullets };
-      })
-    );
+  const reorderBullets = (fromSectionId: string, fromIdx: number, toSectionId: string, toIdx: number) => {
+    if (fromSectionId === toSectionId && fromIdx === toIdx) return;
+
+    if (fromSectionId === toSectionId) {
+      // Same section reorder
+      setOutlineSections(
+        outlineSections.map((s) => {
+          if (s.id !== fromSectionId) return s;
+          const bullets = [...s.bullets];
+          const [moved] = bullets.splice(fromIdx, 1);
+          bullets.splice(toIdx, 0, moved);
+          return { ...s, bullets };
+        })
+      );
+    } else {
+      // Cross-section move
+      const fromSection = outlineSections.find((s) => s.id === fromSectionId);
+      if (!fromSection) return;
+      const draggedBullet = fromSection.bullets[fromIdx];
+      setOutlineSections(
+        outlineSections.map((s) => {
+          if (s.id === fromSectionId) return { ...s, bullets: s.bullets.filter((_, i) => i !== fromIdx) };
+          if (s.id === toSectionId) {
+            const newBullets = [...s.bullets];
+            newBullets.splice(toIdx, 0, draggedBullet);
+            return { ...s, bullets: newBullets };
+          }
+          return s;
+        })
+      );
+    }
     onMarkChanged();
+  };
+
+  // --- Section drag handlers ---
+  const handleSectionDragStart = (index: number) => {
+    setSectionDragIndex(index);
+  };
+
+  const handleSectionDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (sectionDragIndex !== null) {
+      setSectionOverIndex(index);
+    }
+  };
+
+  const handleSectionDragEnd = () => {
+    setSectionDragIndex(null);
+    setSectionOverIndex(null);
+  };
+
+  const handleSectionDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (sectionDragIndex === null || sectionDragIndex === dropIndex) {
+      setSectionDragIndex(null);
+      setSectionOverIndex(null);
+      return;
+    }
+    const sorted = [...outlineSections].sort((a, b) => a.order - b.order);
+    const [dragged] = sorted.splice(sectionDragIndex, 1);
+    sorted.splice(dropIndex, 0, dragged);
+    setOutlineSections(sorted.map((s, i) => ({ ...s, order: i })));
+    onMarkChanged();
+    setSectionDragIndex(null);
+    setSectionOverIndex(null);
   };
 
   // Escape HTML entities to prevent XSS in rendered outline
@@ -1621,20 +1694,43 @@ function OutlineStep({
           <div className="space-y-4">
             {[...outlineSections]
               .sort((a, b) => a.order - b.order)
-              .map((section) => (
+              .map((section, sortedIdx) => (
                 <div
                   key={section.id}
-                  className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5"
+                  draggable
+                  onDragStart={() => handleSectionDragStart(sortedIdx)}
+                  onDragOver={(e) => handleSectionDragOver(e, sortedIdx)}
+                  onDragEnd={handleSectionDragEnd}
+                  onDrop={(e) => handleSectionDrop(e, sortedIdx)}
+                  className={`rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 transition-all ${
+                    sectionDragIndex === sortedIdx ? 'opacity-40' : ''
+                  } ${
+                    sectionOverIndex === sortedIdx && sectionDragIndex !== null && sectionDragIndex !== sortedIdx
+                      ? 'ring-2 ring-[var(--color-accent)]'
+                      : ''
+                  }`}
                 >
-                  {/* Section header: editable title + trash icon */}
+                  {/* Section header: drag handle + editable title + trash icon */}
                   <div className="mb-4 flex items-center justify-between">
-                    <input
-                      type="text"
-                      value={section.title}
-                      onChange={(e) => updateSectionTitle(section.id, e.target.value)}
-                      placeholder="Section title..."
-                      className="flex-1 bg-transparent text-base font-bold text-[var(--color-text-primary)] outline-none ring-0 placeholder:text-[var(--color-text-muted)]"
-                    />
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="shrink-0 cursor-grab active:cursor-grabbing text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors">
+                        <svg className="h-5 w-5" viewBox="0 0 16 16" fill="currentColor">
+                          <circle cx="5" cy="3" r="1.2" />
+                          <circle cx="11" cy="3" r="1.2" />
+                          <circle cx="5" cy="8" r="1.2" />
+                          <circle cx="11" cy="8" r="1.2" />
+                          <circle cx="5" cy="13" r="1.2" />
+                          <circle cx="11" cy="13" r="1.2" />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        value={section.title}
+                        onChange={(e) => updateSectionTitle(section.id, e.target.value)}
+                        placeholder="Section title..."
+                        className="flex-1 bg-transparent text-base font-bold text-[var(--color-text-primary)] outline-none ring-0 placeholder:text-[var(--color-text-muted)]"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeSection(section.id)}
@@ -1654,38 +1750,42 @@ function OutlineStep({
                         key={bulletIdx}
                         draggable
                         onDragStart={(e) => {
+                          e.stopPropagation();
                           setDragState({ sectionId: section.id, bulletIdx });
                           e.dataTransfer.effectAllowed = 'move';
                         }}
                         onDragOver={(e) => {
                           e.preventDefault();
+                          e.stopPropagation();
                           e.dataTransfer.dropEffect = 'move';
-                          if (dragState && dragState.sectionId === section.id) {
+                          if (dragState) {
                             setDragOverState({ sectionId: section.id, bulletIdx });
                           }
                         }}
                         onDrop={(e) => {
                           e.preventDefault();
-                          if (dragState && dragState.sectionId === section.id) {
-                            reorderBullets(section.id, dragState.bulletIdx, bulletIdx);
+                          e.stopPropagation();
+                          if (dragState) {
+                            reorderBullets(dragState.sectionId, dragState.bulletIdx, section.id, bulletIdx);
                           }
                           setDragState(null);
                           setDragOverState(null);
                         }}
-                        onDragEnd={() => {
+                        onDragEnd={(e) => {
+                          e.stopPropagation();
                           setDragState(null);
                           setDragOverState(null);
                         }}
                         className={`group flex items-center gap-2 rounded-[var(--radius-sm)] px-1 py-1.5 transition-colors hover:bg-[var(--color-bg-secondary)] ${
                           dragState?.sectionId === section.id && dragState?.bulletIdx === bulletIdx ? 'opacity-40' : ''
                         } ${
-                          dragOverState?.sectionId === section.id && dragOverState?.bulletIdx === bulletIdx && dragState?.bulletIdx !== bulletIdx
+                          dragOverState?.sectionId === section.id && dragOverState?.bulletIdx === bulletIdx && dragState && !(dragState.sectionId === section.id && dragState.bulletIdx === bulletIdx)
                             ? 'border-t-2 border-[var(--color-accent)]'
                             : ''
                         }`}
                       >
                         {/* Drag handle dots */}
-                        <span className="shrink-0 cursor-grab text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="shrink-0 cursor-grab active:cursor-grabbing text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors">
                           <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
                             <circle cx="5.5" cy="3.5" r="1.2" />
                             <circle cx="10.5" cy="3.5" r="1.2" />

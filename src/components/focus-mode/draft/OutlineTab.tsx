@@ -21,6 +21,24 @@ const DEFAULT_SECTIONS: IOutlineSection[] = [
   { id: crypto.randomUUID(), title: 'CTA', bullets: [''], order: 2 },
 ];
 
+function DragHandle({ size = 'md' }: { size?: 'md' | 'sm' }) {
+  const dim = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
+  return (
+    <svg
+      className={`${dim} shrink-0 text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors`}
+      viewBox="0 0 16 16"
+      fill="currentColor"
+    >
+      <circle cx="5" cy="3" r="1.2" />
+      <circle cx="11" cy="3" r="1.2" />
+      <circle cx="5" cy="8" r="1.2" />
+      <circle cx="11" cy="8" r="1.2" />
+      <circle cx="5" cy="13" r="1.2" />
+      <circle cx="11" cy="13" r="1.2" />
+    </svg>
+  );
+}
+
 export default function OutlineTab({
   outlineSections,
   setOutlineSections,
@@ -34,6 +52,14 @@ export default function OutlineTab({
 }: OutlineTabProps) {
   const [initialized, setInitialized] = useState(false);
   const newBulletRef = useRef<HTMLInputElement | null>(null);
+
+  // Section drag state
+  const [sectionDragIndex, setSectionDragIndex] = useState<number | null>(null);
+  const [sectionOverIndex, setSectionOverIndex] = useState<number | null>(null);
+
+  // Bullet drag state
+  const [bulletDragInfo, setBulletDragInfo] = useState<{ sectionIdx: number; bulletIdx: number } | null>(null);
+  const [bulletOverInfo, setBulletOverInfo] = useState<{ sectionIdx: number; bulletIdx: number } | null>(null);
 
   // Initialize with defaults if empty
   useEffect(() => {
@@ -116,23 +142,167 @@ export default function OutlineTab({
     onMarkChanged();
   }, [outlineSections, setOutlineSections, onMarkChanged]);
 
+  // --- Section drag handlers ---
+  const handleSectionDragStart = useCallback((index: number) => {
+    setSectionDragIndex(index);
+  }, []);
+
+  const handleSectionDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (sectionDragIndex !== null) {
+      setSectionOverIndex(index);
+    }
+  }, [sectionDragIndex]);
+
+  const handleSectionDragEnd = useCallback(() => {
+    setSectionDragIndex(null);
+    setSectionOverIndex(null);
+  }, []);
+
+  const handleSectionDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (sectionDragIndex === null || sectionDragIndex === dropIndex) {
+      setSectionDragIndex(null);
+      setSectionOverIndex(null);
+      return;
+    }
+    const updated = [...outlineSections];
+    const [dragged] = updated.splice(sectionDragIndex, 1);
+    updated.splice(dropIndex, 0, dragged);
+    setOutlineSections(updated.map((s, i) => ({ ...s, order: i })));
+    onMarkChanged();
+    setSectionDragIndex(null);
+    setSectionOverIndex(null);
+  }, [sectionDragIndex, outlineSections, setOutlineSections, onMarkChanged]);
+
+  // --- Bullet drag handlers ---
+  const handleBulletDragStart = useCallback((sectionIdx: number, bulletIdx: number) => {
+    setBulletDragInfo({ sectionIdx, bulletIdx });
+  }, []);
+
+  const handleBulletDragOver = useCallback((e: React.DragEvent, sectionIdx: number, bulletIdx: number) => {
+    e.preventDefault();
+    if (bulletDragInfo) {
+      setBulletOverInfo({ sectionIdx, bulletIdx });
+    }
+  }, [bulletDragInfo]);
+
+  const handleBulletDragEnd = useCallback(() => {
+    setBulletDragInfo(null);
+    setBulletOverInfo(null);
+  }, []);
+
+  const handleBulletDrop = useCallback((e: React.DragEvent, sectionIdx: number, bulletIdx: number) => {
+    e.preventDefault();
+    if (!bulletDragInfo || (bulletDragInfo.sectionIdx === sectionIdx && bulletDragInfo.bulletIdx === bulletIdx)) {
+      setBulletDragInfo(null);
+      setBulletOverInfo(null);
+      return;
+    }
+    const fromSection = outlineSections[bulletDragInfo.sectionIdx];
+    const draggedBullet = fromSection.bullets[bulletDragInfo.bulletIdx];
+
+    if (bulletDragInfo.sectionIdx === sectionIdx) {
+      // Same section reorder
+      const newBullets = [...fromSection.bullets];
+      const [moved] = newBullets.splice(bulletDragInfo.bulletIdx, 1);
+      newBullets.splice(bulletIdx, 0, moved);
+      setOutlineSections(
+        outlineSections.map((s, i) => (i === sectionIdx ? { ...s, bullets: newBullets } : s))
+      );
+    } else {
+      // Cross-section move
+      const fromBullets = fromSection.bullets.filter((_, i) => i !== bulletDragInfo.bulletIdx);
+      const toSection = outlineSections[sectionIdx];
+      const toBullets = [...toSection.bullets];
+      toBullets.splice(bulletIdx, 0, draggedBullet);
+      setOutlineSections(
+        outlineSections.map((s, i) => {
+          if (i === bulletDragInfo!.sectionIdx) return { ...s, bullets: fromBullets };
+          if (i === sectionIdx) return { ...s, bullets: toBullets };
+          return s;
+        })
+      );
+    }
+    onMarkChanged();
+    setBulletDragInfo(null);
+    setBulletOverInfo(null);
+  }, [bulletDragInfo, outlineSections, setOutlineSections, onMarkChanged]);
+
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6">
       <div className="space-y-0">
         {outlineSections.map((section, sIdx) => (
-          <div key={section.id}>
-            {sIdx > 0 && <div className="border-t border-dashed border-[var(--color-border)] my-4" />}
+          <div
+            key={section.id}
+            draggable
+            onDragStart={() => handleSectionDragStart(sIdx)}
+            onDragOver={(e) => handleSectionDragOver(e, sIdx)}
+            onDragEnd={handleSectionDragEnd}
+            onDrop={(e) => handleSectionDrop(e, sIdx)}
+            className={`transition-all ${
+              sectionDragIndex === sIdx ? 'opacity-40' : ''
+            } ${
+              sectionOverIndex === sIdx && sectionDragIndex !== null && sectionDragIndex !== sIdx
+                ? 'border-t-2 border-[var(--color-accent)]'
+                : 'border-t-2 border-transparent'
+            }`}
+          >
+            {sIdx > 0 && sectionOverIndex !== sIdx && (
+              <div className="border-t border-dashed border-[var(--color-border)] my-4" />
+            )}
+            {sIdx > 0 && sectionOverIndex === sIdx && <div className="my-4" />}
             <div className="space-y-2">
-              {/* Section title */}
-              <input
-                type="text"
-                value={section.title}
-                onChange={(e) => updateSection(section.id, { title: e.target.value })}
-                className="text-sm font-bold text-[var(--color-text)] bg-transparent outline-none ring-0 w-full border-b border-[var(--color-border)] pb-2"
-              />
+              {/* Section title with drag handle */}
+              <div className="flex items-center gap-2">
+                <div className="cursor-grab active:cursor-grabbing">
+                  <DragHandle />
+                </div>
+                <input
+                  type="text"
+                  value={section.title}
+                  onChange={(e) => updateSection(section.id, { title: e.target.value })}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-sm font-bold text-[var(--color-text)] bg-transparent outline-none ring-0 w-full border-b border-[var(--color-border)] pb-2"
+                />
+              </div>
               {/* Bullets */}
               {section.bullets.map((bullet, bIdx) => (
-                <div key={bIdx} className="flex items-start gap-2">
+                <div
+                  key={bIdx}
+                  draggable
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    handleBulletDragStart(sIdx, bIdx);
+                  }}
+                  onDragOver={(e) => {
+                    e.stopPropagation();
+                    handleBulletDragOver(e, sIdx, bIdx);
+                  }}
+                  onDragEnd={(e) => {
+                    e.stopPropagation();
+                    handleBulletDragEnd();
+                  }}
+                  onDrop={(e) => {
+                    e.stopPropagation();
+                    handleBulletDrop(e, sIdx, bIdx);
+                  }}
+                  className={`flex items-start gap-2 transition-all ${
+                    bulletDragInfo?.sectionIdx === sIdx && bulletDragInfo?.bulletIdx === bIdx
+                      ? 'opacity-40'
+                      : ''
+                  } ${
+                    bulletOverInfo?.sectionIdx === sIdx &&
+                    bulletOverInfo?.bulletIdx === bIdx &&
+                    bulletDragInfo !== null &&
+                    !(bulletDragInfo.sectionIdx === sIdx && bulletDragInfo.bulletIdx === bIdx)
+                      ? 'border-t-2 border-[var(--color-accent)]'
+                      : 'border-t-2 border-transparent'
+                  }`}
+                >
+                  <div className="cursor-grab active:cursor-grabbing mt-0.5">
+                    <DragHandle size="sm" />
+                  </div>
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-text-muted)]" />
                   <input
                     ref={bIdx === section.bullets.length - 1 ? newBulletRef : undefined}
