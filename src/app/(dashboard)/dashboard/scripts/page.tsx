@@ -231,6 +231,7 @@ export default function ScriptsPage() {
     status?: ScriptStatus;
     thumbnail?: string;
     platforms?: string[];
+    notes?: string;
   }) => {
     if (!editingScript) return;
 

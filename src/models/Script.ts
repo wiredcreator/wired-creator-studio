@@ -55,6 +55,7 @@ export interface IScript extends Document {
   platforms: string[];
   voiceStormTranscriptId?: Types.ObjectId;
   thumbnail?: string;
+  notes?: string;
   status: ScriptStatus;
   feedback: IScriptFeedback[];
   version: number;
@@ -85,6 +86,7 @@ const ScriptSchema = new Schema<IScript>(
       ref: 'VoiceStormingTranscript',
     },
     thumbnail: { type: String, default: '' },
+    notes: { type: String, default: '' },
     status: {
       type: String,
       enum: ['draft', 'review', 'approved', 'filming', 'completed', 'published'],

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ScriptStatus } from '@/models/Script';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+import ModalPortal from '@/components/ModalPortal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,6 +32,7 @@ export interface ScriptEditorData {
   sections?: ScriptSection[];
   platforms?: string[];
   thumbnail?: string;
+  notes?: string;
   status: ScriptStatus;
   feedback: ScriptFeedbackItem[];
   version: number;
@@ -54,6 +56,7 @@ interface ScriptEditorProps {
     status?: ScriptStatus;
     thumbnail?: string;
     platforms?: string[];
+    notes?: string;
   }) => void;
   onRegenerate: () => void;
   onAddFeedback: (text: string) => void;
@@ -169,6 +172,9 @@ export default function ScriptEditor({
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [duplicateSuccess, setDuplicateSuccess] = useState(false);
   const [platforms, setPlatforms] = useState<string[]>(script.platforms || []);
+  const [notes, setNotes] = useState(script.notes || '');
+  const [showScriptText, setShowScriptText] = useState(false);
+  const [scriptTextCopied, setScriptTextCopied] = useState(false);
 
   // Teleprompter state
   const [teleprompterSlide, setTeleprompterSlide] = useState(0);
@@ -198,7 +204,8 @@ export default function ScriptEditor({
     status: overrideStatus || status,
     thumbnail,
     platforms,
-  }), [title, fullScript, bulletPoints, teleprompterVersion, sections, status, thumbnail, platforms]);
+    notes,
+  }), [title, fullScript, bulletPoints, teleprompterVersion, sections, status, thumbnail, platforms, notes]);
 
   const handleSave = (overrideStatus?: ScriptStatus) => {
     if (overrideStatus) setStatus(overrideStatus);
@@ -455,6 +462,31 @@ export default function ScriptEditor({
     });
   }, [teleprompterVersion, fullScript]);
 
+  // Build clean script text organized by sections for the Script Text panel
+  const cleanScriptText = (() => {
+    if (sections.length > 0) {
+      return sections.map((s) => ({
+        title: s.title.toUpperCase(),
+        content: s.content,
+      }));
+    }
+    // Fall back to fullScript split by double newlines
+    const text = fullScript || '';
+    const parts = text.split(/\n\s*\n/).filter((p) => p.trim());
+    if (parts.length === 0) return [{ title: '', content: 'No script content yet.' }];
+    return parts.map((p) => ({ title: '', content: p.trim() }));
+  })();
+
+  const handleCopyScriptText = useCallback(() => {
+    const text = sections.length > 0
+      ? sections.map((s) => `${s.title.toUpperCase()}\n${s.content}`).join('\n\n')
+      : fullScript || '';
+    navigator.clipboard.writeText(text).then(() => {
+      setScriptTextCopied(true);
+      setTimeout(() => setScriptTextCopied(false), 2000);
+    });
+  }, [sections, fullScript]);
+
   return (
     <div className="animate-fadeIn">
       {/* Header */}
@@ -488,9 +520,12 @@ export default function ScriptEditor({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          {/* Version badge */}
-          <span className="rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-2.5 py-1 text-xs text-white">
-            v{script.version}
+          {/* Word count + read time */}
+          <span className="hidden sm:inline text-xs text-[var(--color-text-muted)]">
+            {wordCount.toLocaleString()} words
+          </span>
+          <span className="hidden sm:inline text-xs text-[var(--color-text-muted)]">
+            ~{readTime} min
           </span>
 
           {/* Status selector */}
@@ -505,6 +540,28 @@ export default function ScriptEditor({
               </option>
             ))}
           </select>
+
+          {/* Script Text / Teleprompter button */}
+          <button
+            type="button"
+            onClick={() => setShowScriptText(true)}
+            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)]"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+            </svg>
+            Teleprompter
+          </button>
+
+          {/* Save Script */}
+          <button
+            type="button"
+            onClick={() => handleSave()}
+            disabled={isSaving}
+            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-1.5 text-xs font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isSaving ? 'Saving...' : 'Save Script'}
+          </button>
         </div>
       </div>
 
@@ -998,90 +1055,71 @@ export default function ScriptEditor({
         </div>
       )}
 
-      {/* Actions */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Save as Draft */}
-          <button
-            type="button"
-            onClick={() => handleSave('draft')}
-            disabled={isSaving}
-            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {isSaving ? (
-              <>
-                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Saving...
-              </>
-            ) : (
-              'Save as Draft'
-            )}
-          </button>
+      {/* Secondary actions row */}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        {/* Regenerate */}
+        <button
+          type="button"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+          className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {isRegenerating ? (
+            <>
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Regenerating...
+            </>
+          ) : (
+            <>
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+              </svg>
+              Regenerate
+            </>
+          )}
+        </button>
 
-          {/* Save as Ready to Film */}
-          <button
-            type="button"
-            onClick={() => handleSave('approved')}
-            disabled={isSaving}
-            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Save as Ready to Film
-          </button>
+        <button
+          type="button"
+          onClick={() => setShowFeedback(!showFeedback)}
+          className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)]"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+          </svg>
+          Feedback ({script.feedback.length})
+        </button>
 
-          {/* Regenerate */}
-          <button
-            type="button"
-            onClick={onRegenerate}
-            disabled={isRegenerating}
-            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {isRegenerating ? (
-              <>
-                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Regenerating...
-              </>
-            ) : (
-              <>
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
-                </svg>
-                Regenerate
-              </>
-            )}
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setShowFeedback(!showFeedback)}
-            className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)]"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-            </svg>
-            Feedback ({script.feedback.length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowRevertConfirm(true)}
-            disabled={isReverting}
-            className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-            </svg>
-            {isReverting ? 'Reverting...' : 'Revert to idea'}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowRevertConfirm(true)}
+          disabled={isReverting}
+          className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+          </svg>
+          {isReverting ? 'Reverting...' : 'Revert to idea'}
+        </button>
       </div>
+
+      {/* Mark as Ready to Film CTA */}
+      {status !== 'approved' && status !== 'filming' && status !== 'completed' && status !== 'published' && (
+        <button
+          type="button"
+          onClick={() => handleSave('approved')}
+          disabled={isSaving}
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] bg-[var(--color-accent)] py-3.5 text-sm font-semibold text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+          {isSaving ? 'Saving...' : 'Mark as Ready to Film'}
+        </button>
+      )}
 
       {/* Revert confirmation */}
       {showRevertConfirm && (
@@ -1347,10 +1385,121 @@ export default function ScriptEditor({
                   </>
                 )}
               </button>
+
+              {/* Revert to idea stage link */}
+              <button
+                type="button"
+                onClick={() => setShowRevertConfirm(true)}
+                disabled={isReverting}
+                className="inline-flex w-full items-center justify-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                </svg>
+                {isReverting ? 'Reverting...' : 'Revert to idea stage'}
+              </button>
+            </div>
+
+            {/* Notes section */}
+            <div className="mt-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
+              <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">Notes</h3>
+              <textarea
+                data-transparent
+                value={notes}
+                onChange={(e) => { setNotes(e.target.value); markChanged(); }}
+                placeholder="Jot down any ideas, reminders, or things to research before filming..."
+                className="min-h-[100px] w-full resize-y border-none bg-transparent text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+              />
             </div>
           </div>
         </div>
       </div>{/* end flex layout */}
+
+      {/* Script Text slide-in panel */}
+      {showScriptText && (
+        <ModalPortal>
+        <div className="fixed inset-0 z-[9998] flex justify-end">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowScriptText(false)}
+          />
+          {/* Panel */}
+          <div
+            className="relative z-10 flex h-full w-full max-w-lg flex-col bg-[var(--color-bg-primary)] shadow-2xl animate-fadeIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Panel header */}
+            <div className="flex items-start justify-between border-b border-[var(--color-border)] px-6 py-5">
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Script Text</h2>
+                <p className="mt-1 text-sm text-[var(--color-text-muted)]">Clean script to copy into any teleprompter app</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowScriptText(false)}
+                className="rounded-[var(--radius-md)] p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)]"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Panel content */}
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              {cleanScriptText.map((block, i) => (
+                <div key={i} className={i > 0 ? 'mt-6' : ''}>
+                  {block.title && (
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                      {block.title}
+                    </h3>
+                  )}
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--color-text-primary)]">
+                    {block.content}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Panel footer */}
+            <div className="border-t border-[var(--color-border)] px-6 py-4 space-y-3">
+              <button
+                type="button"
+                onClick={() => { setShowScriptText(false); setViewMode('teleprompter'); }}
+                className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] bg-[var(--color-accent)] py-3 text-sm font-semibold text-[var(--color-bg-dark)] transition-colors hover:bg-[var(--color-accent-hover)]"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+                </svg>
+                Enter Teleprompter Mode
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyScriptText}
+                className="flex w-full items-center justify-center gap-1.5 text-sm font-medium text-[var(--color-accent)] transition-colors hover:text-[var(--color-accent-hover)]"
+              >
+                {scriptTextCopied ? (
+                  <>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9.75a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+                    </svg>
+                    Copy script text
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+        </ModalPortal>
+      )}
     </div>
   );
 }

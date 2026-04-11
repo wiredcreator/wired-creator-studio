@@ -96,6 +96,7 @@ export async function PUT(
     if (body.thumbnail !== undefined) script.thumbnail = body.thumbnail;
     if (body.sections !== undefined) script.sections = body.sections;
     if (body.platforms !== undefined) script.platforms = body.platforms;
+    if (body.notes !== undefined) script.notes = body.notes;
 
     // Add feedback if provided
     if (body.feedback) {
