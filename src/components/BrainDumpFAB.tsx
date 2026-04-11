@@ -552,7 +552,7 @@ export default function BrainDumpFAB() {
                 readOnly
                 value={voiceTranscript}
                 rows={4}
-                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] resize-none outline-none ring-0 max-h-40 overflow-y-auto"
+                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] resize-none outline-none ring-0 max-h-40 overflow-y-auto"
               />
 
               {/* Error */}
@@ -596,7 +596,7 @@ export default function BrainDumpFAB() {
                 placeholder="What's on your mind? Just start typing..."
                 rows={5}
                 autoFocus
-                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
+                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
               />
 
               {/* Error */}
@@ -680,7 +680,7 @@ export default function BrainDumpFAB() {
                       value={uploadText}
                       onChange={(e) => setUploadText(e.target.value)}
                       rows={5}
-                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
+                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
                     />
                   )}
                 </>

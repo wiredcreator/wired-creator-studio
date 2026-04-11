@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import ModalPortal from "@/components/ModalPortal";
 
 interface BugReportModalProps {
   isOpen: boolean;
@@ -94,6 +95,7 @@ export default function BugReportModal({ isOpen, onClose }: BugReportModalProps)
   if (!isOpen) return null;
 
   return (
+    <ModalPortal>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       onClick={handleBackdropClick}
@@ -156,7 +158,7 @@ export default function BugReportModal({ isOpen, onClose }: BugReportModalProps)
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Brief summary of the issue"
                 maxLength={200}
-                className="w-full px-3 py-2 text-[13px] rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none ring-0 focus:border-[var(--color-accent)] transition-colors"
+                className="w-full px-3 py-2 text-[13px] rounded-[var(--radius-md)] bg-white border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none ring-0 focus:border-[var(--color-accent)] transition-colors"
               />
             </div>
 
@@ -171,7 +173,7 @@ export default function BugReportModal({ isOpen, onClose }: BugReportModalProps)
                 placeholder="What happened? What did you expect to happen?"
                 maxLength={2000}
                 rows={4}
-                className="w-full px-3 py-2 text-[13px] rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none ring-0 focus:border-[var(--color-accent)] transition-colors resize-none"
+                className="w-full px-3 py-2 text-[13px] rounded-[var(--radius-md)] bg-white border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none ring-0 focus:border-[var(--color-accent)] transition-colors resize-none"
               />
             </div>
 
@@ -185,7 +187,7 @@ export default function BugReportModal({ isOpen, onClose }: BugReportModalProps)
                 value={pageUrl}
                 onChange={(e) => setPageUrl(e.target.value)}
                 placeholder="/dashboard/ideas"
-                className="w-full px-3 py-2 text-[13px] rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none ring-0 focus:border-[var(--color-accent)] transition-colors"
+                className="w-full px-3 py-2 text-[13px] rounded-[var(--radius-md)] bg-white border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none ring-0 focus:border-[var(--color-accent)] transition-colors"
               />
             </div>
 
@@ -239,5 +241,6 @@ export default function BugReportModal({ isOpen, onClose }: BugReportModalProps)
         )}
       </div>
     </div>
+    </ModalPortal>
   );
 }

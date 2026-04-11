@@ -431,7 +431,7 @@ export default function ScriptsPage() {
                   <select
                     value={selectedIdeaId}
                     onChange={(e) => setSelectedIdeaId(e.target.value)}
-                    className="w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
+                    className="w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
                   >
                     <option value="">Choose an approved idea...</option>
                     {ideas.map((idea) => (
@@ -457,7 +457,7 @@ export default function ScriptsPage() {
                   <select
                     value={selectedTranscriptId}
                     onChange={(e) => setSelectedTranscriptId(e.target.value)}
-                    className="w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
+                    className="w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
                   >
                     <option value="">No transcript</option>
                     {transcripts.map((t) => (

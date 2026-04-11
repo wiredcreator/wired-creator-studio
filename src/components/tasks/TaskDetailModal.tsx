@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { TaskComment, TaskData } from "./TaskCard";
+import ModalPortal from "@/components/ModalPortal";
 
 interface TaskDetailModalProps {
   task: TaskData;
@@ -281,6 +282,7 @@ export default function TaskDetailModal({
   };
 
   return (
+    <ModalPortal>
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
@@ -611,5 +613,6 @@ export default function TaskDetailModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

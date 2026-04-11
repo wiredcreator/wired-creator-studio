@@ -437,7 +437,7 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
                 value={response}
                 onChange={(e) => setResponse(e.target.value)}
                 placeholder="Write your response here... Take your time, there's no rush."
-                className="min-h-[120px] w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                className="min-h-[120px] w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white p-3 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
               />
             </div>
           )}

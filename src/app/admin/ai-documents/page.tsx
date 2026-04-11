@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/PageWrapper";
+import ModalPortal from "@/components/ModalPortal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -124,7 +125,7 @@ function DocumentModal({
 }: ModalProps) {
   const isCreate = editing === null;
   const inputClass =
-    "w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] ring-0";
+    "w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] ring-0";
   const labelClass = "mb-1 block text-xs font-medium text-[var(--color-text-muted)]";
 
   const [gdocUrl, setGdocUrl] = useState("");
@@ -190,6 +191,7 @@ function DocumentModal({
   }
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
@@ -284,7 +286,7 @@ function DocumentModal({
                     setGdocError(null);
                   }}
                   placeholder="Paste a Google Doc URL..."
-                  className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] ring-0"
+                  className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] ring-0"
                 />
                 <button
                   onClick={handleGdocFetch}
@@ -359,6 +361,7 @@ function DocumentModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import PageWrapper from "@/components/PageWrapper";
+import ModalPortal from "@/components/ModalPortal";
 
 interface StudentWithStats {
   _id: string;
@@ -199,8 +200,9 @@ export default function AdminStudentsPage() {
 
         {/* Add Student Modal */}
         {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 shadow-lg">
+          <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowAddModal(false)}>
+            <div className="w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
               <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
                 Add Student
               </h2>
@@ -219,7 +221,7 @@ export default function AdminStudentsPage() {
                     value={addEmail}
                     onChange={(e) => setAddEmail(e.target.value)}
                     placeholder="student@example.com"
-                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
                   />
                 </div>
 
@@ -232,7 +234,7 @@ export default function AdminStudentsPage() {
                     value={addName}
                     onChange={(e) => setAddName(e.target.value)}
                     placeholder="Jane Doe"
-                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
                   />
                 </div>
 
@@ -262,6 +264,7 @@ export default function AdminStudentsPage() {
               </form>
             </div>
           </div>
+          </ModalPortal>
         )}
 
         {/* Student list */}

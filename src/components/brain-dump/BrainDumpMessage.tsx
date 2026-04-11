@@ -278,7 +278,7 @@ export default function BrainDumpMessage({
                           type="text"
                           value={theme}
                           onChange={(e) => updateTheme(i, e.target.value)}
-                          className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-[var(--radius-full)] px-3 py-1 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
+                          className="bg-white border border-[var(--color-border)] rounded-[var(--radius-full)] px-3 py-1 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
                           style={{ width: `${Math.max(theme.length + 2, 8)}ch` }}
                         />
                       ) : (

@@ -98,6 +98,7 @@ input::placeholder {
   opacity: 1;
 }
 
+
 /* ── Base Styles ── */
 
 * {
@@ -122,14 +123,20 @@ summary {
   cursor: pointer;
 }
 
-body {
+html, body {
   background: var(--color-bg);
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+body {
   color: var(--color-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.01em;
-  isolation: isolate;
 }
 
 /* Clean heading style */
@@ -274,4 +281,22 @@ body::before {
 }
 .idea-action-btn:active {
   transform: scale(0.95);
+}
+
+/* ── Force white backgrounds on all form fields ──
+   Uses @layer utilities so it participates at the same cascade level as
+   Tailwind utility classes. The element+:not() selector specificity is
+   higher than a single-class utility, so this always wins. */
+@layer utilities {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="color"]):not([type="hidden"]),
+  textarea,
+  select {
+    background-color: #FFFFFF !important;
+  }
+
+  [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="color"]):not([type="hidden"]),
+  [data-theme="dark"] textarea,
+  [data-theme="dark"] select {
+    background-color: var(--color-bg-card) !important;
+  }
 }

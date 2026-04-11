@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { ContentIdeaStatus, ContentIdeaSource } from '@/models/ContentIdea';
 import type { IdeaCardData } from './IdeaCard';
+import ModalPortal from '@/components/ModalPortal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -86,7 +87,8 @@ export default function IdeaDetail({
     : '';
 
   return (
-    /* Backdrop */
+    <ModalPortal>
+    {/* Backdrop */}
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm" onClick={onClose}>
       {/* Panel */}
       <div className="idea-detail-enter relative w-full max-w-lg rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-[var(--shadow-lg)]" onClick={(e) => e.stopPropagation()}>
@@ -283,5 +285,6 @@ export default function IdeaDetail({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

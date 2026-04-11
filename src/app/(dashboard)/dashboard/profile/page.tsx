@@ -490,7 +490,7 @@ function ProfileTab({
               type="text"
               value={firstName}
               onChange={(e) => onFirstNameChange(e.target.value)}
-              className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
+              className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
               placeholder="First name"
             />
           </div>
@@ -503,7 +503,7 @@ function ProfileTab({
               type="text"
               value={lastName}
               onChange={(e) => onLastNameChange(e.target.value)}
-              className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
+              className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
               placeholder="Last name"
             />
           </div>
@@ -536,7 +536,7 @@ function ProfileTab({
               value={background}
               onChange={(e) => onBackgroundChange(e.target.value)}
               rows={3}
-              className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
+              className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
               placeholder="A bit about you and your creator journey..."
             />
           </div>
@@ -550,7 +550,7 @@ function ProfileTab({
               value={neurodivergentProfile}
               onChange={(e) => onNeurodivergentProfileChange(e.target.value)}
               rows={3}
-              className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
+              className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
               placeholder="e.g., I focus best in short bursts, visual cues help me stay on track..."
             />
           </div>
@@ -564,7 +564,7 @@ function ProfileTab({
               value={contentGoals}
               onChange={(e) => onContentGoalsChange(e.target.value)}
               rows={3}
-              className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
+              className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
               placeholder="e.g., Post 3x a week on YouTube, grow to 10k subscribers..."
             />
           </div>
@@ -577,7 +577,7 @@ function ProfileTab({
               id="timezone"
               value={timezone}
               onChange={(e) => onTimezoneChange(e.target.value)}
-              className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
+              className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
             >
               {TIMEZONES.map((tz) => (
                 <option key={tz.value} value={tz.value}>{tz.label}</option>
@@ -676,7 +676,7 @@ function BillingTab() {
               <input
                 id="billingFirstName"
                 type="text"
-                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
+                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
                 placeholder="First name"
               />
             </div>
@@ -687,7 +687,7 @@ function BillingTab() {
               <input
                 id="billingLastName"
                 type="text"
-                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
+                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
                 placeholder="Last name"
               />
             </div>
@@ -700,7 +700,7 @@ function BillingTab() {
             <input
               id="cardNumber"
               type="text"
-              className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
+              className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
               placeholder="1234 5678 9012 3456"
             />
           </div>
@@ -713,7 +713,7 @@ function BillingTab() {
               <input
                 id="expDate"
                 type="text"
-                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
+                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
                 placeholder="MM/YY"
               />
             </div>
@@ -724,7 +724,7 @@ function BillingTab() {
               <input
                 id="cvv"
                 type="text"
-                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
+                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
                 placeholder="123"
               />
             </div>
@@ -878,7 +878,7 @@ function AiPreferencesTab({
                 type="text"
                 value={aiDocForm.title}
                 onChange={(e) => onFormChange('title', e.target.value)}
-                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
+                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
                 placeholder="e.g. Avoid these topics"
               />
             </div>
@@ -887,7 +887,7 @@ function AiPreferencesTab({
               <select
                 value={aiDocForm.category}
                 onChange={(e) => onFormChange('category', e.target.value)}
-                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
+                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
               >
                 <option value="">Select a category</option>
                 {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
@@ -901,7 +901,7 @@ function AiPreferencesTab({
                 value={aiDocForm.content}
                 onChange={(e) => onFormChange('content', e.target.value)}
                 rows={5}
-                className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
+                className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
                 placeholder="Add any preferences for how your content should be generated, e.g. language, style, topics to avoid..."
               />
             </div>
@@ -969,7 +969,7 @@ function AiPreferencesTab({
                       type="text"
                       value={aiDocForm.title}
                       onChange={(e) => onFormChange('title', e.target.value)}
-                      className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
+                      className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
                     />
                   </div>
                   <div>
@@ -987,7 +987,7 @@ function AiPreferencesTab({
                       value={aiDocForm.content}
                       onChange={(e) => onFormChange('content', e.target.value)}
                       rows={5}
-                      className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
+                      className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
                       placeholder="Add any preferences for how your content should be generated, e.g. language, style, topics to avoid..."
                     />
                   </div>

@@ -263,7 +263,7 @@ export default function VoiceTextarea({
           rows={rows}
           className="w-full px-4 py-3 pr-12 text-base border transition-colors duration-200 resize-none outline-none ring-0"
           style={{
-            backgroundColor: 'var(--color-bg-primary)',
+            backgroundColor: '#FFFFFF',
             borderColor: 'var(--color-border)',
             color: 'var(--color-text-primary)',
             borderRadius: 'var(--radius-md)',

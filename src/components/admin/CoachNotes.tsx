@@ -326,7 +326,7 @@ export default function CoachNotes({ studentId }: { studentId: string }) {
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
                         rows={3}
-                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 resize-none"
+                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 resize-none"
                       />
                       <div className="flex justify-end gap-2">
                         <button

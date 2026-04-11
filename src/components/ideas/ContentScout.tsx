@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ModalPortal from '@/components/ModalPortal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -261,6 +262,7 @@ function VideoDetailModal({
   }, [onClose]);
 
   return (
+    <ModalPortal>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0,0,0,0.6)' }}
@@ -378,6 +380,7 @@ function VideoDetailModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

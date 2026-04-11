@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/PageWrapper";
+import ModalPortal from "@/components/ModalPortal";
 
 interface TeamMember {
   _id: string;
@@ -184,8 +185,9 @@ export default function TeamPage() {
 
         {/* Add team member modal */}
         {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="mx-4 w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 shadow-[var(--shadow-lg)]">
+          <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowAddModal(false)}>
+            <div className="mx-4 w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 shadow-[var(--shadow-lg)]" onClick={(e) => e.stopPropagation()}>
               <h3 className="mb-1 text-lg font-semibold text-[var(--color-text-primary)]">
                 Add Team Member
               </h3>
@@ -203,7 +205,7 @@ export default function TeamPage() {
                     value={addEmail}
                     onChange={(e) => setAddEmail(e.target.value)}
                     placeholder="user@example.com"
-                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
                     onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                   />
                 </div>
@@ -230,6 +232,7 @@ export default function TeamPage() {
               </div>
             </div>
           </div>
+          </ModalPortal>
         )}
       </div>
     </PageWrapper>
