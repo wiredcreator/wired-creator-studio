@@ -230,6 +230,7 @@ export default function ScriptsPage() {
     sections?: ScriptSection[];
     status?: ScriptStatus;
     thumbnail?: string;
+    platforms?: string[];
   }) => {
     if (!editingScript) return;
 

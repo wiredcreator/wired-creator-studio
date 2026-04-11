@@ -15,6 +15,7 @@ interface DraftSidebarProps {
   onMarkChanged: () => void;
   onSwapTitle?: (altTitle: string) => void;
   onRegenerateTitles?: () => void;
+  isRegeneratingTitles?: boolean;
   onAddComment?: (text: string) => void;
 }
 
@@ -85,9 +86,10 @@ export default function DraftSidebar({
   onMarkChanged,
   onSwapTitle,
   onRegenerateTitles,
+  isRegeneratingTitles,
   onAddComment,
 }: DraftSidebarProps) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ cta: true });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ cta: true, 'alt-titles': true });
   const [tagInput, setTagInput] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
   const [noteInput, setNoteInput] = useState('');
@@ -146,12 +148,46 @@ export default function DraftSidebar({
 
   return (
     <div className="space-y-3">
-      {PANELS.map((panel) => (
+      {PANELS.map((panel) => {
+        const alwaysOpen = panel.id === 'cta' || panel.id === 'alt-titles';
+        const isOpen = alwaysOpen || expanded[panel.id];
+        return (
         <div
           key={panel.id}
           className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden"
         >
           {/* Panel header */}
+          {alwaysOpen ? (
+            <div className="flex w-full items-center px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="flex-shrink-0">
+                  {panel.icon}
+                </span>
+                <span className="text-sm font-medium text-[var(--color-text)]">
+                  {panel.label}
+                </span>
+              </div>
+              {panel.id === 'alt-titles' && onRegenerateTitles && (
+                <button
+                  onClick={onRegenerateTitles}
+                  disabled={isRegeneratingTitles}
+                  className="ml-auto flex items-center gap-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors disabled:opacity-50"
+                >
+                  {isRegeneratingTitles ? (
+                    <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M2.985 19.644l3.181-3.182" />
+                    </svg>
+                  )}
+                  {isRegeneratingTitles ? 'Generating...' : 'Regenerate'}
+                </button>
+              )}
+            </div>
+          ) : (
           <button
             onClick={() => togglePanel(panel.id)}
             className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-[var(--color-hover)]"
@@ -192,9 +228,10 @@ export default function DraftSidebar({
               </svg>
             </div>
           </button>
+          )}
 
           {/* Panel content */}
-          {expanded[panel.id] && (
+          {isOpen && (
             <div className="border-t border-[var(--color-border)] px-4 py-3">
               {panel.id === 'cta' && (
                 <div className="space-y-2">
@@ -256,17 +293,6 @@ export default function DraftSidebar({
 
               {panel.id === 'alt-titles' && (
                 <div className="space-y-2">
-                  {onRegenerateTitles && (
-                    <button
-                      onClick={onRegenerateTitles}
-                      className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors mb-1"
-                    >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M2.985 19.644l3.181-3.182" />
-                      </svg>
-                      Regenerate
-                    </button>
-                  )}
                   {alternativeTitles.length === 0 ? (
                     <p className="text-xs text-[var(--color-text-muted)]">No alternative titles yet.</p>
                   ) : (
@@ -386,7 +412,8 @@ export default function DraftSidebar({
             </div>
           )}
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 }

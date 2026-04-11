@@ -283,19 +283,21 @@ body::before {
   transform: scale(0.95);
 }
 
-/* ── Force white backgrounds on all form fields ──
+/* ── Force white backgrounds on form fields that accept user text ──
+   Excludes inputs/textareas with data-transparent (inline title fields,
+   section name inputs, etc.) since those are intentionally transparent.
    Uses @layer utilities so it participates at the same cascade level as
    Tailwind utility classes. The element+:not() selector specificity is
    higher than a single-class utility, so this always wins. */
 @layer utilities {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="color"]):not([type="hidden"]),
-  textarea,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="color"]):not([type="hidden"]):not([data-transparent]),
+  textarea:not([data-transparent]),
   select {
     background-color: #FFFFFF !important;
   }
 
-  [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="color"]):not([type="hidden"]),
-  [data-theme="dark"] textarea,
+  [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="color"]):not([type="hidden"]):not([data-transparent]),
+  [data-theme="dark"] textarea:not([data-transparent]),
   [data-theme="dark"] select {
     background-color: var(--color-bg-card) !important;
   }

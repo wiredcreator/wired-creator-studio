@@ -403,6 +403,7 @@ export default function IdeaParkingLotPage() {
       {/* Idea title as page heading (editable) */}
       <input
         type="text"
+        data-transparent
         value={title}
         onChange={(e) => { setTitle(e.target.value); markChanged(); }}
         onBlur={() => { if (title !== idea.title) saveIdea({ title }); }}
@@ -560,6 +561,7 @@ export default function IdeaParkingLotPage() {
             onMarkChanged={markChanged}
             onSwapTitle={handleSwapTitle}
             onRegenerateTitles={handleGenerateTitles}
+            isRegeneratingTitles={isGeneratingTitles}
             onAddComment={async (text) => {
               try {
                 const res = await fetch(`/api/ideas/${ideaId}`, {
@@ -637,13 +639,14 @@ function ConceptStep({
                 {q.placeholder}
               </p>
               <textarea
+                data-transparent
                 value={conceptAnswers[q.key]}
                 onChange={(e) => {
                   setConceptAnswers({ ...conceptAnswers, [q.key]: e.target.value });
                   onMarkChanged();
                 }}
                 rows={4}
-                className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
               />
             </div>
           ))}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 export interface TaskComment {
   _id: string;
   userId: { _id: string; name: string; email: string } | string;
@@ -52,11 +54,40 @@ function isOverdue(dateString: string): boolean {
 export default function TaskCard({ task, onStatusChange, onClick }: TaskCardProps) {
   const isCompleted = task.status === "completed";
   const overdue = !isCompleted && isOverdue(task.dueDate);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const confirmRef = useRef<HTMLDivElement>(null);
+
+  // Close confirmation on outside click
+  useEffect(() => {
+    if (!showConfirm) return;
+    const handleClick = (e: MouseEvent) => {
+      if (confirmRef.current && !confirmRef.current.contains(e.target as Node)) {
+        setShowConfirm(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showConfirm]);
 
   const handleToggleComplete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const newStatus = isCompleted ? "pending" : "completed";
-    onStatusChange(task._id, newStatus);
+    if (isCompleted) {
+      // Uncompleting doesn't need confirmation
+      onStatusChange(task._id, "pending");
+    } else {
+      setShowConfirm(true);
+    }
+  };
+
+  const handleConfirmComplete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowConfirm(false);
+    onStatusChange(task._id, "completed");
+  };
+
+  const handleCancelConfirm = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowConfirm(false);
   };
 
   const isFlagged = !!task.stuckAt;
@@ -104,32 +135,61 @@ export default function TaskCard({ task, onStatusChange, onClick }: TaskCardProp
           )}
         </div>
 
-        {/* Circle checkbox */}
-        <button
-          onClick={handleToggleComplete}
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ${
-            isCompleted
-              ? "border-[var(--color-success)] bg-[var(--color-success)] text-white"
-              : "border-[var(--color-border)] hover:border-[var(--color-accent)]"
-          }`}
-          aria-label={isCompleted ? "Mark as incomplete" : "Mark as complete"}
-        >
-          {isCompleted && (
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={3}
-              stroke="currentColor"
+        {/* Circle checkbox with confirmation */}
+        <div className="relative shrink-0">
+          <button
+            onClick={handleToggleComplete}
+            className={`flex h-7 w-7 items-center justify-center rounded-full border-2 transition-all duration-200 ${
+              isCompleted
+                ? "border-[var(--color-success)] bg-[var(--color-success)] text-white"
+                : "border-[var(--color-border)] hover:border-[var(--color-accent)]"
+            }`}
+            aria-label={isCompleted ? "Mark as incomplete" : "Mark as complete"}
+          >
+            {isCompleted && (
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={3}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m4.5 12.75 6 6 9-13.5"
+                />
+              </svg>
+            )}
+          </button>
+
+          {/* Confirmation popover */}
+          {showConfirm && (
+            <div
+              ref={confirmRef}
+              className="absolute right-0 top-full z-10 mt-2 w-48 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-3 shadow-lg"
+              onClick={(e) => e.stopPropagation()}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m4.5 12.75 6 6 9-13.5"
-              />
-            </svg>
+              <p className="mb-2 text-xs font-medium text-[var(--color-text-primary)]">
+                Mark as complete?
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleConfirmComplete}
+                  className="flex-1 rounded-[var(--radius-sm)] bg-[var(--color-success)] px-2 py-1.5 text-xs font-medium text-white transition-colors hover:brightness-110 outline-none ring-0"
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={handleCancelConfirm}
+                  className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] px-2 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] outline-none ring-0"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
-        </button>
+        </div>
       </div>
 
       {/* Task title */}

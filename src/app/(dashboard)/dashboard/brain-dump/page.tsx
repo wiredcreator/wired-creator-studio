@@ -968,7 +968,7 @@ export default function BrainDumpPage() {
 
       {/* Previously saved sessions */}
       <div className="px-6 sm:px-10 pb-10 flex-1">
-        <div className="max-w-4xl">
+        <div className="max-w-6xl">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
               Previously saved sessions
@@ -1053,7 +1053,7 @@ export default function BrainDumpPage() {
           )}
 
           {!isLoadingSessions && filteredSessions.length > 0 && (
-            <div className={listMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'flex flex-col gap-3'}>
+            <div className={listMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4' : 'flex flex-col gap-3'}>
               {filteredSessions.map((session) => {
                 const date = new Date(session.callDate || session.createdAt);
                 const formattedDate = date.toLocaleDateString('en-US', {

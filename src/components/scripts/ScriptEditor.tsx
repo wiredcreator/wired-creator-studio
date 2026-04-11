@@ -29,6 +29,7 @@ export interface ScriptEditorData {
   bulletPoints: string[];
   teleprompterVersion: string;
   sections?: ScriptSection[];
+  platforms?: string[];
   thumbnail?: string;
   status: ScriptStatus;
   feedback: ScriptFeedbackItem[];
@@ -52,6 +53,7 @@ interface ScriptEditorProps {
     sections?: ScriptSection[];
     status?: ScriptStatus;
     thumbnail?: string;
+    platforms?: string[];
   }) => void;
   onRegenerate: () => void;
   onAddFeedback: (text: string) => void;
@@ -112,6 +114,22 @@ function formatDate(dateString: string): string {
 
 const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024; // 2MB
 
+// Section color mapping — matches the walkthrough prototype
+const SECTION_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  hook: { bg: 'rgba(239, 68, 68, 0.1)', text: '#ef4444', border: '#ef4444' },
+  introduction: { bg: 'rgba(20, 184, 166, 0.1)', text: '#14b8a6', border: '#14b8a6' },
+  intro: { bg: 'rgba(20, 184, 166, 0.1)', text: '#14b8a6', border: '#14b8a6' },
+  'main content': { bg: 'rgba(59, 130, 246, 0.1)', text: '#3b82f6', border: '#3b82f6' },
+  'call to action': { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7', border: '#a855f7' },
+  cta: { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7', border: '#a855f7' },
+  conclusion: { bg: 'rgba(245, 158, 11, 0.1)', text: '#f59e0b', border: '#f59e0b' },
+};
+
+function getSectionColor(title: string) {
+  const key = title.trim().toLowerCase();
+  return SECTION_COLORS[key] || { bg: 'rgba(107, 114, 128, 0.1)', text: '#6b7280', border: '#6b7280' };
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -150,6 +168,7 @@ export default function ScriptEditor({
   const [showInfoSidebar, setShowInfoSidebar] = useState(true);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [duplicateSuccess, setDuplicateSuccess] = useState(false);
+  const [platforms, setPlatforms] = useState<string[]>(script.platforms || []);
 
   // Teleprompter state
   const [teleprompterSlide, setTeleprompterSlide] = useState(0);
@@ -161,6 +180,15 @@ export default function ScriptEditor({
     if (!hasChanges) setHasChanges(true);
   };
 
+  const PLATFORM_OPTIONS = ['YouTube', 'Instagram', 'TikTok', 'Podcast', 'LinkedIn'] as const;
+
+  const togglePlatform = (platform: string) => {
+    setPlatforms((prev) =>
+      prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform]
+    );
+    markChanged();
+  };
+
   const buildUpdates = useCallback((overrideStatus?: ScriptStatus) => ({
     title,
     fullScript,
@@ -169,7 +197,8 @@ export default function ScriptEditor({
     sections,
     status: overrideStatus || status,
     thumbnail,
-  }), [title, fullScript, bulletPoints, teleprompterVersion, sections, status, thumbnail]);
+    platforms,
+  }), [title, fullScript, bulletPoints, teleprompterVersion, sections, status, thumbnail, platforms]);
 
   const handleSave = (overrideStatus?: ScriptStatus) => {
     if (overrideStatus) setStatus(overrideStatus);
@@ -446,6 +475,7 @@ export default function ScriptEditor({
             type="text"
             value={title}
             onChange={(e) => { setTitle(e.target.value); markChanged(); }}
+            data-transparent
             className="w-full border-none bg-transparent text-xl font-semibold text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
             placeholder="Script title..."
           />
@@ -482,50 +512,6 @@ export default function ScriptEditor({
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Main content */}
         <div className="flex-1 min-w-0">
-
-      {/* Thumbnail upload section */}
-      <div className="mb-5">
-        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">
-          Thumbnail
-        </label>
-        {thumbnail ? (
-          <div className="relative inline-block rounded-[var(--radius-lg)] border border-[var(--color-border)] overflow-hidden">
-            <img
-              src={thumbnail}
-              alt="Script thumbnail"
-              className="block max-h-48 w-auto object-contain"
-            />
-            <button
-              type="button"
-              onClick={handleRemoveThumbnail}
-              className="absolute top-2 right-2 rounded-[var(--radius-md)] bg-[var(--color-bg-card)] p-1.5 text-[var(--color-text-muted)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--color-error-light)] hover:text-[var(--color-error)]"
-              title="Remove thumbnail"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] px-5 py-4 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
-            </svg>
-            Upload thumbnail
-          </button>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleThumbnailUpload}
-          className="hidden"
-        />
-      </div>
 
       {/* View mode tabs */}
       <div className="mb-4 flex gap-1 rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] p-1">
@@ -571,6 +557,7 @@ export default function ScriptEditor({
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)]">
         {viewMode === 'full' && (
           <textarea
+            data-transparent
             value={fullScript}
             onChange={(e) => { setFullScript(e.target.value); markChanged(); }}
             className="min-h-[400px] w-full resize-y rounded-[var(--radius-lg)] border-none bg-transparent p-6 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
@@ -603,7 +590,14 @@ export default function ScriptEditor({
                 }`}
               >
                 {/* Section header */}
-                <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-4 py-2.5">
+                {(() => {
+                  const sectionColor = getSectionColor(section.title);
+                  const sectionWordCount = countWords(section.content);
+                  return (
+                <div
+                  className="flex items-center gap-2 px-4 py-2.5"
+                  style={{ borderBottom: `2px solid ${sectionColor.border}` }}
+                >
                   {/* Drag handle */}
                   <button
                     type="button"
@@ -620,17 +614,14 @@ export default function ScriptEditor({
                     </svg>
                   </button>
 
-                  {/* Section number */}
-                  <span className="shrink-0 rounded-[var(--radius-full)] bg-[var(--color-bg-secondary)] px-2 py-0.5 text-xs font-medium text-white">
-                    {index + 1}
-                  </span>
-
-                  {/* Title input */}
+                  {/* Title input with colored text */}
                   <input
                     type="text"
+                    data-transparent
                     value={section.title}
                     onChange={(e) => handleSectionTitleChange(index, e.target.value)}
-                    className="flex-1 border-none bg-transparent text-sm font-medium text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+                    className="flex-1 border-none bg-transparent text-sm font-semibold outline-none placeholder:text-[var(--color-text-muted)]"
+                    style={{ color: sectionColor.text }}
                     placeholder="Section title..."
                   />
 
@@ -640,6 +631,11 @@ export default function ScriptEditor({
                       AI
                     </span>
                   )}
+
+                  {/* Per-section word count */}
+                  <span className="shrink-0 text-xs text-[var(--color-text-muted)]">
+                    {sectionWordCount} words
+                  </span>
 
                   {/* Remove button */}
                   <button
@@ -653,9 +649,12 @@ export default function ScriptEditor({
                     </svg>
                   </button>
                 </div>
+                  );
+                })()}
 
                 {/* Section content */}
                 <textarea
+                  data-transparent
                   value={section.content}
                   onChange={(e) => handleSectionContentChange(index, e.target.value)}
                   className="min-h-[120px] w-full resize-y border-none bg-transparent px-4 py-3 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
@@ -715,6 +714,7 @@ export default function ScriptEditor({
                 <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-accent)]" />
                 <input
                   type="text"
+                  data-transparent
                   value={bullet}
                   onChange={(e) => handleBulletChange(index, e.target.value)}
                   className="flex-1 rounded-[var(--radius-sm)] border-none bg-transparent py-1.5 text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)] focus:bg-[var(--color-bg-secondary)]"
@@ -1172,8 +1172,75 @@ export default function ScriptEditor({
           </button>
 
           <div className={`${showInfoSidebar ? 'block' : 'hidden lg:block'}`}>
+            {/* Thumbnail */}
+            <div className="mb-4">
+              {thumbnail ? (
+                <div className="relative rounded-[var(--radius-lg)] border border-[var(--color-border)] overflow-hidden">
+                  <img
+                    src={thumbnail}
+                    alt="Script thumbnail"
+                    className="block w-full object-cover"
+                    style={{ aspectRatio: '16/9' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveThumbnail}
+                    className="absolute top-2 right-2 rounded-[var(--radius-md)] bg-[var(--color-bg-card)] p-1.5 text-[var(--color-text-muted)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--color-error-light)] hover:text-[var(--color-error)]"
+                    title="Remove thumbnail"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] py-8 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                >
+                  <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+                  </svg>
+                  <span>Upload thumbnail</span>
+                  <span className="text-xs text-[var(--color-text-muted)]">Drag & drop or click</span>
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleThumbnailUpload}
+                className="hidden"
+              />
+            </div>
+
             <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 space-y-5">
               <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Script Info</h3>
+
+              {/* Platform selector */}
+              <div>
+                <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Platform</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {PLATFORM_OPTIONS.map((p) => {
+                    const active = platforms.includes(p);
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => togglePlatform(p)}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors outline-none ring-0 ${
+                          active
+                            ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)]'
+                            : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               {/* Content Pillar */}
               {script.ideaId && typeof script.ideaId === 'object' && script.ideaId.contentPillar && (
@@ -1185,12 +1252,31 @@ export default function ScriptEditor({
                 </div>
               )}
 
-              {/* Source Idea */}
+              {/* Source */}
               {script.ideaId && typeof script.ideaId === 'object' && (
-                <div>
-                  <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Based On</span>
-                  <p className="text-sm text-[var(--color-accent)]">{script.ideaId.title}</p>
-                </div>
+                <>
+                  <div>
+                    <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Source</span>
+                    <a
+                      href="/dashboard/ideas"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-accent)] transition-colors hover:underline"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                      </svg>
+                      Ideas
+                    </a>
+                  </div>
+                  <div>
+                    <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Original Idea</span>
+                    <a
+                      href={`/dashboard/ideas/${script.ideaId._id}`}
+                      className="text-sm font-medium text-[var(--color-accent)] transition-colors hover:underline"
+                    >
+                      {script.ideaId.title}
+                    </a>
+                  </div>
+                </>
               )}
 
               {/* Word Count */}

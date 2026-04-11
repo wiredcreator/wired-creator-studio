@@ -52,6 +52,7 @@ export interface IScript extends Document {
   bulletPoints: string[];
   teleprompterVersion: string;
   sections: IScriptSection[];
+  platforms: string[];
   voiceStormTranscriptId?: Types.ObjectId;
   thumbnail?: string;
   status: ScriptStatus;
@@ -78,6 +79,7 @@ const ScriptSchema = new Schema<IScript>(
     bulletPoints: [{ type: String }],
     teleprompterVersion: { type: String, default: '' },
     sections: [ScriptSectionSchema],
+    platforms: [{ type: String }],
     voiceStormTranscriptId: {
       type: Schema.Types.ObjectId,
       ref: 'VoiceStormingTranscript',
