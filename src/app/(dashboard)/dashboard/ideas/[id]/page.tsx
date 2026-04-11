@@ -1920,9 +1920,23 @@ function OutlineStep({
 
         <button
           type="button"
-          onClick={onGenerateScript}
-          disabled={isGeneratingScript || !canGenerateScript}
-          className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[#E05A47] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#C94D3C] disabled:bg-[#555] disabled:text-[#999]"
+          onClick={() => {
+            if (!canGenerateScript) {
+              const missing: string[] = [];
+              if (!hasConceptAnswers) missing.push('All 3 concept questions must be filled in');
+              if (!hasEnoughWords) missing.push(`Outline needs at least ${MIN_OUTLINE_WORDS} words (currently ${outlineWordCount})`);
+              if (!hasContent) missing.push('Add some content to your outline first');
+              alert('Before generating a script:\n\n' + missing.map(m => '- ' + m).join('\n'));
+              return;
+            }
+            onGenerateScript();
+          }}
+          disabled={isGeneratingScript}
+          className={`flex items-center gap-2 rounded-[var(--radius-md)] px-6 py-2.5 text-sm font-semibold text-white transition-colors ${
+            canGenerateScript && !isGeneratingScript
+              ? 'bg-[#E05A47] hover:bg-[#C94D3C]'
+              : 'bg-[#555] text-[#999] cursor-not-allowed'
+          }`}
         >
           {isGeneratingScript ? (
             <>
