@@ -23,59 +23,54 @@ export async function POST(req: NextRequest) {
     console.log('[MagicLink] Request for:', normalizedEmail);
     await dbConnect();
 
-    // Check if existing admin (skip Stripe)
+    // Check for existing user
     const existingUser = await User.findOne({ email: normalizedEmail });
     const isAdmin = existingUser?.role === 'admin';
     console.log('[MagicLink] Existing user:', !!existingUser, '| isAdmin:', isAdmin);
 
-    // Check Stripe (skipped for admins)
-    let customerName = '';
-    let customerId = '';
-    let stripeReason = '';
-    if (!isAdmin) {
+    if (existingUser) {
+      // Existing users skip Stripe entirely
+      if (isAdmin) {
+        console.log('[MagicLink] Admin bypass: skipping Stripe check');
+      } else {
+        console.log('[MagicLink] Existing account bypass: skipping Stripe check');
+      }
+
+      // Generate token
+      const plainToken = crypto.randomBytes(32).toString('hex');
+      const hashedToken = crypto.createHash('sha256').update(plainToken).digest('hex');
+      const expires = new Date(Date.now() + 15 * 60 * 1000);
+
+      existingUser.magicLinkToken = hashedToken;
+      existingUser.magicLinkExpires = expires;
+      await existingUser.save();
+      console.log('[MagicLink] Token saved for existing user, sending email...');
+      const emailSent = await sendLoginLinkEmail(normalizedEmail, existingUser.name, plainToken);
+      console.log('[MagicLink] Email sent:', emailSent);
+    } else {
+      // New user: check Stripe before creating account
       const stripeResult = await checkPaidCustomer(normalizedEmail);
       console.log('[MagicLink] Stripe check:', { isPaid: stripeResult.isPaid, reason: stripeResult.reason });
       if (!stripeResult.isPaid) {
         console.log('[MagicLink] Rejected: Stripe check failed');
         return NextResponse.json({ message: RESPONSE_MESSAGE });
       }
-      customerName = stripeResult.customerName || '';
-      customerId = stripeResult.customerId || '';
-      stripeReason = stripeResult.reason || '';
-    } else {
-      console.log('[MagicLink] Admin bypass: skipping Stripe check');
-    }
+      const customerName = stripeResult.customerName || '';
+      const customerId = stripeResult.customerId || '';
+      const stripeReason = stripeResult.reason || '';
 
-    // Infer subscription tier from Stripe reason
-    const inferredTier = stripeReason === 'active subscription'
-      ? 'monthly'
-      : (stripeReason === 'one-time payment' || stripeReason === 'successful charge')
-        ? 'full_program'
-        : undefined;
+      // Infer subscription tier from Stripe reason
+      const inferredTier = stripeReason === 'active subscription'
+        ? 'monthly'
+        : (stripeReason === 'one-time payment' || stripeReason === 'successful charge')
+          ? 'full_program'
+          : undefined;
 
-    // Generate token
-    const plainToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(plainToken).digest('hex');
-    const expires = new Date(Date.now() + 15 * 60 * 1000);
+      // Generate token
+      const plainToken = crypto.randomBytes(32).toString('hex');
+      const hashedToken = crypto.createHash('sha256').update(plainToken).digest('hex');
+      const expires = new Date(Date.now() + 15 * 60 * 1000);
 
-    if (existingUser) {
-      existingUser.magicLinkToken = hashedToken;
-      existingUser.magicLinkExpires = expires;
-      if (customerId && !existingUser.stripeCustomerId) {
-        existingUser.stripeCustomerId = customerId;
-      }
-      // Set access fields when Stripe confirms payment
-      if (!isAdmin && inferredTier) {
-        existingUser.accessStatus = 'active';
-        if (existingUser.subscriptionTier === 'none') {
-          existingUser.subscriptionTier = inferredTier;
-        }
-      }
-      await existingUser.save();
-      console.log('[MagicLink] Token saved for existing user, sending email...');
-      const emailSent = await sendLoginLinkEmail(normalizedEmail, existingUser.name, plainToken);
-      console.log('[MagicLink] Email sent:', emailSent);
-    } else {
       // Auto-create new user
       const randomPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
       const newUser = await User.create({

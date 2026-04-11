@@ -1,4 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import Task from '@/models/Task';
@@ -172,6 +174,78 @@ export async function GET() {
     console.error('Error fetching admin students:', error);
     return NextResponse.json(
       { error: 'Failed to fetch students' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/admin/students — Manually add a new student
+export async function POST(request: NextRequest) {
+  try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
+    if (user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    await dbConnect();
+
+    const body = await request.json();
+    const { email, name } = body as { email?: string; name?: string };
+
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return NextResponse.json(
+        { error: 'A valid email is required' },
+        { status: 400 }
+      );
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if user already exists
+    const existing = await User.findOne({ email: normalizedEmail });
+    if (existing) {
+      return NextResponse.json(
+        { error: 'A user with this email already exists' },
+        { status: 409 }
+      );
+    }
+
+    // Create student with random password (magic-link auth, password never used directly)
+    const randomPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
+    const studentName = name?.trim() || normalizedEmail.split('@')[0];
+
+    const newUser = await User.create({
+      email: normalizedEmail,
+      password: randomPassword,
+      name: studentName,
+      role: 'student',
+      subscriptionTier: 'none',
+      accessStatus: 'active',
+      emailVerified: false,
+      onboardingCompleted: false,
+      personalBaselineCompleted: false,
+    });
+
+    return NextResponse.json(
+      {
+        user: {
+          _id: newUser._id,
+          name: newUser.name,
+          email: newUser.email,
+        },
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('Error creating student:', error);
+    return NextResponse.json(
+      { error: 'Failed to create student' },
       { status: 500 }
     );
   }

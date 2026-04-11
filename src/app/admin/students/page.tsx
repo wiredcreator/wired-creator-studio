@@ -64,30 +64,75 @@ export default function AdminStudentsPage() {
     stuckStudents: 0,
   });
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const res = await fetch("/api/admin/students");
-        if (res.ok) {
-          const data = await res.json();
-          setStudents(data.students || []);
-          setStats(data.stats || {
-            activeStudents: 0,
-            tasksDueToday: 0,
-            pendingReviews: 0,
-            stuckStudents: 0,
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching admin data:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
+  // Add Student modal state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addEmail, setAddEmail] = useState("");
+  const [addName, setAddName] = useState("");
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState("");
+  const [addSuccess, setAddSuccess] = useState("");
 
+  async function fetchData() {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/admin/students");
+      if (res.ok) {
+        const data = await res.json();
+        setStudents(data.students || []);
+        setStats(data.stats || {
+          activeStudents: 0,
+          tasksDueToday: 0,
+          pendingReviews: 0,
+          stuckStudents: 0,
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching admin data:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  async function handleAddStudent(e: React.FormEvent) {
+    e.preventDefault();
+    setAddError("");
+    setAddSuccess("");
+    setAddLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: addEmail, name: addName || undefined }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAddError(data.error || "Failed to add student");
+        return;
+      }
+
+      setAddSuccess(`Added ${data.user.name} (${data.user.email})`);
+      setAddEmail("");
+      setAddName("");
+      fetchData();
+
+      // Auto-close after a moment
+      setTimeout(() => {
+        setShowAddModal(false);
+        setAddSuccess("");
+      }, 1500);
+    } catch {
+      setAddError("Something went wrong. Please try again.");
+    } finally {
+      setAddLoading(false);
+    }
+  }
 
   const filteredStudents = searchQuery
     ? students.filter(
@@ -129,8 +174,8 @@ export default function AdminStudentsPage() {
           ))}
         </div>
 
-        {/* Search */}
-        <div>
+        {/* Search + Add Student */}
+        <div className="flex items-center gap-3">
           <input
             type="text"
             value={searchQuery}
@@ -138,7 +183,86 @@ export default function AdminStudentsPage() {
             placeholder="Search students by name or email..."
             className="w-full max-w-md rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
           />
+          <button
+            onClick={() => {
+              setShowAddModal(true);
+              setAddError("");
+              setAddSuccess("");
+              setAddEmail("");
+              setAddName("");
+            }}
+            className="shrink-0 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          >
+            + Add Student
+          </button>
         </div>
+
+        {/* Add Student Modal */}
+        {showAddModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 shadow-lg">
+              <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+                Add Student
+              </h2>
+              <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                Create a new student account. They can log in via magic link.
+              </p>
+
+              <form onSubmit={handleAddStudent} className="mt-5 space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]">
+                    Email <span className="text-[var(--color-error)]">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={addEmail}
+                    onChange={(e) => setAddEmail(e.target.value)}
+                    placeholder="student@example.com"
+                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]">
+                    Name <span className="text-sm font-normal text-[var(--color-text-muted)]">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={addName}
+                    onChange={(e) => setAddName(e.target.value)}
+                    placeholder="Jane Doe"
+                    className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+                  />
+                </div>
+
+                {addError && (
+                  <p className="text-sm text-[var(--color-error)]">{addError}</p>
+                )}
+                {addSuccess && (
+                  <p className="text-sm text-green-400">{addSuccess}</p>
+                )}
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-opacity hover:opacity-80"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={addLoading}
+                    className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                  >
+                    {addLoading ? "Adding..." : "Add Student"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Student list */}
         {loading && (
