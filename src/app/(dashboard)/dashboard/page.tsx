@@ -4,14 +4,13 @@ import { useState, useEffect } from "react";
 import StatCard from "@/components/dashboard/StatCard";
 import XPStreakCard from "@/components/dashboard/XPStreakCard";
 import WeeklyProgress from "@/components/dashboard/WeeklyProgress";
-import ProgressWidget from "@/components/dashboard/ProgressWidget";
 import XPBreakdown from "@/components/dashboard/XPBreakdown";
 
 interface DashboardStats {
   tasks: number;
   ideas: number;
   scripts: number;
-  readyToFilm: number;
+  sideQuests: number;
   userName: string;
 }
 
@@ -43,7 +42,7 @@ export default function DashboardPage() {
         const data = await statsRes.json();
         setStats(data);
       } else {
-        setStats({ tasks: 0, ideas: 0, scripts: 0, readyToFilm: 0, userName: "there" });
+        setStats({ tasks: 0, ideas: 0, scripts: 0, sideQuests: 0, userName: "there" });
       }
 
       if (xpRes?.ok) {
@@ -119,12 +118,13 @@ export default function DashboardPage() {
                 }
               />
               <StatCard
-                label="Ready to Film"
-                value={stats?.readyToFilm ?? 0}
-                href="/dashboard/scripts"
+                label="Side Quests"
+                value={stats?.sideQuests ?? 0}
+                href="/dashboard/side-quests"
                 icon={
                   <svg className="h-4 w-4 text-[var(--color-text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" />
                   </svg>
                 }
               />
@@ -144,11 +144,6 @@ export default function DashboardPage() {
               bestStreak={xp.bestStreak}
             />
           </div>
-        </div>
-
-        {/* Activity Overview (weekly/monthly progress) */}
-        <div className="mb-6">
-          <ProgressWidget />
         </div>
 
         {/* XP Breakdown by Activity Type */}

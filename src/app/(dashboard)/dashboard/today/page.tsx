@@ -256,7 +256,7 @@ export default function DashboardPage() {
               </svg>
             </div>
             <p className="text-sm text-[var(--color-text)]">
-              No tasks yet. Your team will set things up for you.
+              No tasks yet. Your coach will set things up for you.
             </p>
           </div>
         )}

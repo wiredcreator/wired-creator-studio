@@ -138,10 +138,10 @@ function formatDueDate(dateString: string): string {
 }
 
 const TIME_OPTIONS = [
-  { label: '3 days', days: 3 },
+  { label: '1 day', days: 1 },
+  { label: '2 days', days: 2 },
   { label: '5 days', days: 5 },
-  { label: '7 days', days: 7 },
-  { label: '14 days', days: 14 },
+  { label: '1 week', days: 7 },
 ];
 
 /* ── Task List View ── */
@@ -593,7 +593,7 @@ function TaskDetailView({
             <button
               onClick={handleStuck}
               disabled={stuckConfirmed}
-              title="Tell your team you need help with this task"
+              title="Tell your coach you need help with this task"
               className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-50 outline-none ring-0"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

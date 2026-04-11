@@ -15,7 +15,7 @@ export default function XPStreakCard({ lifetimeXP, currentStreak, bestStreak }: 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Lifetime XP */}
         <div>
-          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Lifetime XP</p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4, fontWeight: 500, letterSpacing: '0.04em' }}>Lifetime XP</p>
           <p style={{ fontSize: 36, fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1 }}>
             {lifetimeXP.toLocaleString()}
           </p>
@@ -25,7 +25,7 @@ export default function XPStreakCard({ lifetimeXP, currentStreak, bestStreak }: 
 
         {/* Current Streak */}
         <div>
-          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Current streak</p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4, fontWeight: 500, letterSpacing: '0.04em' }}>Current streak</p>
           <p style={{ fontSize: 32, fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1 }}>
             {currentStreak} <span style={{ fontSize: 16, fontWeight: 400, color: 'var(--color-text-muted)' }}>days</span>
           </p>
@@ -35,7 +35,7 @@ export default function XPStreakCard({ lifetimeXP, currentStreak, bestStreak }: 
 
         {/* Best Streak */}
         <div>
-          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Best streak</p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4, fontWeight: 500, letterSpacing: '0.04em' }}>Best streak</p>
           <p style={{ fontSize: 32, fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1 }}>
             {bestStreak} <span style={{ fontSize: 16, fontWeight: 400, color: 'var(--color-text-muted)' }}>days</span>
           </p>

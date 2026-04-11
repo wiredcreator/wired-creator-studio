@@ -18,7 +18,7 @@ const navItems = [
   { href: "/dashboard/today", label: "Tasks" },
   { href: "/dashboard/brain-dump", label: "Brain Dump" },
   { href: "/dashboard/side-quests", label: "Side Quests" },
-  // { href: "/dashboard/support", label: "Support" },
+  { href: "/dashboard/support", label: "Support" },
 ];
 
 const ACCENT = { light: '#4A90D9', dark: '#D4A843' };
