@@ -411,19 +411,54 @@ export default function ScriptEditor({
   }, [hasChanges, onClose, onSave, buildUpdates]);
 
   // --- Teleprompter helpers ---
-  const teleprompterSlides = (() => {
-    // Prefer sections if available
-    if (sections.length > 0) {
-      return sections.map((s) => ({
-        title: s.title,
-        content: s.content,
-      }));
+
+  // Split long text into slide-sized chunks by paragraph breaks, capping at ~500 chars
+  function splitIntoSlideChunks(text: string, title: string): { title: string; content: string }[] {
+    const MAX_CHARS = 500;
+    const paragraphs = text.split(/\n\s*\n/).filter((p) => p.trim());
+    if (paragraphs.length === 0) return [{ title, content: text.trim() || 'No content.' }];
+
+    const slides: { title: string; content: string }[] = [];
+    let current = '';
+
+    for (const para of paragraphs) {
+      const trimmed = para.trim();
+      if (current && (current.length + trimmed.length + 2) > MAX_CHARS) {
+        slides.push({ title, content: current });
+        current = trimmed;
+      } else {
+        current = current ? current + '\n\n' + trimmed : trimmed;
+      }
     }
-    // Fall back to splitting teleprompterVersion (or fullScript) by double newlines
+    if (current) slides.push({ title, content: current });
+
+    // If a single paragraph is still too long, split by sentences
+    return slides.flatMap((slide) => {
+      if (slide.content.length <= MAX_CHARS) return [slide];
+      const sentences = slide.content.match(/[^.!?]+[.!?]+\s*/g) || [slide.content];
+      const subSlides: { title: string; content: string }[] = [];
+      let chunk = '';
+      for (const sentence of sentences) {
+        if (chunk && (chunk.length + sentence.length) > MAX_CHARS) {
+          subSlides.push({ title: slide.title, content: chunk.trim() });
+          chunk = sentence;
+        } else {
+          chunk += sentence;
+        }
+      }
+      if (chunk.trim()) subSlides.push({ title: slide.title, content: chunk.trim() });
+      return subSlides.length > 0 ? subSlides : [slide];
+    });
+  }
+
+  const teleprompterSlides = (() => {
+    if (sections.length > 0) {
+      return sections.flatMap((s) => splitIntoSlideChunks(s.content, s.title));
+    }
     const text = teleprompterVersion || fullScript || '';
     const parts = text.split(/\n\s*\n/).filter((p) => p.trim());
     if (parts.length === 0) return [{ title: '', content: 'No script content yet.' }];
-    return parts.map((p, i) => ({ title: `Part ${i + 1}`, content: p.trim() }));
+    return parts.flatMap((p, i) => splitIntoSlideChunks(p.trim(), `Part ${i + 1}`));
   })();
 
   const totalSlides = teleprompterSlides.length;
@@ -447,7 +482,7 @@ export default function ScriptEditor({
     if (viewMode !== 'teleprompter') return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') { e.preventDefault(); goToSlide('prev'); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); goToSlide('next'); }
+      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); goToSlide('next'); }
       if (e.key === 'Escape') { e.preventDefault(); setViewMode('full'); }
     };
     window.addEventListener('keydown', handler);
@@ -857,40 +892,6 @@ export default function ScriptEditor({
               </span>
             </div>
 
-            {/* Center: font size controls */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setTeleprompterFontSize((s) => Math.max(18, s - 2))}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold outline-none ring-0 transition-colors"
-                style={{
-                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
-                  color: teleprompterDarkMode ? '#d1d5db' : '#374151',
-                }}
-                title="Decrease font size"
-              >
-                -
-              </button>
-              <span
-                className="min-w-[48px] text-center text-xs font-medium tabular-nums"
-                style={{ color: teleprompterDarkMode ? '#9ca3af' : '#6b7280' }}
-              >
-                {teleprompterFontSize}px
-              </span>
-              <button
-                type="button"
-                onClick={() => setTeleprompterFontSize((s) => Math.min(48, s + 2))}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold outline-none ring-0 transition-colors"
-                style={{
-                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
-                  color: teleprompterDarkMode ? '#d1d5db' : '#374151',
-                }}
-                title="Increase font size"
-              >
-                +
-              </button>
-            </div>
-
             {/* Right: dark/light toggle + copy */}
             <div className="flex items-center gap-2">
               <button
@@ -948,6 +949,42 @@ export default function ScriptEditor({
             </div>
           </div>
 
+          {/* Progress bar + section label */}
+          <div style={{ backgroundColor: teleprompterDarkMode ? '#111827' : '#f3f4f6' }}>
+            {/* Section label with fraction */}
+            <div className="flex items-center gap-2 px-5 py-1.5">
+              <span
+                className="text-xs font-bold uppercase tracking-wider"
+                style={{ color: teleprompterDarkMode ? '#a78bfa' : '#7c3aed' }}
+              >
+                {teleprompterSlides[teleprompterSlide]?.title || `Part ${teleprompterSlide + 1}`}
+              </span>
+              <span
+                className="text-xs font-medium tabular-nums"
+                style={{ color: teleprompterDarkMode ? '#6b7280' : '#9ca3af' }}
+              >
+                {teleprompterSlide + 1} / {totalSlides}
+              </span>
+            </div>
+            {/* Blue progress bar */}
+            <div
+              style={{
+                height: 4,
+                backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${((teleprompterSlide + 1) / totalSlides) * 100}%`,
+                  backgroundColor: '#3b82f6',
+                  transition: 'width 0.3s ease',
+                  borderRadius: '0 2px 2px 0',
+                }}
+              />
+            </div>
+          </div>
+
           {/* Slide content area -- click left/right halves to navigate */}
           <div className="relative flex flex-1 items-center justify-center overflow-hidden">
             {/* Left click zone */}
@@ -995,52 +1032,130 @@ export default function ScriptEditor({
             </div>
           </div>
 
-          {/* Bottom bar: slide indicator + arrow buttons */}
+          {/* Bottom bar: slide nav + keyboard hints */}
           <div
-            className="flex items-center justify-center gap-4 px-5 py-3"
+            className="flex items-center justify-between px-5 py-3"
             style={{
               backgroundColor: teleprompterDarkMode ? '#111827' : '#f3f4f6',
               borderTop: `1px solid ${teleprompterDarkMode ? '#1f2937' : '#e5e7eb'}`,
             }}
           >
-            <button
-              type="button"
-              onClick={() => goToSlide('prev')}
-              disabled={teleprompterSlide === 0}
-              className="flex h-9 w-9 items-center justify-center rounded-lg outline-none ring-0 transition-colors disabled:opacity-30"
-              style={{
-                backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
-                color: teleprompterDarkMode ? '#d1d5db' : '#374151',
-              }}
-              aria-label="Previous slide"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-              </svg>
-            </button>
+            {/* Left: font size */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setTeleprompterFontSize((s) => Math.max(18, s - 2))}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold outline-none ring-0"
+                style={{
+                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                  color: teleprompterDarkMode ? '#d1d5db' : '#374151',
+                }}
+              >
+                -
+              </button>
+              <span
+                className="min-w-[48px] text-center text-xs font-medium tabular-nums"
+                style={{ color: teleprompterDarkMode ? '#9ca3af' : '#6b7280' }}
+              >
+                {teleprompterFontSize}px
+              </span>
+              <button
+                type="button"
+                onClick={() => setTeleprompterFontSize((s) => Math.min(48, s + 2))}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold outline-none ring-0"
+                style={{
+                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                  color: teleprompterDarkMode ? '#d1d5db' : '#374151',
+                }}
+              >
+                +
+              </button>
+              <span
+                className="ml-1 text-xs"
+                style={{ color: teleprompterDarkMode ? '#4b5563' : '#9ca3af' }}
+              >
+                Text size
+              </span>
+            </div>
 
-            <span
-              className="min-w-[60px] text-center text-sm font-medium tabular-nums"
-              style={{ color: teleprompterDarkMode ? '#9ca3af' : '#6b7280' }}
-            >
-              {teleprompterSlide + 1} / {totalSlides}
-            </span>
+            {/* Center: prev/next nav */}
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => goToSlide('prev')}
+                disabled={teleprompterSlide === 0}
+                className="flex h-9 w-9 items-center justify-center rounded-lg outline-none ring-0 transition-colors disabled:opacity-30"
+                style={{
+                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                  color: teleprompterDarkMode ? '#d1d5db' : '#374151',
+                }}
+                aria-label="Previous slide"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => goToSlide('next')}
-              disabled={teleprompterSlide >= totalSlides - 1}
-              className="flex h-9 w-9 items-center justify-center rounded-lg outline-none ring-0 transition-colors disabled:opacity-30"
-              style={{
-                backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
-                color: teleprompterDarkMode ? '#d1d5db' : '#374151',
-              }}
-              aria-label="Next slide"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
+              <span
+                className="min-w-[60px] text-center text-sm font-medium tabular-nums"
+                style={{ color: teleprompterDarkMode ? '#9ca3af' : '#6b7280' }}
+              >
+                {teleprompterSlide + 1} / {totalSlides}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => goToSlide('next')}
+                disabled={teleprompterSlide >= totalSlides - 1}
+                className="flex h-9 w-9 items-center justify-center rounded-lg outline-none ring-0 transition-colors disabled:opacity-30"
+                style={{
+                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                  color: teleprompterDarkMode ? '#d1d5db' : '#374151',
+                }}
+                aria-label="Next slide"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Right: keyboard hints */}
+            <div className="flex items-center gap-2">
+              <kbd
+                className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                style={{
+                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                  color: teleprompterDarkMode ? '#6b7280' : '#9ca3af',
+                  border: `1px solid ${teleprompterDarkMode ? '#374151' : '#d1d5db'}`,
+                }}
+              >
+                &#x2190;
+              </kbd>
+              <span className="text-[10px]" style={{ color: teleprompterDarkMode ? '#4b5563' : '#9ca3af' }}>Prev</span>
+              <kbd
+                className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                style={{
+                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                  color: teleprompterDarkMode ? '#6b7280' : '#9ca3af',
+                  border: `1px solid ${teleprompterDarkMode ? '#374151' : '#d1d5db'}`,
+                }}
+              >
+                &#x2192; / Space
+              </kbd>
+              <span className="text-[10px]" style={{ color: teleprompterDarkMode ? '#4b5563' : '#9ca3af' }}>Next</span>
+              <kbd
+                className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                style={{
+                  backgroundColor: teleprompterDarkMode ? '#1f2937' : '#e5e7eb',
+                  color: teleprompterDarkMode ? '#6b7280' : '#9ca3af',
+                  border: `1px solid ${teleprompterDarkMode ? '#374151' : '#d1d5db'}`,
+                }}
+              >
+                Esc
+              </kbd>
+              <span className="text-[10px]" style={{ color: teleprompterDarkMode ? '#4b5563' : '#9ca3af' }}>Exit</span>
+            </div>
           </div>
         </div>
       )}

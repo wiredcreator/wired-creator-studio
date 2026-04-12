@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { ContentIdeaStatus, ContentIdeaSource } from '@/models/ContentIdea';
+import type { ContentIdeaStatus, ContentIdeaSource, ContentIdeaPriority } from '@/models/ContentIdea';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -14,6 +14,7 @@ export interface IdeaCardData {
   status: ContentIdeaStatus;
   source: ContentIdeaSource;
   contentPillar: string;
+  priority?: ContentIdeaPriority;
   priorityScore?: number | null;
   trendData?: {
     sourceUrl: string;
@@ -87,9 +88,28 @@ const STATUS_DOT_COLORS: Record<ContentIdeaStatus, string> = {
   published: 'bg-[var(--color-success)]',
 };
 
+const PRIORITY_LABELS: Record<string, string> = {
+  high: 'High priority',
+  medium: 'Medium priority',
+  low: 'Low priority',
+  none: 'No priority',
+};
+
+const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
+  high: { bg: 'var(--color-error)', text: '#FFFFFF' },
+  medium: { bg: 'var(--color-accent)', text: '#FFFFFF' },
+  low: { bg: 'var(--color-bg-elevated)', text: 'var(--color-text-primary)' },
+  none: { bg: 'var(--color-bg-secondary)', text: 'var(--color-text-secondary)' },
+};
+
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
+
+function formatDateShort(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // ---------------------------------------------------------------------------
@@ -206,40 +226,30 @@ export default function IdeaCard({
           </p>
         )}
 
-        {/* Tags row */}
+        {/* Tags row: priority, pillar, date */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          {/* Source badge */}
+          {/* Priority tag */}
           <span
-            className={`inline-flex items-center rounded-[var(--radius-full)] px-2.5 py-0.5 text-xs font-medium ${
-              SOURCE_COLORS[idea.source]
-            }`}
+            className="inline-flex items-center rounded-[var(--radius-full)] px-2.5 py-0.5 text-[11px] font-medium"
+            style={{
+              backgroundColor: PRIORITY_COLORS[idea.priority || 'none'].bg,
+              color: PRIORITY_COLORS[idea.priority || 'none'].text,
+            }}
           >
-            {SOURCE_LABELS[idea.source]}
+            {PRIORITY_LABELS[idea.priority || 'none']}
           </span>
 
-          {/* Status indicator */}
-          <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-            <span
-              className={`inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLORS[idea.status]}`}
-            />
-            {STATUS_LABELS[idea.status]}
-          </span>
-
-          {/* Trend link */}
-          {idea.trendData?.sourceUrl && (
-            <a
-              href={idea.trendData.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-              </svg>
-              {idea.trendData.platform || 'Source'}
-            </a>
+          {/* Content pillar tag */}
+          {idea.contentPillar && (
+            <span className="inline-flex items-center rounded-[var(--radius-full)] bg-[var(--color-accent-light)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--color-accent)]">
+              {idea.contentPillar}
+            </span>
           )}
+
+          {/* Date */}
+          <span className="ml-auto text-xs text-[var(--color-text-muted)]">
+            {formatDateShort(idea.createdAt)}
+          </span>
         </div>
       </button>
 

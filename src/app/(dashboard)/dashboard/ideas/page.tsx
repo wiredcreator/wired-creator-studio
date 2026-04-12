@@ -135,7 +135,9 @@ export default function IdeasPage() {
   const [generatingMessage, setGeneratingMessage] = useState('');
   const [activeTab, setActiveTab] = useState<ContentIdeaStatus | 'all'>('all');
   const [pillarFilter, setPillarFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [selectedIdea, setSelectedIdea] = useState<IdeaCardData | null>(null);
 
   // Multi-select for suggested ideas (checkbox mode)
@@ -551,6 +553,10 @@ export default function IdeasPage() {
       }
     }
 
+    if (priorityFilter) {
+      result = result.filter((i) => (i.priority || 'none') === priorityFilter);
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -560,11 +566,12 @@ export default function IdeasPage() {
       );
     }
 
+    const dir = sortOrder === 'oldest' ? 1 : -1;
     return result.sort(
       (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        dir * (new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     );
-  }, [ideas, activeTab, pillarFilter, searchQuery]);
+  }, [ideas, activeTab, pillarFilter, priorityFilter, searchQuery, sortOrder]);
 
   // --- Stats ---
   const stats = useMemo(() => {
@@ -949,7 +956,7 @@ export default function IdeasPage() {
               ))}
             </div>
 
-            {/* Search + pillar filter */}
+            {/* Search + sort + filters */}
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -958,6 +965,14 @@ export default function IdeasPage() {
                 placeholder="Search ideas..."
                 className="w-40 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
               />
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
+                className="cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2 py-1.5 text-xs text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
+              >
+                <option value="newest">Date: Newest first</option>
+                <option value="oldest">Date: Oldest first</option>
+              </select>
               <select
                 value={pillarFilter}
                 onChange={(e) => setPillarFilter(e.target.value)}
@@ -970,6 +985,17 @@ export default function IdeasPage() {
                     {p}
                   </option>
                 ))}
+              </select>
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                className="cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2 py-1.5 text-xs text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
+              >
+                <option value="">All Priorities</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="none">No priority</option>
               </select>
             </div>
           </div>

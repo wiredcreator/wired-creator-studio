@@ -1676,7 +1676,7 @@ function OutlineStep({
   return (
     <div className="space-y-5">
       {/* Outline card */}
-      <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
+      <div>
         <div className="mb-4 flex items-center justify-between">
           <label className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
             Video Outline
@@ -1712,10 +1712,10 @@ function OutlineStep({
 
         {/* Structured sections view */}
         {hasStructuredSections ? (
-          <div className="space-y-4">
+          <div className="space-y-0">
             {[...outlineSections]
               .sort((a, b) => a.order - b.order)
-              .map((section, sortedIdx) => (
+              .map((section, sortedIdx, arr) => (
                 <div
                   key={section.id}
                   draggable
@@ -1723,12 +1723,13 @@ function OutlineStep({
                   onDragOver={(e) => handleSectionDragOver(e, sortedIdx)}
                   onDragEnd={handleSectionDragEnd}
                   onDrop={(e) => handleSectionDrop(e, sortedIdx)}
-                  className={`rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 transition-all ${
+                  className={`pb-5 transition-all ${
+                    sortedIdx < arr.length - 1 ? 'mb-5 border-b border-[var(--color-border)]' : ''
+                  } ${
                     sectionDragIndex === sortedIdx ? 'opacity-40' : ''
                   } ${
                     sectionOverIndex === sortedIdx && sectionDragIndex !== null && sectionDragIndex !== sortedIdx
-                      ? 'ring-2 ring-[var(--color-accent)]'
-                      : ''
+                      ? 'border-t-2 border-t-[var(--color-accent)]' : ''
                   }`}
                 >
                   {/* Section header: drag handle + editable title + trash icon */}

@@ -32,7 +32,8 @@ const ExtractedStorySchema = new Schema<IExtractedStory>(
   { _id: false }
 );
 
-// --- Priority Type ---
+// --- Input Type & Priority ---
+export type BrainDumpInputType = 'written' | 'voice' | 'file_upload';
 export type BrainDumpPriority = 'high' | 'medium' | 'low';
 
 // --- Call Transcript Document ---
@@ -44,6 +45,7 @@ export interface ICallTranscript extends Document {
   extractedIdeas: IExtractedIdea[];
   extractedStories: IExtractedStory[];
   extractedThemes: string[];
+  inputType: BrainDumpInputType;
   ingestedIntoBrandBrain: boolean;
   callDate: Date;
   priority: BrainDumpPriority;
@@ -70,6 +72,11 @@ const CallTranscriptSchema = new Schema<ICallTranscript>(
       required: true,
     },
     transcript: { type: String, required: true },
+    inputType: {
+      type: String,
+      enum: ['written', 'voice', 'file_upload'],
+      default: 'written',
+    },
     extractedIdeas: [ExtractedIdeaSchema],
     extractedStories: [ExtractedStorySchema],
     extractedThemes: [{ type: String }],

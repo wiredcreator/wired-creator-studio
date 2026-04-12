@@ -230,7 +230,7 @@ export default function OutlineTab({
   }, [bulletDragInfo, outlineSections, setOutlineSections, onMarkChanged]);
 
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6">
+    <div>
       <div className="space-y-0">
         {outlineSections.map((section, sIdx) => (
           <div
@@ -249,7 +249,7 @@ export default function OutlineTab({
             }`}
           >
             {sIdx > 0 && sectionOverIndex !== sIdx && (
-              <div className="border-t border-dashed border-[var(--color-border)] my-4" />
+              <div className="border-t border-[var(--color-border)] my-4" />
             )}
             {sIdx > 0 && sectionOverIndex === sIdx && <div className="my-4" />}
             <div className="space-y-2">

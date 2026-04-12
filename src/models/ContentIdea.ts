@@ -17,6 +17,8 @@ export type ContentIdeaSource =
   | 'manual'
   | 'voice_storm';
 
+export type ContentIdeaPriority = 'none' | 'low' | 'medium' | 'high';
+
 // --- Trend Data Sub-document ---
 export interface ITrendData {
   sourceUrl: string;
@@ -109,6 +111,7 @@ export interface IContentIdea extends Document {
   description: string;
   status: ContentIdeaStatus;
   source: ContentIdeaSource;
+  priority: ContentIdeaPriority;
   trendData?: ITrendData;
   contentPillar: string;
   tags: string[];
@@ -147,6 +150,11 @@ const ContentIdeaSchema = new Schema<IContentIdea>(
       type: String,
       enum: ['brain_dump', 'ai_generated', 'trend_scrape', 'manual', 'voice_storm'],
       required: true,
+    },
+    priority: {
+      type: String,
+      enum: ['none', 'low', 'medium', 'high'],
+      default: 'none',
     },
     trendData: { type: TrendDataSchema },
     contentPillar: { type: String, default: '' },

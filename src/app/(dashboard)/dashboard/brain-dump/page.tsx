@@ -27,9 +27,12 @@ interface ExtractedData {
 type Priority = 'high' | 'medium' | 'low';
 type SortOption = 'newest' | 'oldest' | 'priority';
 
+type InputType = 'written' | 'voice' | 'file_upload';
+
 interface Session {
   _id: string;
   callType: string;
+  inputType?: InputType;
   transcript: string;
   extractedIdeas: { title: string; description: string }[];
   extractedStories: { summary: string; fullText: string }[];
@@ -52,6 +55,22 @@ const PRIORITY_COLORS: Record<Priority, { bg: string; text: string }> = {
   low: { bg: 'var(--color-bg-elevated)', text: 'var(--color-text-primary)' },
 };
 
+const INPUT_TYPE_LABELS: Record<InputType, string> = {
+  voice: 'Voice Recording',
+  written: 'Written',
+  file_upload: 'File Upload',
+};
+
+const INPUT_TYPE_COLORS: Record<InputType, { bg: string; text: string }> = {
+  voice: { bg: '#059669', text: '#FFFFFF' },
+  written: { bg: '#3B82F6', text: '#FFFFFF' },
+  file_upload: { bg: '#D97706', text: '#FFFFFF' },
+};
+
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 export default function BrainDumpPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -65,6 +84,7 @@ export default function BrainDumpPage() {
 
   // Form state
   const [text, setText] = useState('');
+  const [lastInputMethod, setLastInputMethod] = useState<'written' | 'voice' | 'file_upload'>('written');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -181,6 +201,7 @@ export default function BrainDumpPage() {
             const data = await res.json();
             if (data.text) {
               setText((prev) => (prev ? prev + '\n\n' + data.text : data.text));
+              setLastInputMethod('voice');
             }
           } else {
             setError('Failed to transcribe audio. Please try again.');
@@ -239,6 +260,7 @@ export default function BrainDumpPage() {
     } else {
       setAttachedFile(file);
     }
+    setLastInputMethod('file_upload');
 
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -267,6 +289,7 @@ export default function BrainDumpPage() {
           transcript: text.trim(),
           userId,
           callType: 'brain_dump',
+          inputType: lastInputMethod,
         }),
       });
 
@@ -279,6 +302,7 @@ export default function BrainDumpPage() {
       const transcript = text.trim();
       setText('');
       setAttachedFile(null);
+      setLastInputMethod('written');
       setRecordingTime(0);
       fetchSessions();
 
@@ -1074,6 +1098,8 @@ export default function BrainDumpPage() {
                   session.extractedThemes.length > 0 ? session.extractedThemes[0] : null;
                 const priority = session.priority || 'medium';
                 const tags = session.tags || [];
+                const wordCount = countWords(session.transcript);
+                const sessionInputType: InputType = session.inputType || 'written';
 
                 if (listMode === 'list') {
                   return (
@@ -1085,6 +1111,15 @@ export default function BrainDumpPage() {
                       <div className="flex items-center gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3">
+                            <span
+                              className="text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] flex-shrink-0"
+                              style={{
+                                backgroundColor: INPUT_TYPE_COLORS[sessionInputType].bg,
+                                color: INPUT_TYPE_COLORS[sessionInputType].text,
+                              }}
+                            >
+                              {INPUT_TYPE_LABELS[sessionInputType]}
+                            </span>
                             <h3 className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug truncate">
                               {title}
                             </h3>
@@ -1098,17 +1133,17 @@ export default function BrainDumpPage() {
                               >
                                 {priority}
                               </span>
-                              <span className="text-[11px] text-[var(--color-text-primary)] bg-[var(--color-bg-secondary)] px-2 py-0.5 rounded-[var(--radius-full)]">
-                                {formattedDate}
-                              </span>
-                              {ideasCount > 0 && (
+                              {pillar && (
                                 <span className="text-[11px] text-white bg-[var(--color-accent)] px-2 py-0.5 rounded-[var(--radius-full)]">
-                                  {ideasCount} idea{ideasCount !== 1 ? 's' : ''}
+                                  Pillar: {pillar}
                                 </span>
                               )}
-                              {pillar && (
-                                <span className="text-[11px] text-[var(--color-text-primary)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] px-2 py-0.5 rounded-[var(--radius-full)]">
-                                  {pillar}
+                              <span className="text-[11px] text-[var(--color-text-muted)]">
+                                {wordCount} words
+                              </span>
+                              {ideasCount > 0 && (
+                                <span className="text-[11px] text-[var(--color-text-muted)]">
+                                  {ideasCount} idea{ideasCount !== 1 ? 's' : ''}
                                 </span>
                               )}
                             </div>
@@ -1150,12 +1185,19 @@ export default function BrainDumpPage() {
                   <div
                     key={session._id}
                     onClick={() => openSession(session)}
-                    className="group rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 cursor-pointer transition-all hover:border-[var(--color-accent)] hover:shadow-[var(--shadow-md)]"
+                    className="group rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 cursor-pointer transition-all hover:border-[var(--color-accent)] hover:shadow-[var(--shadow-md)] flex flex-col"
                   >
+                    {/* Input type badge */}
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug line-clamp-2 flex-1">
-                        {title}
-                      </h3>
+                      <span
+                        className="text-[10px] font-semibold px-2.5 py-1 rounded-[var(--radius-md)]"
+                        style={{
+                          backgroundColor: INPUT_TYPE_COLORS[sessionInputType].bg,
+                          color: INPUT_TYPE_COLORS[sessionInputType].text,
+                        }}
+                      >
+                        {INPUT_TYPE_LABELS[sessionInputType]}
+                      </span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1169,9 +1211,13 @@ export default function BrainDumpPage() {
                         </svg>
                       </button>
                     </div>
-                    <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed line-clamp-2 mb-3">
+                    <h3 className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug line-clamp-2 mb-1">
+                      {title}
+                    </h3>
+                    <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed line-clamp-3 mb-3 flex-1">
                       {transcriptSnippet}
                     </p>
+                    {/* Bottom metadata row: priority, pillar, word count */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
                         className="text-[10px] font-medium uppercase px-2 py-0.5 rounded-[var(--radius-full)]"
@@ -1182,27 +1228,19 @@ export default function BrainDumpPage() {
                       >
                         {priority}
                       </span>
-                      <span className="text-[11px] text-[var(--color-text-primary)] bg-[var(--color-bg-secondary)] px-2 py-0.5 rounded-[var(--radius-full)]">
-                        {formattedDate}
+                      {pillar && (
+                        <span className="text-[11px] text-white bg-[var(--color-accent)] px-2 py-0.5 rounded-[var(--radius-full)]">
+                          Pillar: {pillar}
+                        </span>
+                      )}
+                      <span className="text-[11px] text-[var(--color-text-muted)] ml-auto">
+                        {wordCount} words
                       </span>
                       {ideasCount > 0 && (
-                        <span className="text-[11px] text-white bg-[var(--color-accent)] px-2 py-0.5 rounded-[var(--radius-full)]">
+                        <span className="text-[11px] text-[var(--color-text-muted)]">
                           {ideasCount} idea{ideasCount !== 1 ? 's' : ''}
                         </span>
                       )}
-                      {pillar && (
-                        <span className="text-[11px] text-[var(--color-text-primary)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] px-2 py-0.5 rounded-[var(--radius-full)]">
-                          {pillar}
-                        </span>
-                      )}
-                      {tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[10px] text-[var(--color-text-primary)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] px-1.5 py-0.5 rounded-[var(--radius-full)]"
-                        >
-                          {tag}
-                        </span>
-                      ))}
                     </div>
                   </div>
                 );

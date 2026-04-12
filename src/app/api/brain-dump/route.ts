@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     const body = await request.json();
-    const { transcript, callType, destination, skipAiProcessing, skipXp } = body;
+    const { transcript, callType, destination, inputType, skipAiProcessing, skipXp } = body;
 
     if (!transcript) {
       return NextResponse.json(
@@ -48,12 +48,16 @@ export async function POST(request: NextRequest) {
     const shouldExtractIdeas = resolvedDestination === 'ideas' || resolvedDestination === 'both';
     const shouldSaveToBrandBrain = resolvedDestination === 'brand_brain' || resolvedDestination === 'both';
 
+    const validInputTypes = ['written', 'voice', 'file_upload'];
+    const resolvedInputType = validInputTypes.includes(inputType) ? inputType : 'written';
+
     // Save the transcript record (always — so it shows in brain dump history)
     const callTranscript = await CallTranscript.create({
       userId,
       source: 'manual',
       callType: resolvedCallType,
       transcript,
+      inputType: resolvedInputType,
       callDate: new Date(),
       extractedIdeas: [],
       extractedStories: [],

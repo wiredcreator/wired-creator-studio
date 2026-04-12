@@ -21,7 +21,55 @@ interface StudentWithStats {
   todayCompleted: number;
   stuckTasks: number;
   riskFlags: string[];
+  accessStatus: string;
+  subscriptionTier: string;
 }
+
+type StatusFilter = 'all' | 'active' | 'past_due' | 'canceled' | 'expired';
+type PlanFilter = 'all' | 'full_program' | 'trial' | 'monthly' | 'accelerator';
+type RiskFilter = 'all' | 'good' | 'at_risk' | 'flagged';
+
+const STATUS_LABELS: Record<string, string> = {
+  active: 'Active',
+  past_due: 'Paused',
+  canceled: 'Churned',
+  expired: 'Churned',
+  none: 'Active',
+};
+
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  active: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
+  past_due: { bg: 'rgba(234,179,8,0.15)', text: '#eab308' },
+  canceled: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' },
+  expired: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' },
+  none: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
+};
+
+const PLAN_LABELS: Record<string, string> = {
+  full_program: 'Full Program',
+  trial: 'Trial',
+  monthly: 'SaaS Only',
+  accelerator: 'Accelerator',
+  none: 'None',
+};
+
+function getRiskLevel(flags: string[]): 'good' | 'at_risk' | 'flagged' {
+  if (flags.length >= 2) return 'flagged';
+  if (flags.length === 1) return 'at_risk';
+  return 'good';
+}
+
+const RISK_LABELS: Record<string, string> = {
+  good: 'Good',
+  at_risk: 'At-Risk',
+  flagged: 'Flagged',
+};
+
+const RISK_COLORS: Record<string, { bg: string; text: string }> = {
+  good: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
+  at_risk: { bg: 'rgba(234,179,8,0.15)', text: '#eab308' },
+  flagged: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' },
+};
 
 interface AdminStats {
   activeStudents: number;
@@ -58,6 +106,9 @@ export default function AdminStudentsPage() {
   const [students, setStudents] = useState<StudentWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [planFilter, setPlanFilter] = useState<PlanFilter>('all');
+  const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
   const [stats, setStats] = useState<AdminStats>({
     activeStudents: 0,
     tasksDueToday: 0,
@@ -135,13 +186,17 @@ export default function AdminStudentsPage() {
     }
   }
 
-  const filteredStudents = searchQuery
-    ? students.filter(
-        (s) =>
-          s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.email.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : students;
+  const filteredStudents = students.filter((s) => {
+    if (searchQuery && !s.name.toLowerCase().includes(searchQuery.toLowerCase()) && !s.email.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (statusFilter !== 'all') {
+      const sStatus = s.accessStatus || 'active';
+      if (statusFilter === 'canceled' && sStatus !== 'canceled' && sStatus !== 'expired') return false;
+      if (statusFilter !== 'canceled' && sStatus !== statusFilter) return false;
+    }
+    if (planFilter !== 'all' && s.subscriptionTier !== planFilter) return false;
+    if (riskFilter !== 'all' && getRiskLevel(s.riskFlags) !== riskFilter) return false;
+    return true;
+  });
 
   return (
     <PageWrapper
@@ -175,15 +230,50 @@ export default function AdminStudentsPage() {
           ))}
         </div>
 
-        {/* Search + Add Student */}
-        <div className="flex items-center gap-3">
+        {/* Search + Filters + Add Student */}
+        <div className="flex flex-wrap items-center gap-3">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search students by name or email..."
-            className="w-full max-w-md rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
+            placeholder="Search by name or email..."
+            className="w-full max-w-[220px] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
           />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0"
+          >
+            <option value="all">Status</option>
+            <option value="active">Active</option>
+            <option value="past_due">Paused</option>
+            <option value="canceled">Churned</option>
+          </select>
+          <select
+            value={planFilter}
+            onChange={(e) => setPlanFilter(e.target.value as PlanFilter)}
+            className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0"
+          >
+            <option value="all">Plan</option>
+            <option value="full_program">Full Program</option>
+            <option value="trial">Trial</option>
+            <option value="monthly">SaaS Only</option>
+            <option value="accelerator">Accelerator</option>
+          </select>
+          <select
+            value={riskFilter}
+            onChange={(e) => setRiskFilter(e.target.value as RiskFilter)}
+            className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0"
+          >
+            <option value="all">Risk</option>
+            <option value="good">Good</option>
+            <option value="at_risk">At-Risk</option>
+            <option value="flagged">Flagged</option>
+          </select>
+          <div className="flex-1" />
+          <span className="text-xs text-[var(--color-text-muted)]">
+            {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}
+          </span>
           <button
             onClick={() => {
               setShowAddModal(true);
@@ -295,121 +385,99 @@ export default function AdminStudentsPage() {
               <thead>
                 <tr className="border-b border-[var(--color-border)]">
                   <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-                    Student
+                    Name
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-                    Started
+                    Email
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-                    XP
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                    Start Date
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-                    Today
+                    XP Earned
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-                    Overall
+                    Risk
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-                    Last Active
+                    Last Activity
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                    Plan
                   </th>
                   <th className="w-8 px-3 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border-light)]">
                 {filteredStudents.map((student) => {
-                  const progressPercent =
-                    student.totalTasks > 0
-                      ? Math.round(
-                          (student.completedTasks / student.totalTasks) * 100
-                        )
-                      : 0;
-                  const todayPercent =
-                    student.todayTasks > 0
-                      ? Math.round(
-                          (student.todayCompleted / student.todayTasks) * 100
-                        )
-                      : 0;
+                  const risk = getRiskLevel(student.riskFlags);
+                  const riskColor = RISK_COLORS[risk];
+                  const statusKey = student.accessStatus || 'active';
+                  const statusColor = STATUS_COLORS[statusKey] || STATUS_COLORS.active;
+                  const planLabel = PLAN_LABELS[student.subscriptionTier] || student.subscriptionTier || 'None';
 
                   return (
                     <tr key={student._id} className="transition-colors hover:bg-[var(--color-bg-secondary)]">
+                      {/* Name */}
                       <td className="px-5 py-4">
-                        <Link
-                          href={`/admin/students/${student._id}`}
-                          className="flex items-center gap-3"
-                        >
+                        <Link href={`/admin/students/${student._id}`} className="flex items-center gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-light)] text-xs font-semibold text-[var(--color-accent)]">
-                            {student.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .toUpperCase()
-                              .slice(0, 2)}
+                            {student.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                              {student.name}
-                            </p>
-                            <p className="text-xs text-[var(--color-text-muted)] truncate">
-                              {student.email}
-                            </p>
-                          </div>
-                          {student.stuckTasks > 0 && (
-                            <span className="ml-1 inline-flex items-center rounded-full bg-[var(--color-warning-bg,#fef3c7)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-warning,#d97706)]">
-                              Stuck
-                            </span>
-                          )}
+                          <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                            {student.name}
+                          </p>
                         </Link>
                       </td>
+                      {/* Email */}
+                      <td className="px-4 py-4 text-xs text-[var(--color-text-muted)] truncate max-w-[180px]">
+                        {student.email}
+                      </td>
+                      {/* Status */}
+                      <td className="px-4 py-4 text-center">
+                        <span
+                          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                          style={{ backgroundColor: statusColor.bg, color: statusColor.text }}
+                        >
+                          {STATUS_LABELS[statusKey] || 'Active'}
+                        </span>
+                      </td>
+                      {/* Start Date */}
                       <td className="px-4 py-4 text-xs text-[var(--color-text-muted)]">
                         {formatDate(student.createdAt)}
                       </td>
+                      {/* XP Earned */}
                       <td className="px-4 py-4 text-center">
                         <span className="text-sm font-medium text-[var(--color-text-primary)]">
                           {student.lifetimeXP.toLocaleString()}
                         </span>
-                        {student.currentStreak > 0 && (
-                          <span className="ml-1 text-xs text-[var(--color-text-muted)]">
-                            ({student.currentStreak}d streak)
-                          </span>
-                        )}
                       </td>
+                      {/* Risk */}
                       <td className="px-4 py-4 text-center">
-                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                          {student.todayCompleted}/{student.todayTasks}
+                        <span
+                          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                          style={{ backgroundColor: riskColor.bg, color: riskColor.text }}
+                        >
+                          {RISK_LABELS[risk]}
                         </span>
-                        {student.todayTasks > 0 && (
-                          <span className="ml-1 text-xs text-[var(--color-text-muted)]">
-                            ({todayPercent}%)
-                          </span>
-                        )}
                       </td>
-                      <td className="px-4 py-4 text-center">
-                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                          {student.completedTasks}/{student.totalTasks}
-                        </span>
-                        {student.totalTasks > 0 && (
-                          <span className="ml-1 text-xs text-[var(--color-text-muted)]">
-                            ({progressPercent}%)
-                          </span>
-                        )}
-                      </td>
+                      {/* Last Activity */}
                       <td className="px-4 py-4 text-right text-xs text-[var(--color-text-muted)]">
                         {formatRelativeDate(student.lastActiveDate)}
                       </td>
+                      {/* Plan */}
+                      <td className="px-4 py-4 text-right">
+                        <span className="text-xs font-medium text-[var(--color-accent)]">
+                          {planLabel}
+                        </span>
+                      </td>
                       <td className="px-3 py-4">
                         <Link href={`/admin/students/${student._id}`}>
-                          <svg
-                            className="h-4 w-4 text-[var(--color-text-muted)]"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                            />
+                          <svg className="h-4 w-4 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                           </svg>
                         </Link>
                       </td>

@@ -25,7 +25,7 @@ export async function GET() {
 
     // Fetch all students
     const students = await User.find({ role: 'student' })
-      .select('name email createdAt onboardingCompleted personalBaselineCompleted riskFlags')
+      .select('name email createdAt onboardingCompleted personalBaselineCompleted riskFlags accessStatus subscriptionTier')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -150,6 +150,8 @@ export async function GET() {
         onboardingCompleted: student.onboardingCompleted,
         personalBaselineCompleted: student.personalBaselineCompleted,
         riskFlags: student.riskFlags || [],
+        accessStatus: student.accessStatus || 'active',
+        subscriptionTier: student.subscriptionTier || 'none',
         lifetimeXP: xp?.lifetimeXP || 0,
         currentStreak: xp?.currentStreak || 0,
         lastActiveDate: xp?.lastActiveDate || null,
