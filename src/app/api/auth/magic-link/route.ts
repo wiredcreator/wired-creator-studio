@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       // Generate token
       const plainToken = crypto.randomBytes(32).toString('hex');
       const hashedToken = crypto.createHash('sha256').update(plainToken).digest('hex');
-      const expires = new Date(Date.now() + 15 * 60 * 1000);
+      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       existingUser.magicLinkToken = hashedToken;
       existingUser.magicLinkExpires = expires;
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       // Generate token
       const plainToken = crypto.randomBytes(32).toString('hex');
       const hashedToken = crypto.createHash('sha256').update(plainToken).digest('hex');
-      const expires = new Date(Date.now() + 15 * 60 * 1000);
+      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       // Auto-create new user
       const randomPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
