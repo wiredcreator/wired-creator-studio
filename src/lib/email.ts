@@ -21,6 +21,23 @@ function getBaseUrl(): string {
   return process.env.NEXTAUTH_URL || 'https://app.wiredcreator.com';
 }
 
+/** Magic link expiration in milliseconds. Used by both token generation and email copy. */
+export const MAGIC_LINK_TTL_MS = 24 * 60 * 60 * 1000;
+
+function formatTtl(ms: number): string {
+  const hours = ms / (1000 * 60 * 60);
+  if (hours >= 24) {
+    const days = Math.round(hours / 24);
+    return `${days} day${days !== 1 ? 's' : ''}`;
+  }
+  if (hours >= 1) {
+    const h = Math.round(hours);
+    return `${h} hour${h !== 1 ? 's' : ''}`;
+  }
+  const mins = Math.round(ms / (1000 * 60));
+  return `${mins} minute${mins !== 1 ? 's' : ''}`;
+}
+
 /**
  * Wraps email content in a full HTML document with proper structure.
  * Using a complete HTML email template reduces spam/phishing flags because:
@@ -211,7 +228,7 @@ export async function sendLoginLinkEmail(
     body: 'Click the button below to securely log in to your Wired Creator Studio account. No password needed.',
     ctaUrl: loginUrl,
     ctaLabel: 'Log in to Wired Creator',
-    footer: 'This link expires in 15 minutes and can only be used once. If you didn\'t request this, you can safely ignore this email.',
+    footer: `This link expires in ${formatTtl(MAGIC_LINK_TTL_MS)} and can only be used once. If you didn\'t request this, you can safely ignore this email.`,
   });
 
   console.log('[Email] Sending login link to:', to, '| baseUrl:', getBaseUrl());
@@ -220,7 +237,7 @@ export async function sendLoginLinkEmail(
     to,
     subject: 'Log in to Wired Creator Studio',
     html,
-    text: `${greeting}\n\nLog in to your Wired Creator Studio account by visiting this link:\n\n${loginUrl}\n\nThis link expires in 15 minutes and can only be used once. If you didn't request this, you can safely ignore this email.`,
+    text: `${greeting}\n\nLog in to your Wired Creator Studio account by visiting this link:\n\n${loginUrl}\n\nThis link expires in ${formatTtl(MAGIC_LINK_TTL_MS)} and can only be used once. If you didn't request this, you can safely ignore this email.`,
   });
 
   if (result.error) {

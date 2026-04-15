@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import { checkPaidCustomer } from '@/lib/stripe';
-import { sendLoginLinkEmail } from '@/lib/email';
+import { sendLoginLinkEmail, MAGIC_LINK_TTL_MS } from '@/lib/email';
 import { authLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit';
 
 const RESPONSE_MESSAGE = 'If this email is associated with an account, a login link has been sent. Check your inbox.';
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       // Generate token
       const plainToken = crypto.randomBytes(32).toString('hex');
       const hashedToken = crypto.createHash('sha256').update(plainToken).digest('hex');
-      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const expires = new Date(Date.now() + MAGIC_LINK_TTL_MS);
 
       existingUser.magicLinkToken = hashedToken;
       existingUser.magicLinkExpires = expires;
@@ -48,28 +48,17 @@ export async function POST(req: NextRequest) {
       const emailSent = await sendLoginLinkEmail(normalizedEmail, existingUser.name, plainToken);
       console.log('[MagicLink] Email sent:', emailSent);
     } else {
-      // New user: check Stripe before creating account
+      // New user: auto-create account (Stripe gating disabled during testing)
+      // TODO: Re-enable Stripe check before production launch
       const stripeResult = await checkPaidCustomer(normalizedEmail);
-      console.log('[MagicLink] Stripe check:', { isPaid: stripeResult.isPaid, reason: stripeResult.reason });
-      if (!stripeResult.isPaid) {
-        console.log('[MagicLink] Rejected: Stripe check failed');
-        return NextResponse.json({ message: RESPONSE_MESSAGE });
-      }
       const customerName = stripeResult.customerName || '';
       const customerId = stripeResult.customerId || '';
-      const stripeReason = stripeResult.reason || '';
-
-      // Infer subscription tier from Stripe reason
-      const inferredTier = stripeReason === 'active subscription'
-        ? 'monthly'
-        : (stripeReason === 'one-time payment' || stripeReason === 'successful charge')
-          ? 'full_program'
-          : undefined;
+      console.log('[MagicLink] New user signup:', normalizedEmail, '| Stripe:', stripeResult.isPaid ? 'paid' : 'no payment');
 
       // Generate token
       const plainToken = crypto.randomBytes(32).toString('hex');
       const hashedToken = crypto.createHash('sha256').update(plainToken).digest('hex');
-      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const expires = new Date(Date.now() + MAGIC_LINK_TTL_MS);
 
       // Auto-create new user
       const randomPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
@@ -80,9 +69,9 @@ export async function POST(req: NextRequest) {
         role: 'student',
         magicLinkToken: hashedToken,
         magicLinkExpires: expires,
-        stripeCustomerId: customerId,
-        subscriptionTier: inferredTier || 'none',
-        accessStatus: inferredTier ? 'active' : 'none',
+        stripeCustomerId: customerId || undefined,
+        subscriptionTier: 'full_program',
+        accessStatus: 'active',
         emailVerified: false,
         onboardingCompleted: false,
         personalBaselineCompleted: false,
