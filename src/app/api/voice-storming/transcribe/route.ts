@@ -41,6 +41,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'Voice transcription is not configured. Please set OPENAI_API_KEY.' },
+        { status: 503 }
+      );
+    }
+
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const transcription = await openai.audio.transcriptions.create({

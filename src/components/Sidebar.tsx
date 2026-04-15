@@ -59,7 +59,7 @@ export default function Sidebar({ userName, userRole = "student" }: SidebarProps
     <aside style={{ width: 200, display: 'flex', flexDirection: 'column', height: '100vh', padding: '24px 16px', overflowY: 'auto' }}>
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, marginBottom: 32 }}>
-        <Image src="/logo.png" alt="Wired Creator Studio" width={120} height={32} style={{ objectFit: 'contain', filter: t === 'dark' ? 'brightness(1.8)' : 'none' }} priority />
+        <Image src={t === 'dark' ? '/logo-color-light-text.svg' : '/logo-color-dark-text.svg'} alt="Wired Creator Studio" width={120} height={32} style={{ objectFit: 'contain' }} priority />
       </div>
 
       {/* Navigation */}

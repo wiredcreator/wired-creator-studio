@@ -13,7 +13,7 @@ export default function AuthLayout({
       >
         {/* Logo at top */}
         <div className="relative z-10 p-10">
-          <Image src="/logo.png" alt="Wired Creator Studio" width={140} height={38} style={{ objectFit: 'contain' }} priority />
+          <Image src="/logo-color-dark-text.svg" alt="Wired Creator Studio" width={140} height={38} style={{ objectFit: 'contain' }} priority />
         </div>
 
         {/* Wired Creator text at bottom, above clouds */}
@@ -57,7 +57,7 @@ export default function AuthLayout({
         <div className="w-full max-w-[400px]">
           {/* Mobile logo */}
           <div className="mb-10 lg:hidden">
-            <Image src="/logo.png" alt="Wired Creator Studio" width={130} height={34} style={{ objectFit: 'contain' }} priority />
+            <Image src="/logo-color-dark-text.svg" alt="Wired Creator Studio" width={130} height={34} style={{ objectFit: 'contain' }} priority />
           </div>
           {children}
         </div>

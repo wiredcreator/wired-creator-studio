@@ -139,9 +139,9 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Clean heading style */
-h1, h2 {
-  font-family: var(--font-sans);
+/* Headings use Lanterne display font */
+h1, h2, h3, h4 {
+  font-family: var(--font-heading), var(--font-sans);
   font-weight: 600;
   letter-spacing: -0.025em;
 }

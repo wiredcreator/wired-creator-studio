@@ -66,7 +66,7 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, marginBottom: 32 }}>
         <Link href="/dashboard">
-          <Image src="/logo.png" alt="Wired Creator Studio" width={120} height={32} style={{ objectFit: 'contain', filter: t === 'dark' ? 'brightness(1.8)' : 'none' }} priority />
+          <Image src={t === 'dark' ? '/logo-color-light-text.svg' : '/logo-color-dark-text.svg'} alt="Wired Creator Studio" width={120} height={32} style={{ objectFit: 'contain' }} priority />
         </Link>
       </div>
 
