@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Atkinson_Hyperlegible } from "next/font/google";
+import localFont from "next/font/local";
 import ThemeProvider from "@/components/ThemeProvider";
 import "./globals.css";
 
@@ -7,6 +8,12 @@ const atkinson = Atkinson_Hyperlegible({
   weight: ["400", "700"],
   variable: "--font-body",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const lanterne = localFont({
+  src: "../../public/fonts/Lanterne-Regular.woff2",
+  variable: "--font-heading",
   display: "swap",
 });
 
@@ -23,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${atkinson.variable} antialiased`}
+        className={`${atkinson.variable} ${lanterne.variable} antialiased`}
       >
         <ThemeProvider>{children}</ThemeProvider>
       </body>

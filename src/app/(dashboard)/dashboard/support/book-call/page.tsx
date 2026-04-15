@@ -1,12 +1,40 @@
 "use client";
 
 import Link from "next/link";
+import Script from "next/script";
+import { useEffect, useState } from "react";
 import PageWrapper from "@/components/PageWrapper";
 
 export default function BookCallPage() {
+  const [loaded, setLoaded] = useState(false);
+  const [iframeHeight, setIframeHeight] = useState(1200);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setLoaded(true), 4000);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (!event.origin.includes("wiredcreator.com")) return;
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
+      const candidates = [data.height, data?.data?.height, data?.payload?.height];
+      for (const candidate of candidates) {
+        const value = typeof candidate === "string" ? parseInt(candidate, 10) : candidate;
+        if (typeof value === "number" && !Number.isNaN(value) && value > 200) {
+          setIframeHeight(value);
+          return;
+        }
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   return (
     <PageWrapper>
-      <div style={{ maxWidth: 600, margin: "0 auto", padding: "40px 24px" }}>
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 24px 40px" }}>
         <Link
           href="/dashboard/support"
           style={{
@@ -15,7 +43,7 @@ export default function BookCallPage() {
             gap: 6,
             fontSize: 14,
             color: "var(--color-text-secondary)",
-            marginBottom: 24,
+            marginBottom: 16,
             textDecoration: "none",
           }}
         >
@@ -36,89 +64,61 @@ export default function BookCallPage() {
           Back
         </Link>
 
-        <div
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
-            backgroundColor: "#22C55E",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 16,
-          }}
-        >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="1.5"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z"
-            />
-          </svg>
-        </div>
-
-        <h1
-          style={{
-            fontSize: 28,
-            fontWeight: 700,
-            color: "var(--color-text-primary)",
-            marginBottom: 8,
-          }}
-        >
-          Book a support call
-        </h1>
-        <p
-          style={{
-            fontSize: 15,
-            color: "var(--color-text-secondary)",
-            marginBottom: 32,
-          }}
-        >
-          Schedule time with our team
-        </p>
-
-        <div
-          style={{
-            padding: 32,
-            borderRadius: 16,
-            backgroundColor: "var(--color-bg-card)",
-            border: "1px solid var(--color-border)",
-            textAlign: "center",
-          }}
-        >
-          <div
+        <div style={{ position: "relative", minHeight: iframeHeight }}>
+          <iframe
+            src="https://app.wiredcreator.com/widget/booking/vExaPKNRMixWIydqeGwh"
+            onLoad={() => setLoaded(true)}
             style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: "var(--color-accent)",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              marginBottom: 12,
+              width: "100%",
+              height: iframeHeight,
+              border: "none",
+              display: "block",
+              backgroundColor: "transparent",
             }}
-          >
-            Coming soon
-          </div>
-          <p
-            style={{
-              fontSize: 15,
-              color: "var(--color-text-secondary)",
-              lineHeight: 1.6,
-              maxWidth: 400,
-              margin: "0 auto",
-            }}
-          >
-            1-on-1 support call booking is coming soon. You&apos;ll be able to
-            schedule a 30-minute session directly from here.
-          </p>
+            scrolling="no"
+            id="vExaPKNRMixWIydqeGwh_1776263088042"
+          />
+          {!loaded && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                color: "var(--color-text-secondary)",
+                fontSize: 14,
+                pointerEvents: "none",
+                backgroundColor: "var(--color-bg)",
+              }}
+            >
+              <div
+                style={{
+                  width: 18,
+                  height: 18,
+                  border: "2px solid var(--color-border)",
+                  borderTopColor: "#22C55E",
+                  borderRadius: "50%",
+                  animation: "book-call-spin 0.8s linear infinite",
+                }}
+              />
+              <span>Loading calendar…</span>
+            </div>
+          )}
         </div>
+        <style jsx>{`
+          @keyframes book-call-spin {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+        `}</style>
       </div>
+      <Script
+        src="https://app.wiredcreator.com/js/form_embed.js"
+        strategy="afterInteractive"
+      />
     </PageWrapper>
   );
 }

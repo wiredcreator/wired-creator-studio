@@ -45,8 +45,6 @@ const UserXPSchema = new Schema<IUserXP>(
   { timestamps: true }
 );
 
-UserXPSchema.index({ userId: 1 }, { unique: true });
-
 const UserXP: Model<IUserXP> =
   mongoose.models.UserXP || mongoose.model<IUserXP>('UserXP', UserXPSchema);
 

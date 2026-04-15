@@ -49,7 +49,7 @@ export function getAnthropicClient(): Anthropic {
 }
 
 /** The Claude model to use for all generation tasks. */
-export const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
+export const CLAUDE_MODEL = 'claude-sonnet-4-6-20250415';
 
 /**
  * Extracts JSON from Claude's response text, handling markdown code fences.
