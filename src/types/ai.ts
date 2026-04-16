@@ -144,6 +144,14 @@ export interface GeneratedSideQuest {
   prompt: string;
   xpReward: number;
   estimatedMinutes: number;
+  category: 'brand_brain_fuel' | 'scroll_study' | 'hook_gym' | 'record_button_reps';
+  energyTier: 'spark' | 'flow' | 'hyperfocus';
+  motivationDriver?: 'captivate' | 'create' | 'compete' | 'complete';
+  track?: 'both' | 'long_form' | 'short_form';
+  whyThisMatters?: string;
+  rescueStatement?: string;
+  bonusRound?: string;
+  deliverable?: string;
 }
 
 // ---------------------------------------------------------------------------

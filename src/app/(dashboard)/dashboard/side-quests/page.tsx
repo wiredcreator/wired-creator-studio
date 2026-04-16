@@ -74,6 +74,11 @@ export default function SideQuestsPage() {
 
       const newQuests: SideQuestCardData[] = await res.json();
       setQuests((prev) => [...newQuests, ...prev]);
+
+      // Scroll to top so user sees the new quests
+      requestAnimationFrame(() => {
+        document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+      });
     } catch (err) {
       console.error('Failed to generate side quests:', err);
     } finally {

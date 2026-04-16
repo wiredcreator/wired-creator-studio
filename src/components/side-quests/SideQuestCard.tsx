@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { SideQuestType } from '@/models/SideQuest';
+import VoiceTextarea from '@/components/onboarding/VoiceTextarea';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,6 +21,14 @@ export interface SideQuestCardData {
   completedAt?: string;
   savedToBrandBrain?: boolean;
   createdAt: string;
+  // Framework v2 fields
+  whyThisMatters?: string;
+  category?: 'brand_brain_fuel' | 'scroll_study' | 'hook_gym' | 'record_button_reps';
+  energyTier?: 'spark' | 'flow' | 'hyperfocus';
+  motivationDriver?: 'captivate' | 'create' | 'compete' | 'complete';
+  rescueStatement?: string;
+  bonusRound?: string;
+  deliverable?: string;
 }
 
 interface SideQuestCardProps {
@@ -60,6 +69,32 @@ const TYPE_ICONS: Record<SideQuestType, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
     </svg>
   ),
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  brand_brain_fuel: 'Brand Brain Fuel',
+  scroll_study: 'Scroll Study',
+  hook_gym: 'Hook Gym',
+  record_button_reps: 'Record Button Reps',
+};
+
+const CATEGORY_STYLES: Record<string, React.CSSProperties> = {
+  brand_brain_fuel: { backgroundColor: 'rgba(212,168,67,0.12)', color: '#D4A843', borderColor: 'rgba(212,168,67,0.25)' },
+  scroll_study: { backgroundColor: 'rgba(74,144,217,0.12)', color: '#4A90D9', borderColor: 'rgba(74,144,217,0.25)' },
+  hook_gym: { backgroundColor: 'rgba(220,53,53,0.12)', color: '#DC3535', borderColor: 'rgba(220,53,53,0.25)' },
+  record_button_reps: { backgroundColor: 'rgba(46,166,110,0.12)', color: '#2EA66E', borderColor: 'rgba(46,166,110,0.25)' },
+};
+
+const ENERGY_LABELS: Record<string, string> = {
+  spark: 'Spark',
+  flow: 'Flow',
+  hyperfocus: 'Hyperfocus',
+};
+
+const ENERGY_ICONS: Record<string, string> = {
+  spark: '⚡',
+  flow: '🔥',
+  hyperfocus: '💎',
 };
 
 // ---------------------------------------------------------------------------
@@ -262,7 +297,7 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
 
   const handleComplete = async () => {
     setIsSubmitting(true);
-    onComplete(quest._id, needsResponse ? response : undefined);
+    onComplete(quest._id, response.trim() || undefined);
     // Parent will handle the state update
     setTimeout(() => setIsSubmitting(false), 500);
   };
@@ -376,7 +411,16 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
               {quest.description}
             </p>
 
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {quest.category && CATEGORY_LABELS[quest.category] && (
+                <span
+                  className="inline-flex items-center rounded-[var(--radius-full)] border px-2.5 py-0.5 text-xs font-semibold"
+                  style={CATEGORY_STYLES[quest.category]}
+                >
+                  {CATEGORY_LABELS[quest.category]}
+                </span>
+              )}
+
               <span className="inline-flex items-center rounded-[var(--radius-full)] border px-2.5 py-0.5 text-xs font-medium" style={TYPE_STYLES[quest.type]}>
                 {TYPE_LABELS[quest.type]}
               </span>
@@ -393,6 +437,12 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                   </svg>
                   ~{quest.estimatedMinutes} min
+                </span>
+              )}
+
+              {quest.energyTier && (
+                <span className="inline-flex items-center gap-1 text-xs text-[var(--color-text-secondary)]">
+                  {ENERGY_ICONS[quest.energyTier] || ''} {ENERGY_LABELS[quest.energyTier] || quest.energyTier}
                 </span>
               )}
 
@@ -420,6 +470,35 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
             </p>
           </div>
 
+          {/* Why This Matters */}
+          {quest.whyThisMatters && (
+            <p style={{
+              marginTop: 10, fontSize: 13, color: 'var(--color-text-secondary)',
+              lineHeight: 1.5,
+            }}>
+              {quest.whyThisMatters}
+            </p>
+          )}
+
+          {/* Rescue statement */}
+          {quest.rescueStatement && (
+            <p style={{
+              margin: '12px 0', padding: '10px 14px', borderRadius: 10,
+              backgroundColor: 'var(--color-bg-secondary)', fontSize: 13,
+              color: 'var(--color-text-secondary)', fontStyle: 'italic',
+              lineHeight: 1.5,
+            }}>
+              {quest.rescueStatement}
+            </p>
+          )}
+
+          {/* Deliverable */}
+          {quest.deliverable && (
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 8 }}>
+              Deliverable: {quest.deliverable}
+            </p>
+          )}
+
           {/* Optional countdown timer */}
           {quest.estimatedMinutes != null && quest.estimatedMinutes > 0 && (
             <div className="mt-4">
@@ -427,27 +506,24 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
             </div>
           )}
 
-          {/* Response area for research tasks and exercises */}
-          {needsResponse && (
-            <div className="mt-4">
-              <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]">
-                Your Response
-              </label>
-              <textarea
-                value={response}
-                onChange={(e) => setResponse(e.target.value)}
-                placeholder="Write your response here... Take your time, there's no rush."
-                className="min-h-[120px] w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white p-3 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
-              />
-            </div>
-          )}
-
-          {/* Voice storm prompt: just a reminder to record */}
-          {quest.type === 'voice_storm_prompt' && (
-            <p className="mt-4 text-xs text-[var(--color-text-muted)]">
-              Use the Voice Storming tool to record your response, or just hit complete when you are done.
-            </p>
-          )}
+          {/* Voice-first response area (all quest types) */}
+          <div className="mt-4">
+            <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]">
+              Your Response
+              <span className="ml-1.5 font-normal text-[var(--color-text-muted)]">
+                (tap the mic to record a voice memo, or type)
+              </span>
+            </label>
+            <VoiceTextarea
+              id={`quest-response-${quest._id}`}
+              value={response}
+              onChange={setResponse}
+              placeholder={quest.type === 'voice_storm_prompt'
+                ? "Hit the mic button to record your voice memo, or type your thoughts here..."
+                : "Record a voice memo or write your response here... Take your time, there's no rush."}
+              rows={4}
+            />
+          </div>
 
           {/* Complete button */}
           <div className="mt-4 flex items-center justify-between">
@@ -455,6 +531,7 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
               type="button"
               onClick={handleComplete}
               disabled={isSubmitting || (needsResponse && !response.trim())}
+
               className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-success)] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
@@ -483,6 +560,22 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
               Collapse
             </button>
           </div>
+
+          {/* Bonus round */}
+          {quest.bonusRound && !quest.completed && (
+            <div style={{
+              marginTop: 12, padding: '10px 14px', borderRadius: 10,
+              border: '1px dashed var(--color-border)',
+              backgroundColor: 'var(--color-bg-card)',
+            }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+                Bonus Round (optional)
+              </p>
+              <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                {quest.bonusRound}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

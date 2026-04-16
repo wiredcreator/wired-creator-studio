@@ -672,34 +672,68 @@ export async function generateSessionTitle(transcript: string, userId?: string):
 // Re-export for convenience (canonical definition is in @/types/ai)
 export type { GeneratedSideQuest } from '@/types/ai';
 
+interface SideQuestGenerationOptions {
+  currentWeek?: number;
+  recentCategories?: string[];
+  daysSinceLastActivity?: number;
+  studentState?: 'normal' | 'stuck' | 'returning' | 'momentum';
+}
+
 /**
- * Generates 3 personalized side quests (one of each type) using the student's
- * Brand Brain context. Falls back to null if AI generation fails, so the
- * caller can use mock data instead.
+ * Generates 3 personalized side quests using the student's Brand Brain context
+ * and the neuroscience-informed framework v2 (energy tiers, 4 categories,
+ * Four C's motivation, phase awareness, rotation rules, state-sensitive delivery).
  */
 export async function generateSideQuests(
   brandBrainContext: string,
   existingQuestTitles: string[] = [],
-  userId?: string
+  userId?: string,
+  options: SideQuestGenerationOptions = {}
 ): Promise<GeneratedSideQuest[]> {
   const client = getAnthropicClient();
 
-  const userParts: string[] = [];
+  const contextParts: string[] = [];
 
-  if (brandBrainContext) {
-    userParts.push(brandBrainContext);
+  // Brand Brain context
+  if (brandBrainContext && brandBrainContext.trim()) {
+    contextParts.push(`STUDENT'S BRAND BRAIN CONTEXT:\n${brandBrainContext}`);
   } else {
-    userParts.push('(No Brand Brain context available yet. Generate generic but fun creative quests for a new content creator.)');
+    contextParts.push(`STUDENT'S BRAND BRAIN CONTEXT:\nThis is a new creator. No Brand Brain data available yet. Generate quests suitable for someone just starting their content journey. Default motivation driver to "create".`);
   }
 
-  if (existingQuestTitles.length > 0) {
-    userParts.push('\n## Exclusion List (do NOT repeat these quest titles)');
-    for (const title of existingQuestTitles) {
-      userParts.push(`- ${title}`);
+  // Phase awareness
+  if (options.currentWeek) {
+    contextParts.push(`CURRENT PROGRAM WEEK: ${options.currentWeek}`);
+  }
+
+  // Rotation context
+  if (options.recentCategories && options.recentCategories.length > 0) {
+    contextParts.push(`LAST 4 QUEST CATEGORIES (most recent first): ${options.recentCategories.join(', ')}\nApply rotation rules: avoid repeating the most recent category, ensure variety.`);
+  }
+
+  // State-sensitive delivery
+  if (options.daysSinceLastActivity !== undefined) {
+    if (options.daysSinceLastActivity >= 5) {
+      contextParts.push(`STUDENT STATE: Inactive for ${options.daysSinceLastActivity} days. This is an overwhelm signal, not laziness. Serve Spark quests ONLY. Never serve Hyperfocus. Frame quests as zero-friction re-entry.`);
+    } else if (options.daysSinceLastActivity >= 2) {
+      contextParts.push(`STUDENT STATE: Inactive for ${options.daysSinceLastActivity} days. Lower the activation barrier. Prefer Spark quests.`);
     }
   }
 
-  userParts.push('\nGenerate 3 personalized side quests based on the above context.');
+  if (options.studentState === 'stuck') {
+    contextParts.push(`STUDENT STATE: Student reports feeling stuck or overwhelmed. Serve Spark quests ONLY. Lower the bar. Do not try to motivate through the overwhelm.`);
+  } else if (options.studentState === 'momentum') {
+    contextParts.push(`STUDENT STATE: Student just had a win or completed something. Ride the momentum. Offer Flow or Hyperfocus quests that build on the energy.`);
+  } else if (options.studentState === 'returning') {
+    contextParts.push(`STUDENT STATE: Student returning after a gap. Never reference the gap. Serve Spark with zero friction. The quest itself is the re-entry.`);
+  }
+
+  // Exclusion list
+  if (existingQuestTitles.length > 0) {
+    contextParts.push(`EXISTING QUEST TITLES (do not repeat these):\n${existingQuestTitles.join('\n')}`);
+  }
+
+  const userMessage = contextParts.join('\n\n---\n\n');
 
   const sideQuestSystemPrompt = await buildSystemPrompt(SIDE_QUEST_GENERATION_PROMPT, 'side_quest_generation', userId);
 
@@ -707,9 +741,9 @@ export async function generateSideQuests(
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
-      max_tokens: 1500,
+      max_tokens: 3000,
       system: sideQuestSystemPrompt,
-      messages: [{ role: 'user', content: userParts.join('\n') }],
+      messages: [{ role: 'user', content: userMessage }],
     })
   );
   if (userId) track(userId, 'side_quests', response, startMs);
@@ -719,37 +753,54 @@ export async function generateSideQuests(
     throw new Error('Claude returned an unexpected response format.');
   }
 
-  const parsed = extractJsonFromResponse(textBlock.text) as GeneratedSideQuest[];
+  const parsed = extractJsonFromResponse(textBlock.text);
 
   if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error('Claude returned JSON but it does not match the expected GeneratedSideQuest[] shape.');
+    throw new Error('AI returned invalid side quest format');
   }
 
-  // Validate each quest has the required fields and valid type
-  const validTypes = new Set(['voice_storm_prompt', 'research_task', 'content_exercise']);
-  for (const quest of parsed) {
-    if (
-      typeof quest.title !== 'string' ||
-      typeof quest.description !== 'string' ||
-      typeof quest.type !== 'string' ||
-      typeof quest.prompt !== 'string' ||
-      !validTypes.has(quest.type)
-    ) {
-      throw new Error('One or more generated quests have invalid structure.');
-    }
-    // Default xpReward to 15 if the AI didn't include it or it's out of range
-    if (typeof quest.xpReward !== 'number' || quest.xpReward < 5 || quest.xpReward > 25) {
-      quest.xpReward = 15;
-    }
-    // Default estimatedMinutes to 10 if missing, clamp between 5-60
-    if (typeof quest.estimatedMinutes !== 'number' || isNaN(quest.estimatedMinutes)) {
-      quest.estimatedMinutes = 10;
-    } else {
-      quest.estimatedMinutes = Math.max(5, Math.min(60, Math.round(quest.estimatedMinutes)));
-    }
+  const VALID_TYPES = ['voice_storm_prompt', 'research_task', 'content_exercise'];
+  const VALID_CATEGORIES = ['brand_brain_fuel', 'scroll_study', 'hook_gym', 'record_button_reps'];
+  const VALID_TIERS = ['spark', 'flow', 'hyperfocus'];
+  const VALID_DRIVERS = ['captivate', 'create', 'compete', 'complete'];
+  const VALID_TRACKS = ['both', 'long_form', 'short_form'];
+
+  const quests: GeneratedSideQuest[] = (parsed as Record<string, unknown>[])
+    .filter((q) =>
+      q && typeof q.title === 'string' && typeof q.description === 'string' &&
+      typeof q.type === 'string' && typeof q.prompt === 'string' &&
+      VALID_TYPES.includes(q.type as string)
+    )
+    .map((q) => ({
+      title: (q.title as string).trim(),
+      description: (q.description as string).trim(),
+      type: q.type as GeneratedSideQuest['type'],
+      prompt: (q.prompt as string).trim(),
+      xpReward: Math.min(25, Math.max(5, Number(q.xpReward) || 15)),
+      estimatedMinutes: Math.min(60, Math.max(2, Number(q.estimatedMinutes) || 10)),
+      category: VALID_CATEGORIES.includes(q.category as string)
+        ? (q.category as GeneratedSideQuest['category'])
+        : 'brand_brain_fuel',
+      energyTier: VALID_TIERS.includes(q.energyTier as string)
+        ? (q.energyTier as GeneratedSideQuest['energyTier'])
+        : 'flow',
+      motivationDriver: VALID_DRIVERS.includes(q.motivationDriver as string)
+        ? (q.motivationDriver as GeneratedSideQuest['motivationDriver'])
+        : undefined,
+      track: VALID_TRACKS.includes(q.track as string)
+        ? (q.track as GeneratedSideQuest['track'])
+        : 'both',
+      whyThisMatters: typeof q.whyThisMatters === 'string' ? q.whyThisMatters.trim() : undefined,
+      rescueStatement: typeof q.rescueStatement === 'string' ? q.rescueStatement.trim() : undefined,
+      bonusRound: typeof q.bonusRound === 'string' ? q.bonusRound.trim() : undefined,
+      deliverable: typeof q.deliverable === 'string' ? q.deliverable.trim() : undefined,
+    }));
+
+  if (quests.length === 0) {
+    throw new Error('No valid quests after validation');
   }
 
-  return parsed;
+  return quests;
 }
 
 // ---------------------------------------------------------------------------
