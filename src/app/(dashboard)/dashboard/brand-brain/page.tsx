@@ -180,43 +180,63 @@ export default function BrandBrainPage() {
   // --- Tone of Voice Editor save handler (optimistic) ---
   const handleToneSave = useCallback(
     (params: ToneParameter[], _summary: string) => {
-      if (!brandBrain?.toneOfVoiceGuide?._id) return;
+      if (!brandBrain) return;
       const previous = brandBrain;
-      // Optimistically update tone parameters in local state
-      setBrandBrain((prev) => {
-        if (!prev?.toneOfVoiceGuide) return prev;
-        return {
-          ...prev,
-          toneOfVoiceGuide: {
-            ...prev.toneOfVoiceGuide,
-            parameters: params,
-          },
-        };
-      });
       setIsSaving(true);
 
-      fetch(
-        `/api/tone-of-voice/${brandBrain.toneOfVoiceGuide._id}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parameters: params }),
-        }
-      )
-        .then((res) => {
-          if (!res.ok) return res.json().then((err: { error?: string }) => { throw new Error(err.error || 'Failed to save tone of voice'); });
-          // Refetch to get the updated populated data
-          return fetchBrandBrain();
-        })
-        .catch((err) => {
-          console.error('Error saving tone of voice:', err);
-          // Revert to previous state
-          setBrandBrain(previous);
-          setError('Failed to save tone of voice changes. Please try again.');
-        })
-        .finally(() => {
-          setIsSaving(false);
+      if (brandBrain.toneOfVoiceGuide?._id) {
+        // Update existing guide
+        setBrandBrain((prev) => {
+          if (!prev?.toneOfVoiceGuide) return prev;
+          return {
+            ...prev,
+            toneOfVoiceGuide: {
+              ...prev.toneOfVoiceGuide,
+              parameters: params,
+            },
+          };
         });
+
+        fetch(
+          `/api/tone-of-voice/${brandBrain.toneOfVoiceGuide._id}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parameters: params }),
+          }
+        )
+          .then((res) => {
+            if (!res.ok) return res.json().then((err: { error?: string }) => { throw new Error(err.error || 'Failed to save tone of voice'); });
+            return fetchBrandBrain();
+          })
+          .catch((err) => {
+            console.error('Error saving tone of voice:', err);
+            setBrandBrain(previous);
+            setError('Failed to save tone of voice changes. Please try again.');
+          })
+          .finally(() => {
+            setIsSaving(false);
+          });
+      } else {
+        // Create new guide
+        fetch('/api/tone-of-voice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parameters: params, brandBrainId: brandBrain._id }),
+        })
+          .then((res) => {
+            if (!res.ok) return res.json().then((err: { error?: string }) => { throw new Error(err.error || 'Failed to create tone of voice'); });
+            return fetchBrandBrain();
+          })
+          .catch((err) => {
+            console.error('Error creating tone of voice:', err);
+            setBrandBrain(previous);
+            setError('Failed to create tone of voice guide. Please try again.');
+          })
+          .finally(() => {
+            setIsSaving(false);
+          });
+      }
     },
     [brandBrain, fetchBrandBrain]
   );
@@ -378,7 +398,7 @@ export default function BrandBrainPage() {
             </div>
           )}
 
-          {showToneEditor && brandBrain.toneOfVoiceGuide ? (
+          {showToneEditor ? (
             <>
               {/* Back button */}
               <button
@@ -402,9 +422,9 @@ export default function BrandBrainPage() {
               </button>
 
               <ToneOfVoiceEditor
-                initialParameters={brandBrain.toneOfVoiceGuide.parameters}
-                initialSummary={buildToneSummary(brandBrain.toneOfVoiceGuide.parameters)}
-                status={brandBrain.toneOfVoiceGuide.status}
+                initialParameters={brandBrain.toneOfVoiceGuide?.parameters ?? []}
+                initialSummary={brandBrain.toneOfVoiceGuide ? buildToneSummary(brandBrain.toneOfVoiceGuide.parameters) : ''}
+                status={brandBrain.toneOfVoiceGuide?.status ?? 'draft'}
                 onSave={handleToneSave}
                 onRegenerate={handleToneRegenerate}
                 onStatusChange={handleToneStatusChange}
@@ -432,11 +452,7 @@ export default function BrandBrainPage() {
                   constraints: '',
                 }
               }
-              onEditToneOfVoice={
-                brandBrain.toneOfVoiceGuide
-                  ? () => setShowToneEditor(true)
-                  : undefined
-              }
+              onEditToneOfVoice={() => setShowToneEditor(true)}
               onSavePillars={handleSavePillars}
               onSaveIndustryData={handleSaveIndustryData}
               onSaveEquipmentProfile={handleSaveEquipmentProfile}
