@@ -96,7 +96,7 @@ Find 5-8 high-quality, recent sources. Prefer authoritative sources (research in
     const startMs = Date.now();
 
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-haiku-4-5',
       max_tokens: 4096,
       system: systemPrompt,
       messages: [{ role: 'user', content: query }],

@@ -2,11 +2,11 @@ import dbConnect from '@/lib/db';
 import AIUsageLog from '@/models/AIUsageLog';
 
 // ---------------------------------------------------------------------------
-// Pricing — Claude Sonnet 4.6 (per million tokens)
+// Pricing — Claude Sonnet 4.5 (per million tokens)
 // Update these when switching models or when pricing changes.
 // ---------------------------------------------------------------------------
 const PRICING: Record<string, { inputPerM: number; outputPerM: number }> = {
-  'claude-sonnet-4-6-20250415': { inputPerM: 3, outputPerM: 15 },
+  'claude-sonnet-4-5': { inputPerM: 3, outputPerM: 15 },
 };
 
 const DEFAULT_PRICING = { inputPerM: 3, outputPerM: 15 };

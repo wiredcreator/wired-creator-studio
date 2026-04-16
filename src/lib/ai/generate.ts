@@ -53,7 +53,8 @@ export async function buildSystemPrompt(
       // Fetch global documents for this category
       AIDocument.find({ category, scope: 'global' })
         .sort({ sortOrder: 1 })
-        .lean(),
+        .lean()
+        .then((docs) => docs.filter((d) => d.category !== 'student_profile')),
       // Fetch user-scoped documents if userId provided
       userId
         ? AIDocument.find({ category, userId }).sort({ sortOrder: 1 }).lean()

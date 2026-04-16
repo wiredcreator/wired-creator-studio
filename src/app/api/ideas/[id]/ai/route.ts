@@ -155,6 +155,7 @@ Respond with ONLY a JSON array of strings:
         }
 
         const startMs = Date.now();
+        console.log(`[AI] Outline generation using model: ${CLAUDE_MODEL}`);
         const response = await client.messages.create({
           model: CLAUDE_MODEL,
           max_tokens: 2048,
@@ -189,6 +190,7 @@ Return the outline as a JSON array of sections with titles and bullet points. Th
             },
           ],
         });
+        console.log(`[AI] Outline response model (from API): ${response.model}`);
         trackAIUsage({ userId: user.id, feature: 'idea_outline', response, durationMs: Date.now() - startMs });
 
         const text = response.content[0].type === 'text' ? response.content[0].text : '';
