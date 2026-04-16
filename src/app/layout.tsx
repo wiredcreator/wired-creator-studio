@@ -29,6 +29,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: `
+          h1, h2, h3, h4 {
+            font-family: var(--font-heading), 'Atkinson Hyperlegible', system-ui, -apple-system, sans-serif;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+          }
+        `}} />
+      </head>
       <body
         className={`${atkinson.variable} ${lanterne.variable} antialiased`}
       >

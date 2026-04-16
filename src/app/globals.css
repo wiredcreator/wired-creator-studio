@@ -139,12 +139,8 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Headings use Lanterne display font */
-h1, h2, h3, h4 {
-  font-family: var(--font-heading), var(--font-sans);
-  font-weight: 600;
-  letter-spacing: -0.025em;
-}
+/* Headings use Lanterne display font — applied via <style> tag in layout.tsx
+   because Tailwind v4 strips element-selector rules from CSS files */
 
 /* Remove focus outlines */
 *:focus,
