@@ -112,7 +112,7 @@ Find 5-8 high-quality, recent sources. Prefer authoritative sources (research in
         textParts.push(block.text);
       }
     }
-    const fullText = textParts.join('');
+    const fullText = textParts.join('').replace(/<cite[^>]*>/g, '').replace(/<\/cite>/g, '');
 
     if (!fullText) {
       return NextResponse.json({ error: 'No text response from AI' }, { status: 500 });

@@ -79,7 +79,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_STYLES: Record<string, React.CSSProperties> = {
-  brand_brain_fuel: { backgroundColor: 'rgba(212,168,67,0.12)', color: '#D4A843', borderColor: 'rgba(212,168,67,0.25)' },
+  brand_brain_fuel: { backgroundColor: 'rgba(218,65,20,0.12)', color: '#DA4114', borderColor: 'rgba(218,65,20,0.25)' },
   scroll_study: { backgroundColor: 'rgba(74,144,217,0.12)', color: '#4A90D9', borderColor: 'rgba(74,144,217,0.25)' },
   hook_gym: { backgroundColor: 'rgba(220,53,53,0.12)', color: '#DC3535', borderColor: 'rgba(220,53,53,0.25)' },
   record_button_reps: { backgroundColor: 'rgba(46,166,110,0.12)', color: '#2EA66E', borderColor: 'rgba(46,166,110,0.25)' },

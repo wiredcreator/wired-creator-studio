@@ -9,8 +9,8 @@ function getResendClient(): Resend | null {
 const FROM_EMAIL = process.env.FROM_EMAIL || 'Wired Creator <noreply@wiredcreator.com>';
 
 // Brand colors
-const BRAND_GOLD = '#D4A843';
-const BRAND_GOLD_DARK = '#B8912E';
+const BRAND_GOLD = '#DA4114';
+const BRAND_GOLD_DARK = '#C23810';
 const BRAND_BG = '#0F0F14';
 const BRAND_CARD = '#1A1A24';
 const BRAND_TEXT = '#E8E8ED';

@@ -552,6 +552,7 @@ export default function IdeaParkingLotPage() {
           <DraftSidebar
             callToAction={callToAction}
             setCallToAction={setCallToAction}
+            onSaveCallToAction={(v) => { setCallToAction(v); saveIdea({ callToAction: v } as unknown as Partial<IdeaData>); }}
             tags={tags}
             setTags={(newTags) => { setTags(newTags); saveIdea({ tags: newTags } as unknown as Partial<IdeaData>); }}
             alternativeTitles={alternativeTitles}

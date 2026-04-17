@@ -260,6 +260,7 @@ export default function OutlineTab({
                 </div>
                 <input
                   type="text"
+                  data-transparent
                   value={section.title}
                   onChange={(e) => updateSection(section.id, { title: e.target.value })}
                   onClick={(e) => e.stopPropagation()}
@@ -307,6 +308,7 @@ export default function OutlineTab({
                   <input
                     ref={bIdx === section.bullets.length - 1 ? newBulletRef : undefined}
                     type="text"
+                    data-transparent
                     value={bullet}
                     onChange={(e) => updateBullet(section.id, bIdx, e.target.value)}
                     onKeyDown={(e) => handleBulletKeyDown(e, section.id, bIdx)}

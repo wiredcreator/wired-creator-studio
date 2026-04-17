@@ -6,6 +6,7 @@ import type { INote, IComment } from '@/models/ContentIdea';
 interface DraftSidebarProps {
   callToAction: string;
   setCallToAction: (v: string) => void;
+  onSaveCallToAction?: (v: string) => void;
   tags: string[];
   setTags: (v: string[]) => void;
   alternativeTitles: string[];
@@ -77,6 +78,7 @@ const PANELS: PanelConfig[] = [
 export default function DraftSidebar({
   callToAction,
   setCallToAction,
+  onSaveCallToAction,
   tags,
   setTags,
   alternativeTitles,
@@ -243,7 +245,7 @@ export default function DraftSidebar({
                     className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
                   />
                   <button
-                    onClick={onMarkChanged}
+                    onClick={() => { onSaveCallToAction?.(callToAction); }}
                     className="rounded-md border border-[var(--color-border)] px-3 py-1 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] transition-colors"
                   >
                     Save changes

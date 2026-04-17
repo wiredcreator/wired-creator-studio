@@ -68,10 +68,10 @@
   --color-text-muted: #555770;
   --color-text-inverse: #0C0D12;
 
-  --color-accent: #D4A843;
-  --color-accent-hover: #E0B94F;
-  --color-accent-light: rgba(212, 168, 67, 0.12);
-  --color-accent-subtle: rgba(212, 168, 67, 0.06);
+  --color-accent: #DA4114;
+  --color-accent-hover: #E5521F;
+  --color-accent-light: rgba(218, 65, 20, 0.12);
+  --color-accent-subtle: rgba(218, 65, 20, 0.06);
 
   --color-success: #3ECF8E;
   --color-success-light: rgba(62, 207, 142, 0.12);
@@ -88,7 +88,7 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(212, 168, 67, 0.15);
+  --shadow-glow: 0 0 20px rgba(218, 65, 20, 0.15);
 }
 
 /* ── Placeholder text ── */
@@ -209,8 +209,8 @@ body::before {
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(212, 168, 67, 0.15); }
-  50% { box-shadow: 0 0 20px rgba(212, 168, 67, 0.25); }
+  0%, 100% { box-shadow: 0 0 8px rgba(218, 65, 20, 0.15); }
+  50% { box-shadow: 0 0 20px rgba(218, 65, 20, 0.25); }
 }
 
 .animate-fadeIn {

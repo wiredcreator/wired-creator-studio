@@ -22,9 +22,8 @@ const navItems = [
   { href: "/dashboard/support", label: "Support" },
 ];
 
-const ACCENT = { light: '#4A90D9', dark: '#D4A843' };
-const TEXT_SEC = { light: '#555770', dark: '#8B8D9E' };
-const TEXT_PRI = { light: '#1A1A2E', dark: '#E4E4E7' };
+// All colors now reference CSS variables from globals.css
+// so they stay in sync when the theme palette changes.
 
 export default function Sidebar({ userName, userRole = "student" }: SidebarProps) {
   const pathname = usePathname();
@@ -33,7 +32,7 @@ export default function Sidebar({ userName, userRole = "student" }: SidebarProps
   const [darkHover, setDarkHover] = useState(false);
 
   const activeStyle: React.CSSProperties = {
-    backgroundColor: ACCENT[t],
+    backgroundColor: 'var(--color-accent)',
     color: '#FFFFFF',
     borderRadius: '12px',
     padding: '10px 16px',
@@ -41,12 +40,12 @@ export default function Sidebar({ userName, userRole = "student" }: SidebarProps
     fontWeight: 600,
     textAlign: 'left',
     display: 'block',
-    boxShadow: `0 2px 8px ${t === 'light' ? 'rgba(74,144,217,0.35)' : 'rgba(212,168,67,0.35)'}`,
+    boxShadow: '0 2px 8px var(--color-accent-light)',
   };
 
   const inactiveStyle: React.CSSProperties = {
     backgroundColor: 'transparent',
-    color: TEXT_SEC[t],
+    color: 'var(--color-text-secondary)',
     borderRadius: '12px',
     padding: '10px 16px',
     fontSize: '13px',
@@ -97,7 +96,7 @@ export default function Sidebar({ userName, userRole = "student" }: SidebarProps
             backgroundColor: darkHover
               ? (t === 'light' ? '#f0f1f4' : '#23263a')
               : (t === 'light' ? '#f5f6f8' : '#1a1d2e'),
-            color: TEXT_SEC[t],
+            color: 'var(--color-text-secondary)',
             fontSize: 13,
             fontWeight: 500,
             cursor: 'pointer',
@@ -141,7 +140,7 @@ export default function Sidebar({ userName, userRole = "student" }: SidebarProps
               width: 32,
               height: 32,
               borderRadius: '50%',
-              backgroundColor: ACCENT[t],
+              backgroundColor: 'var(--color-accent)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -152,7 +151,7 @@ export default function Sidebar({ userName, userRole = "student" }: SidebarProps
             }}>
               {userName.charAt(0).toUpperCase()}
             </div>
-            <span style={{ fontSize: 13, fontWeight: 500, color: TEXT_PRI[t], overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {userName}
             </span>
           </div>
