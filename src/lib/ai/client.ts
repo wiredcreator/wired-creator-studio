@@ -44,7 +44,7 @@ export function getAnthropicClient(): Anthropic {
     );
   }
 
-  cached.client = new Anthropic({ apiKey, timeout: 60_000 });
+  cached.client = new Anthropic({ apiKey, timeout: 180_000 });
   return cached.client;
 }
 

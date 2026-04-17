@@ -7,6 +7,7 @@ import IdeaCard from '@/components/ideas/IdeaCard';
 import IdeaDetail from '@/components/ideas/IdeaDetail';
 import IdeaStats from '@/components/ideas/IdeaStats';
 import ContentScout from '@/components/ideas/ContentScout';
+import ModalPortal from '@/components/ModalPortal';
 import type { IdeaCardData } from '@/components/ideas/IdeaCard';
 import type { ContentIdeaStatus } from '@/models/ContentIdea';
 
@@ -14,7 +15,7 @@ import type { ContentIdeaStatus } from '@/models/ContentIdea';
 // Types
 // ---------------------------------------------------------------------------
 
-type IdeasView = 'entry' | 'own-idea' | 'find-ideas' | 'parking-lot';
+export type IdeasView = 'entry' | 'own-idea' | 'find-ideas' | 'parking-lot';
 type FindIdeasTab = 'brand-brain' | 'content-scout';
 
 // ---------------------------------------------------------------------------
@@ -120,10 +121,24 @@ function BackButton({ onClick }: { onClick: () => void }) {
 // ---------------------------------------------------------------------------
 
 export default function IdeasPage() {
+  return <IdeasPageInner initialView="entry" />;
+}
+
+export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasView }) {
   const router = useRouter();
 
-  // --- View State ---
-  const [currentView, setCurrentView] = useState<IdeasView>('entry');
+  // --- View State (driven by URL slug) ---
+  const currentView: IdeasView = initialView;
+
+  const setCurrentView = useCallback((v: IdeasView) => {
+    const viewMap: Record<IdeasView, string> = {
+      'entry': '/dashboard/ideas',
+      'own-idea': '/dashboard/ideas/new',
+      'find-ideas': '/dashboard/ideas/discover',
+      'parking-lot': '/dashboard/ideas/parking-lot',
+    };
+    router.push(viewMap[v]);
+  }, [router]);
   const [findIdeasTab, setFindIdeasTab] = useState<FindIdeasTab>('brand-brain');
 
   // --- Data State ---
@@ -163,6 +178,13 @@ export default function IdeasPage() {
 
   // Animation
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
+
+  // Delete confirmation modal
+  const [ideaToDelete, setIdeaToDelete] = useState<IdeaCardData | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Create new idea
+  const [isCreating, setIsCreating] = useState(false);
 
   // Fetch session to get userId
   useEffect(() => {
@@ -528,6 +550,49 @@ export default function IdeasPage() {
       stopRecording();
     } else {
       startRecording();
+    }
+  };
+
+  // --- Create new idea and navigate to detail page ---
+  const handleCreateNewIdea = async () => {
+    if (isCreating) return;
+    setIsCreating(true);
+    try {
+      const res = await fetch('/api/ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          title: 'Untitled Idea',
+          source: 'manual',
+          status: 'saved',
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to create idea');
+      const newIdea = await res.json();
+      router.push(`/dashboard/ideas/${newIdea._id}`);
+    } catch (err) {
+      console.error('Failed to create new idea:', err);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // --- Delete confirmation modal handlers ---
+  const handleConfirmDelete = async () => {
+    if (!ideaToDelete || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/ideas/${ideaToDelete._id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setIdeas((prev) => prev.filter((i) => i._id !== ideaToDelete._id));
+        setSuggestedIdeas((prev) => prev.filter((i) => i._id !== ideaToDelete._id));
+      }
+    } catch (err) {
+      console.error('Failed to delete idea:', err);
+    } finally {
+      setIsDeleting(false);
+      setIdeaToDelete(null);
     }
   };
 
@@ -932,9 +997,26 @@ export default function IdeasPage() {
             </div>
           )}
 
-          <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
-            Idea Parking Lot
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+              Idea Parking Lot
+            </h2>
+            <button
+              type="button"
+              onClick={handleCreateNewIdea}
+              disabled={isCreating}
+              className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+            >
+              {isCreating ? (
+                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              )}
+              Create New Idea
+            </button>
+          </div>
 
           {/* Tabs + Filters */}
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1010,7 +1092,7 @@ export default function IdeasPage() {
                   variant="pipeline"
                   onStatusChange={updateIdeaStatus}
                   onClick={(idea) => router.push(`/dashboard/ideas/${idea._id}`)}
-                  onDelete={handleDeleteIdea}
+                  onDelete={(_id: string) => setIdeaToDelete(idea)}
                   animationClass={
                     animatingIds.has(idea._id) ? 'idea-card-enter' : ''
                   }
@@ -1040,6 +1122,67 @@ export default function IdeasPage() {
           onDelete={handleDeleteIdea}
           onStartScript={handleStartScript}
         />
+      )}
+
+      {/* ================================================================ */}
+      {/* DELETE CONFIRMATION MODAL                                         */}
+      {/* ================================================================ */}
+      {ideaToDelete && (
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60"
+            onClick={() => { if (!isDeleting) setIdeaToDelete(null); }}
+          >
+            <div
+              className="mx-4 w-full max-w-sm rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 shadow-[var(--shadow-lg)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Trash icon */}
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-error-light)]">
+                <svg className="h-6 w-6 text-[var(--color-error)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+              </div>
+
+              {/* Heading */}
+              <h3 className="mb-2 text-center text-lg font-bold text-[var(--color-text-primary)]">
+                Delete this idea?
+              </h3>
+
+              {/* Idea title + description */}
+              <p className="mb-6 text-center text-sm text-[var(--color-text-secondary)]">
+                &ldquo;{ideaToDelete.title}&rdquo; will be permanently removed from your parking lot.
+              </p>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIdeaToDelete(null)}
+                  disabled={isDeleting}
+                  className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-tertiary)] disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                  className="flex-1 rounded-[var(--radius-md)] bg-[var(--color-error)] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Deleting...
+                    </span>
+                  ) : (
+                    'Delete idea'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
       )}
     </PageWrapper>
   );

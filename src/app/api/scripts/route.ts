@@ -106,6 +106,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate the script using Claude (falls back to mock if no API key)
+    console.log(`[script] Starting generation for idea: "${idea.title}" (${ideaId})`);
     const generated = await generateScript(
       idea.title,
       idea.description || '',
@@ -118,6 +119,8 @@ export async function POST(request: NextRequest) {
       idea.resources && idea.resources.length > 0 ? idea.resources : undefined,
       idea.conceptAnswers || undefined,
     );
+
+    console.log(`[script] Generation complete for: "${idea.title}"`);
 
     // Build sections from AI output (with IDs and order)
     const sections = Array.isArray(generated.sections)

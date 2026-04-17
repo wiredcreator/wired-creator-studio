@@ -510,14 +510,16 @@ export async function generateScript(
   const scriptSystemPrompt = await buildSystemPrompt(SCRIPT_GENERATION_SYSTEM_PROMPT, 'script_generation', userId);
 
   const startMs = Date.now();
+  console.log(`[script] Calling Claude model: ${CLAUDE_MODEL}`);
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
-      max_tokens: 4096,
+      max_tokens: 16384,
       system: scriptSystemPrompt,
       messages: [{ role: 'user', content: userParts.join('\n') }],
     })
   );
+  console.log(`[script] Claude responded in ${Date.now() - startMs}ms (model: ${response.model}, stop: ${response.stop_reason})`);
   if (userId) track(userId, 'script_generation', response, startMs);
 
   const textBlock = response.content.find((b) => b.type === 'text');
@@ -525,31 +527,39 @@ export async function generateScript(
     throw new Error('Claude returned an unexpected response format.');
   }
 
+  if (response.stop_reason === 'max_tokens') {
+    console.warn('[script] Response was truncated (hit max_tokens). Output may be incomplete.');
+  }
+
+  console.log(`[script] Response length: ${textBlock.text.length} chars, first 200: ${textBlock.text.slice(0, 200)}`);
+
   let parsed: GeneratedScript;
   try {
     parsed = extractJsonFromResponse(textBlock.text) as GeneratedScript;
-  } catch {
+  } catch (parseErr) {
+    console.error('[script] JSON parse failed. Last 200 chars:', textBlock.text.slice(-200));
     throw new Error(
       'Failed to parse Claude response as JSON. The model may have returned malformed output.'
     );
   }
 
-  // Validate minimal structure
-  if (
-    typeof parsed.fullScript !== 'string' ||
-    !Array.isArray(parsed.bulletPoints) ||
-    typeof parsed.teleprompterVersion !== 'string'
-  ) {
-    throw new Error(
-      'Claude returned JSON but it does not match the expected GeneratedScript shape.'
-    );
+  // Coerce missing fields with sensible defaults instead of throwing
+  const fullScript = typeof parsed.fullScript === 'string' ? parsed.fullScript : '';
+  const bulletPoints = Array.isArray(parsed.bulletPoints) ? parsed.bulletPoints : [];
+  const teleprompterVersion = typeof parsed.teleprompterVersion === 'string'
+    ? parsed.teleprompterVersion
+    : fullScript;
+
+  if (!fullScript) {
+    console.error('[script] Claude returned JSON with no fullScript. Keys:', Object.keys(parsed));
+    throw new Error('Claude returned JSON but fullScript is missing.');
   }
 
   return {
     title: parsed.title || ideaTitle,
-    fullScript: parsed.fullScript,
-    bulletPoints: parsed.bulletPoints,
-    teleprompterVersion: parsed.teleprompterVersion,
+    fullScript,
+    bulletPoints,
+    teleprompterVersion,
     sections: Array.isArray(parsed.sections) ? parsed.sections : undefined,
   };
 }

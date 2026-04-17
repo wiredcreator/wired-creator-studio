@@ -150,24 +150,38 @@ export default function IdeaParkingLotPage() {
     fetchIdea();
   }, [fetchIdea]);
 
-  // Check if this idea already has a linked voice storm
+  // Check if this idea already has a linked voice storm (API or local resources)
   useEffect(() => {
+    // Check local resources first (no async needed)
+    const hasVoiceStormResource = resources.some((r) => {
+      const name = (r.name || '').toLowerCase();
+      return name.includes('voice storm') || name.includes('voicestorm') || name.includes('voice-storm');
+    });
+    if (hasVoiceStormResource) {
+      setHasLinkedVoiceStorm(true);
+      setVoiceStormChecked(true);
+      return;
+    }
+
+    // Then check API for linked sessions
     const checkVoiceStorm = async () => {
       try {
         const res = await fetch(`/api/voice-storming?linkedIdeaId=${ideaId}&limit=1`);
         if (res.ok) {
           const data = await res.json();
           const sessions = data.data || [];
-          setHasLinkedVoiceStorm(sessions.length > 0);
+          if (sessions.length > 0) {
+            setHasLinkedVoiceStorm(true);
+            return;
+          }
         }
       } catch {
         // If check fails, don't block the flow
-      } finally {
-        setVoiceStormChecked(true);
       }
+      setHasLinkedVoiceStorm(false);
     };
-    checkVoiceStorm();
-  }, [ideaId]);
+    checkVoiceStorm().finally(() => setVoiceStormChecked(true));
+  }, [ideaId, resources]);
 
   const showError = (msg: string) => {
     setErrorMessage(msg);
