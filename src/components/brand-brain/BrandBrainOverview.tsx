@@ -142,7 +142,7 @@ export default function BrandBrainOverview({
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
+          <h1 className="font-heading text-2xl font-semibold text-[var(--color-text-primary)]">
             {studentName ? `${studentName}'s Brand Brain` : 'Brand Brain'}
           </h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">

@@ -590,7 +590,7 @@ export default function BrainDumpPage() {
         <div className="px-6 sm:px-10 pb-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <h1 className="text-2xl font-semibold text-[var(--color-text-primary)] leading-tight">
+              <h1 className="font-heading text-2xl font-semibold text-[var(--color-text-primary)] leading-tight">
                 {sessionTitle}
               </h1>
               <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{sessionDate}</p>
@@ -833,7 +833,7 @@ export default function BrainDumpPage() {
     <div className="flex flex-col min-h-full">
       {/* Header */}
       <div className="px-6 py-8 sm:px-10">
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--color-text-primary)]">
+        <h1 className="font-heading text-3xl font-semibold tracking-tight text-[var(--color-text-primary)]">
           Brain Dump Session
         </h1>
         <p className="mt-2 text-[15px] leading-relaxed text-[var(--color-text-secondary)]">

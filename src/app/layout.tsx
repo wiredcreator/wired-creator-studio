@@ -31,15 +31,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <style dangerouslySetInnerHTML={{ __html: `
-          h1 {
-            font-family: var(--font-heading), 'Atkinson Hyperlegible', system-ui, -apple-system, sans-serif;
-            font-weight: 600;
-            letter-spacing: -0.01em;
-          }
-          h2, h3, h4 {
-            font-family: var(--font-heading), 'Atkinson Hyperlegible', system-ui, -apple-system, sans-serif;
-            font-weight: 600;
-            letter-spacing: 0.03em !important;
+          .font-heading {
+            font-family: var(--font-heading), 'Atkinson Hyperlegible', system-ui, sans-serif;
           }
         `}} />
       </head>

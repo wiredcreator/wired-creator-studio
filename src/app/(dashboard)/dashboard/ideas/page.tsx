@@ -689,7 +689,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
             <span className="mb-4 inline-block rounded-full bg-[var(--color-accent-light)] px-4 py-1.5 text-xs font-medium text-[var(--color-accent)]">
               ✨ Idea Studio
             </span>
-            <h1 className="text-[28px] font-bold tracking-tight text-[var(--color-text-primary)]">
+            <h1 className="font-heading text-[28px] font-bold tracking-tight text-[var(--color-text-primary)]">
               What do you want to create?
             </h1>
             <p className="mt-2 text-[15px] text-[var(--color-text-muted)]">

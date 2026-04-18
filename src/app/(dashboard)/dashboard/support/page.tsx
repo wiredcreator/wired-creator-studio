@@ -54,7 +54,7 @@ export default function SupportPage() {
   return (
     <PageWrapper>
       <div className="flex flex-col items-center justify-center min-h-[70vh] px-6">
-        <h1 className="text-4xl font-bold text-[var(--color-text-primary)] mb-2">
+        <h1 className="font-heading text-4xl font-bold text-[var(--color-text-primary)] mb-2">
           Here to help
         </h1>
         <p className="text-[var(--color-text-secondary)] text-lg mb-12">
