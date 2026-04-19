@@ -101,6 +101,8 @@ export default function FindSourcesPanel({
   const [isSearching, setIsSearching] = useState(false);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [refineOpen, setRefineOpen] = useState(false);
+  const [foundResults, setFoundResults] = useState<IResource[]>([]);
+  const [selectedResults, setSelectedResults] = useState<Set<number>>(new Set());
   const lastInputHashRef = useRef('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -208,7 +210,8 @@ export default function FindSourcesPanel({
       }
       const data = await res.json();
       if (data.resources && data.resources.length > 0) {
-        onSourcesFound(data.resources);
+        setFoundResults(data.resources);
+        setSelectedResults(new Set(data.resources.map((_: IResource, i: number) => i)));
         startCooldown(30);
       } else {
         setError('No sources found. Try adjusting your search query or categories.');
@@ -218,7 +221,30 @@ export default function FindSourcesPanel({
     } finally {
       setIsSearching(false);
     }
-  }, [searchQuery, selectedCategories, ideaId, onSourcesFound, cooldown, startCooldown]);
+  }, [searchQuery, selectedCategories, ideaId, cooldown, startCooldown]);
+
+  const toggleResult = useCallback((index: number) => {
+    setSelectedResults((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }, []);
+
+  const handleSaveSelected = useCallback(() => {
+    const toSave = foundResults.filter((_, i) => selectedResults.has(i));
+    if (toSave.length > 0) {
+      onSourcesFound(toSave);
+    }
+    setFoundResults([]);
+    setSelectedResults(new Set());
+  }, [foundResults, selectedResults, onSourcesFound]);
+
+  const handleBackToSearch = useCallback(() => {
+    setFoundResults([]);
+    setSelectedResults(new Set());
+  }, []);
 
   if (typeof document === 'undefined') return null;
 
@@ -256,163 +282,237 @@ export default function FindSourcesPanel({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          {/* AI Understanding */}
-          <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(74, 111, 247, 0.08)' }}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                AI Understood Your Idea As
-              </p>
-              {!isSynthesizing && !editingQuery && (
+        {foundResults.length > 0 ? (
+          <>
+            {/* Results review */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-[var(--color-text)]">
+                  {foundResults.length} sources found
+                </p>
                 <button
-                  onClick={() => { lastInputHashRef.current = ''; setRefreshTrigger((n) => n + 1); }}
-                  className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
-                  title="Refresh synthesis"
+                  onClick={() => {
+                    if (selectedResults.size === foundResults.length) {
+                      setSelectedResults(new Set());
+                    } else {
+                      setSelectedResults(new Set(foundResults.map((_, i) => i)));
+                    }
+                  }}
+                  className="text-xs text-[var(--color-accent)] hover:underline"
                 >
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
-                  </svg>
-                  Refresh
-                </button>
-              )}
-            </div>
-            {isSynthesizing ? (
-              <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
-                Synthesizing from your concept and resources...
-              </div>
-            ) : editingQuery ? (
-              <input
-                data-transparent=""
-                style={{ backgroundColor: 'transparent' }}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onBlur={() => setEditingQuery(false)}
-                onKeyDown={(e) => { if (e.key === 'Enter') setEditingQuery(false); }}
-                className="w-full bg-transparent text-sm font-medium text-[var(--color-accent)] outline-none ring-0"
-                autoFocus
-              />
-            ) : (
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-[var(--color-accent)] flex-1">{searchQuery || 'No title set'}</p>
-                <button
-                  onClick={() => setEditingQuery(true)}
-                  className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] shrink-0"
-                >
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-                  </svg>
-                  Edit
+                  {selectedResults.size === foundResults.length ? 'Deselect all' : 'Select all'}
                 </button>
               </div>
-            )}
-          </div>
-
-          {/* Category Selection */}
-          <div>
-            <h3 className="text-sm font-semibold text-[var(--color-text)] mb-1">
-              What kind of resources do you need?
-            </h3>
-            <p className="text-xs text-[var(--color-text-muted)] mb-4">
-              Select all that apply, pre-selected for your idea type.
-            </p>
-            <div className="space-y-2">
-              {CATEGORIES.map((cat) => (
+              {foundResults.map((resource, index) => (
                 <button
-                  key={cat.id}
-                  onClick={() => toggleCategory(cat.id)}
-                  className="flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors hover:bg-[var(--color-bg-secondary)]"
+                  key={index}
+                  type="button"
+                  onClick={() => toggleResult(index)}
+                  className={`flex w-full items-start gap-3 rounded-lg border p-4 text-left transition-colors ${
+                    selectedResults.has(index)
+                      ? 'border-[var(--color-accent)] bg-[rgba(74,111,247,0.05)]'
+                      : 'border-[var(--color-border)] bg-[var(--color-bg-card)]'
+                  }`}
                 >
                   <div
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: cat.bgColor, color: cat.iconColor }}
-                  >
-                    {cat.icon}
-                  </div>
-                  <div className="flex-1">
-                    <p className={`text-sm font-medium ${selectedCategories[cat.id] ? 'text-[var(--color-accent)]' : 'text-[var(--color-text)]'}`}>
-                      {cat.label}
-                    </p>
-                    <p className="text-xs text-[var(--color-text-muted)]">{cat.description}</p>
-                  </div>
-                  <div
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                      selectedCategories[cat.id]
+                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                      selectedResults.has(index)
                         ? 'border-[var(--color-accent)] bg-[var(--color-accent)]'
                         : 'border-[var(--color-border)]'
                     }`}
                   >
-                    {selectedCategories[cat.id] && (
+                    {selectedResults.has(index) && (
                       <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                       </svg>
                     )}
                   </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-[var(--color-text)]">{resource.name}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-muted)] line-clamp-3">{resource.content}</p>
+                  </div>
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Refine Search */}
-          <div>
-            <button
-              onClick={() => setRefineOpen(!refineOpen)}
-              className="flex w-full items-center gap-2 text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
-            >
-              <svg
-                className={`h-4 w-4 transition-transform duration-200 ${refineOpen ? 'rotate-90' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
+            {/* Results footer */}
+            <div className="flex gap-2 border-t border-[var(--color-border)] px-6 py-4">
+              <button
+                onClick={handleBackToSearch}
+                className="flex-1 rounded-lg border border-[var(--color-border)] py-3 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)]"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-              </svg>
-              Refine search
-            </button>
-            {refineOpen && (
-              <div className="mt-3 rounded-lg bg-[var(--color-bg-secondary)] p-4">
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  Advanced search refinement options coming soon.
+                Back
+              </button>
+              <button
+                onClick={handleSaveSelected}
+                disabled={selectedResults.size === 0}
+                className="flex-[2] rounded-lg bg-[var(--color-accent)] py-3 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+              >
+                Save {selectedResults.size} source{selectedResults.size !== 1 ? 's' : ''} to idea
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Search form content */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+              {/* AI Understanding */}
+              <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(74, 111, 247, 0.08)' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                    AI Understood Your Idea As
+                  </p>
+                  {!isSynthesizing && !editingQuery && (
+                    <button
+                      onClick={() => { lastInputHashRef.current = ''; setRefreshTrigger((n) => n + 1); }}
+                      className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                      title="Refresh synthesis"
+                    >
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+                      </svg>
+                      Refresh
+                    </button>
+                  )}
+                </div>
+                {isSynthesizing ? (
+                  <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
+                    Synthesizing from your concept and resources...
+                  </div>
+                ) : editingQuery ? (
+                  <input
+                    data-transparent=""
+                    style={{ backgroundColor: 'transparent' }}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onBlur={() => setEditingQuery(false)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') setEditingQuery(false); }}
+                    className="w-full bg-transparent text-sm font-medium text-[var(--color-accent)] outline-none ring-0"
+                    autoFocus
+                  />
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-[var(--color-accent)] flex-1">{searchQuery || 'No title set'}</p>
+                    <button
+                      onClick={() => setEditingQuery(true)}
+                      className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] shrink-0"
+                    >
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                      </svg>
+                      Edit
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Category Selection */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--color-text)] mb-1">
+                  What kind of resources do you need?
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)] mb-4">
+                  Select all that apply, pre-selected for your idea type.
                 </p>
+                <div className="space-y-2">
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => toggleCategory(cat.id)}
+                      className="flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors hover:bg-[var(--color-bg-secondary)]"
+                    >
+                      <div
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                        style={{ backgroundColor: cat.bgColor, color: cat.iconColor }}
+                      >
+                        {cat.icon}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${selectedCategories[cat.id] ? 'text-[var(--color-accent)]' : 'text-[var(--color-text)]'}`}>
+                          {cat.label}
+                        </p>
+                        <p className="text-xs text-[var(--color-text-muted)]">{cat.description}</p>
+                      </div>
+                      <div
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                          selectedCategories[cat.id]
+                            ? 'border-[var(--color-accent)] bg-[var(--color-accent)]'
+                            : 'border-[var(--color-border)]'
+                        }`}
+                      >
+                        {selectedCategories[cat.id] && (
+                          <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Refine Search */}
+              <div>
+                <button
+                  onClick={() => setRefineOpen(!refineOpen)}
+                  className="flex w-full items-center gap-2 text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                >
+                  <svg
+                    className={`h-4 w-4 transition-transform duration-200 ${refineOpen ? 'rotate-90' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                  </svg>
+                  Refine search
+                </button>
+                {refineOpen && (
+                  <div className="mt-3 rounded-lg bg-[var(--color-bg-secondary)] p-4">
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      Advanced search refinement options coming soon.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="mx-6 mb-2 rounded-lg bg-red-900/20 px-4 py-3 text-sm text-red-400">
+                {error}
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Error */}
-        {error && (
-          <div className="mx-6 mb-2 rounded-lg bg-red-900/20 px-4 py-3 text-sm text-red-400">
-            {error}
-          </div>
+            {/* Footer */}
+            <div className="border-t border-[var(--color-border)] px-6 py-4">
+              <button
+                onClick={handleSearch}
+                disabled={isSearching || cooldown > 0}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] py-3 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+              >
+                {isSearching ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Searching...
+                  </>
+                ) : cooldown > 0 ? (
+                  <>Search again in {cooldown}s</>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                    </svg>
+                    Find sources
+                  </>
+                )}
+              </button>
+            </div>
+          </>
         )}
-
-        {/* Footer */}
-        <div className="border-t border-[var(--color-border)] px-6 py-4">
-          <button
-            onClick={handleSearch}
-            disabled={isSearching || cooldown > 0}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] py-3 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
-          >
-            {isSearching ? (
-              <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Searching...
-              </>
-            ) : cooldown > 0 ? (
-              <>Search again in {cooldown}s</>
-            ) : (
-              <>
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
-                </svg>
-                Find sources
-              </>
-            )}
-          </button>
-        </div>
       </div>
     </>,
     document.body
