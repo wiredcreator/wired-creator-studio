@@ -13,6 +13,7 @@ export interface IdeaCardData {
   status: ContentIdeaStatus;
   source: ContentIdeaSource;
   contentPillar: string;
+  tags?: string[];
   priority?: ContentIdeaPriority;
   priorityScore?: number | null;
   trendData?: {
@@ -238,8 +239,22 @@ export default function IdeaCard({
           </p>
         )}
 
-        {/* Tags row: priority, pillar, date */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        {/* Tags row */}
+        {idea.tags && idea.tags.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {idea.tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center rounded-[var(--radius-full)] border border-[var(--color-border)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--color-text-secondary)]"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Priority, pillar, date row */}
+        <div className={`${idea.tags && idea.tags.length > 0 ? 'mt-2' : 'mt-3'} flex flex-wrap items-center gap-2`}>
           {/* Priority tag */}
           <span
             className="inline-flex items-center rounded-[var(--radius-full)] px-2.5 py-0.5 text-[11px] font-medium"

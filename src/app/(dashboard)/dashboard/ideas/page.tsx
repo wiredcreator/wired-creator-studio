@@ -151,6 +151,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
   const [activeTab, setActiveTab] = useState<ContentIdeaStatus | 'all'>('all');
   const [pillarFilter, setPillarFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [selectedIdea, setSelectedIdea] = useState<IdeaCardData | null>(null);
@@ -622,6 +623,10 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
       result = result.filter((i) => (i.priority || 'none') === priorityFilter);
     }
 
+    if (tagFilter) {
+      result = result.filter((i) => i.tags?.includes(tagFilter));
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -636,7 +641,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
       (a, b) =>
         dir * (new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     );
-  }, [ideas, activeTab, pillarFilter, priorityFilter, searchQuery, sortOrder]);
+  }, [ideas, activeTab, pillarFilter, priorityFilter, tagFilter, searchQuery, sortOrder]);
 
   // --- Stats ---
   const stats = useMemo(() => {
@@ -663,6 +668,17 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
   // Final list: use Brand Brain pillars if available, otherwise minimal defaults
   const availablePillars = pillarOptions.length > 0 ? pillarOptions : DEFAULT_PILLAR_OPTIONS;
 
+  // Collect all unique tags from ideas
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    for (const idea of ideas) {
+      if (idea.tags) {
+        for (const tag of idea.tags) tagSet.add(tag);
+      }
+    }
+    return Array.from(tagSet).sort();
+  }, [ideas]);
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -678,7 +694,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
   }
 
   return (
-    <PageWrapper title={currentView === 'entry' || currentView === 'own-idea' ? undefined : 'Ideas'}>
+    <PageWrapper title={currentView === 'entry' || currentView === 'own-idea' || currentView === 'parking-lot' ? undefined : 'Ideas'} wide={currentView === 'parking-lot'}>
 
       {/* ================================================================ */}
       {/* ENTRY POINTS VIEW                                                */}
@@ -985,61 +1001,32 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
         <div>
           <BackButton onClick={() => setCurrentView('entry')} />
 
-          {/* Stats bar */}
-          {(ideas.length > 0 || suggestedIdeas.length > 0) && (
-            <div className="mb-6">
-              <IdeaStats
-                total={stats.total}
-                approved={stats.approved}
-                inProgress={stats.inProgress}
-                published={stats.published}
-              />
+          <div className="mb-6 flex items-start justify-between">
+            <div>
+              <h2 className="font-heading text-[28px] font-bold tracking-tight text-[var(--color-text-primary)]">
+                Idea Parking Lot
+              </h2>
+              <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                {filteredIdeas.length} of {ideas.length} ideas
+              </p>
             </div>
-          )}
-
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-              Idea Parking Lot
-            </h2>
             <button
               type="button"
               onClick={handleCreateNewIdea}
               disabled={isCreating}
-              className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:opacity-50"
             >
               {isCreating ? (
-                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-              )}
+                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--color-text-primary)] border-t-transparent" />
+              ) : null}
               Create New Idea
             </button>
           </div>
 
-          {/* Status tabs */}
-          <div className="mb-3 flex gap-1 overflow-x-auto rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] p-1 w-fit">
-            {PIPELINE_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setActiveTab(tab.value)}
-                className={`whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2 text-sm font-medium transition-colors ${
-                  activeTab === tab.value
-                    ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)] shadow-[var(--shadow-sm)]'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
           {/* Search + sort + filters */}
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <div className="mb-4 grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <div className="relative">
+              <svg className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
               <input
@@ -1047,22 +1034,22 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search ideas..."
-                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] py-2.5 pl-10 pr-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] py-2.5 pl-11 pr-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
-                className="cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2.5 text-sm text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
+                className="min-w-0 flex-1 cursor-pointer truncate rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2 py-2.5 text-sm text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
               >
-                <option value="newest">Date: Newest first</option>
-                <option value="oldest">Date: Oldest first</option>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
               </select>
               <select
                 value={pillarFilter}
                 onChange={(e) => setPillarFilter(e.target.value)}
-                className="cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2.5 text-sm text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
+                className="min-w-0 flex-1 cursor-pointer truncate rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2 py-2.5 text-sm text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
               >
                 <option value="">All Pillars</option>
                 <option value="__uncategorized__">Uncategorized</option>
@@ -1075,13 +1062,25 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2.5 text-sm text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
+                className="min-w-0 flex-1 cursor-pointer truncate rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2 py-2.5 text-sm text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
               >
                 <option value="">All Priorities</option>
                 <option value="high">High</option>
                 <option value="medium">Medium</option>
                 <option value="low">Low</option>
                 <option value="none">No priority</option>
+              </select>
+              <select
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                className="min-w-0 flex-1 cursor-pointer truncate rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2 py-2.5 text-sm text-[var(--color-text-secondary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)]"
+              >
+                <option value="">All Tags</option>
+                {availableTags.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
