@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import VoiceInputWrapper from "@/components/VoiceInputWrapper";
 
 interface CoachNoteData {
   _id: string;
@@ -213,13 +214,15 @@ export default function CoachNotes({ studentId }: { studentId: string }) {
         <div className="border-t border-[var(--color-border)] px-5 py-4 space-y-4">
           {/* Add note form */}
           <div className="space-y-2">
-            <textarea
-              value={newText}
-              onChange={(e) => setNewText(e.target.value)}
-              placeholder="Add a private note about this student..."
-              rows={3}
-              className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0 resize-none"
-            />
+            <VoiceInputWrapper onTranscript={(text) => setNewText((prev) => prev ? prev + '\n' + text : text)}>
+              <textarea
+                value={newText}
+                onChange={(e) => setNewText(e.target.value)}
+                placeholder="Add a private note about this student..."
+                rows={3}
+                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0 resize-none"
+              />
+            </VoiceInputWrapper>
             <div className="flex justify-end">
               <button
                 onClick={handleAdd}
@@ -322,12 +325,14 @@ export default function CoachNotes({ studentId }: { studentId: string }) {
                   {/* Note content or edit form */}
                   {editingId === note._id ? (
                     <div className="space-y-2">
-                      <textarea
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        rows={3}
-                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 resize-none"
-                      />
+                      <VoiceInputWrapper onTranscript={(text) => setEditText((prev) => prev ? prev + '\n' + text : text)}>
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          rows={3}
+                          className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 resize-none"
+                        />
+                      </VoiceInputWrapper>
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => setEditingId(null)}

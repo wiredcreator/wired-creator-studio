@@ -1,6 +1,7 @@
 'use client';
 
 import type { IConceptAnswers } from '@/models/ContentIdea';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface ConceptTabProps {
   conceptAnswers: IConceptAnswers;
@@ -59,13 +60,15 @@ export default function ConceptTab({
               {field.label}
             </label>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">{field.description}</p>
-            <textarea
-              value={conceptAnswers[field.key]}
-              onChange={(e) => handleFieldChange(field.key, e.target.value)}
-              rows={3}
-              className="mt-2 w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
-              placeholder="Start typing..."
-            />
+            <VoiceInputWrapper onTranscript={(text) => handleFieldChange(field.key, conceptAnswers[field.key] ? conceptAnswers[field.key] + '\n' + text : text)}>
+              <textarea
+                value={conceptAnswers[field.key]}
+                onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                rows={3}
+                className="mt-2 w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+                placeholder="Start typing..."
+              />
+            </VoiceInputWrapper>
           </div>
         ))}
 
@@ -77,13 +80,15 @@ export default function ConceptTab({
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">
             Anything goes, stream of consciousness, sparks, half-formed thoughts.
           </p>
-          <textarea
-            value={rawNotes}
-            onChange={(e) => { setRawNotes(e.target.value); onMarkChanged(); }}
-            rows={5}
-            className="mt-2 w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
-            placeholder="Start writing... get it out, don't worry about making it perfect."
-          />
+          <VoiceInputWrapper onTranscript={(text) => { setRawNotes(rawNotes ? rawNotes + '\n' + text : text); onMarkChanged(); }}>
+            <textarea
+              value={rawNotes}
+              onChange={(e) => { setRawNotes(e.target.value); onMarkChanged(); }}
+              rows={5}
+              className="mt-2 w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+              placeholder="Start writing... get it out, don't worry about making it perfect."
+            />
+          </VoiceInputWrapper>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{wordCount} words</p>
         </div>
       </div>

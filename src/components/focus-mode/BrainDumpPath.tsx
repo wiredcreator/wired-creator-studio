@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import BrainDumpResults from '@/components/brain-dump/BrainDumpResults';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface ExtractedData {
   contentIdeas: {
@@ -265,18 +266,20 @@ export default function BrainDumpPath() {
 
         {/* Textarea */}
         <div className="px-5 py-4">
-          <textarea
-            data-transparent=""
-            style={{ backgroundColor: 'transparent' }}
-            value={transcript}
-            onChange={(e) => {
-              setTranscript(e.target.value);
-              if (error) setError('');
-            }}
-            placeholder="What's swirling around in your head? Ideas, half-baked thoughts, random sparks &mdash; paste anything, speak it, or just start typing. Nothing is too messy here."
-            rows={10}
-            className="w-full resize-y bg-transparent text-sm leading-relaxed text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
-          />
+          <VoiceInputWrapper onTranscript={(text) => setTranscript((prev) => prev ? prev + '\n\n' + text : text)}>
+            <textarea
+              data-transparent=""
+              style={{ backgroundColor: 'transparent' }}
+              value={transcript}
+              onChange={(e) => {
+                setTranscript(e.target.value);
+                if (error) setError('');
+              }}
+              placeholder="What's swirling around in your head? Ideas, half-baked thoughts, random sparks &mdash; paste anything, speak it, or just start typing. Nothing is too messy here."
+              rows={10}
+              className="w-full resize-y bg-transparent text-sm leading-relaxed text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
+            />
+          </VoiceInputWrapper>
         </div>
 
         {/* Recording indicator */}

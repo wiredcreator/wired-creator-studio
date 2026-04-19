@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ContentIdeaStatus, ContentIdeaSource } from '@/models/ContentIdea';
 import type { IdeaCardData } from './IdeaCard';
 import ModalPortal from '@/components/ModalPortal';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -77,6 +78,21 @@ export default function IdeaDetail({
     onDelete(idea._id);
     onClose();
   };
+
+  useEffect(() => {
+    if (!showDeleteConfirm) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleDelete();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowDeleteConfirm(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showDeleteConfirm]);
 
   const createdDate = idea.createdAt
     ? new Date(idea.createdAt).toLocaleDateString('en-US', {
@@ -153,20 +169,22 @@ export default function IdeaDetail({
           <div className="mt-3 group/desc">
             {isEditingDescription ? (
               <div>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  onBlur={handleSaveDescription}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      setDescription(idea.description);
-                      setIsEditingDescription(false);
-                    }
-                  }}
-                  rows={4}
-                  autoFocus
-                  className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-accent-subtle)] px-3 py-2 text-sm leading-relaxed text-[var(--color-text-secondary)] outline-none"
-                />
+                <VoiceInputWrapper onTranscript={(text) => setDescription((prev) => prev ? prev + '\n' + text : text)}>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    onBlur={handleSaveDescription}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setDescription(idea.description);
+                        setIsEditingDescription(false);
+                      }
+                    }}
+                    rows={4}
+                    autoFocus
+                    className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-accent-subtle)] px-3 py-2 text-sm leading-relaxed text-[var(--color-text-secondary)] outline-none"
+                  />
+                </VoiceInputWrapper>
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                   Click outside to save. Press Esc to cancel.
                 </p>

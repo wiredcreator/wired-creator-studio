@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import type { IResource } from '@/models/ContentIdea';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface ResourcesTabProps {
   resources: IResource[];
@@ -149,13 +150,15 @@ export default function ResourcesTab({
             className="w-full bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
             autoFocus
           />
-          <textarea
-            value={newContent}
-            onChange={(e) => setNewContent(e.target.value)}
-            placeholder="Content or notes..."
-            rows={4}
-            className="w-full resize-y bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
-          />
+          <VoiceInputWrapper onTranscript={(text) => setNewContent((prev) => prev ? prev + '\n' + text : text)}>
+            <textarea
+              value={newContent}
+              onChange={(e) => setNewContent(e.target.value)}
+              placeholder="Content or notes..."
+              rows={4}
+              className="w-full resize-y bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+            />
+          </VoiceInputWrapper>
           <div className="flex gap-2">
             <button
               onClick={handleAdd}

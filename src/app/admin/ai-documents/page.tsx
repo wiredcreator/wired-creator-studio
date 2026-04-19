@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/PageWrapper";
 import ModalPortal from "@/components/ModalPortal";
+import VoiceInputWrapper from "@/components/VoiceInputWrapper";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -328,6 +329,7 @@ function DocumentModal({
           {/* Content */}
           <div>
             <label className={labelClass}>Content</label>
+            <VoiceInputWrapper onTranscript={(text) => onChange({ content: form.content ? form.content + '\n' + text : text })}>
             <textarea
               value={form.content}
               onChange={(e) => onChange({ content: e.target.value })}
@@ -335,6 +337,7 @@ function DocumentModal({
               placeholder="Enter the AI document content..."
               className={`${inputClass} resize-y font-mono text-xs leading-relaxed`}
             />
+            </VoiceInputWrapper>
           </div>
 
           {/* Error */}

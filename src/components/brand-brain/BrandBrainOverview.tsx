@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -240,15 +241,17 @@ export default function BrandBrainOverview({
                       </svg>
                     </button>
                   </div>
-                  <textarea
-                    value={pillar.description}
-                    onChange={(e) =>
-                      updatePillar(i, 'description', e.target.value)
-                    }
-                    placeholder="Description"
-                    rows={2}
-                    className="w-full text-sm text-[var(--color-text-primary)] px-3 py-2 rounded-lg border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-text-muted)] resize-none"
-                  />
+                  <VoiceInputWrapper onTranscript={(text) => updatePillar(i, 'description', pillar.description ? pillar.description + '\n' + text : text)}>
+                    <textarea
+                      value={pillar.description}
+                      onChange={(e) =>
+                        updatePillar(i, 'description', e.target.value)
+                      }
+                      placeholder="Description"
+                      rows={2}
+                      className="w-full text-sm text-[var(--color-text-primary)] px-3 py-2 rounded-lg border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-text-muted)] resize-none"
+                    />
+                  </VoiceInputWrapper>
                   <input
                     type="text"
                     value={pillar.keywords.join(', ')}
@@ -495,18 +498,20 @@ export default function BrandBrainOverview({
                 <label className="block text-xs text-[var(--color-text-muted)] mb-1">
                   Constraints / Notes
                 </label>
-                <textarea
-                  value={editedEquipment.constraints}
-                  onChange={(e) =>
-                    setEditedEquipment((prev) => ({
-                      ...prev,
-                      constraints: e.target.value,
-                    }))
-                  }
-                  rows={2}
-                  placeholder="e.g. Can only film on weekends, noisy environment"
-                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
-                />
+                <VoiceInputWrapper onTranscript={(text) => setEditedEquipment((prev) => ({ ...prev, constraints: prev.constraints ? prev.constraints + '\n' + text : text }))}>
+                  <textarea
+                    value={editedEquipment.constraints}
+                    onChange={(e) =>
+                      setEditedEquipment((prev) => ({
+                        ...prev,
+                        constraints: e.target.value,
+                      }))
+                    }
+                    rows={2}
+                    placeholder="e.g. Can only film on weekends, noisy environment"
+                    className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
+                  />
+                </VoiceInputWrapper>
               </div>
               <button
                 onClick={() => {

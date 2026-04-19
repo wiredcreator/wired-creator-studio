@@ -9,6 +9,7 @@ import DraftSidebar from '@/components/focus-mode/draft/DraftSidebar';
 import FindSourcesPanel from '@/components/focus-mode/draft/FindSourcesPanel';
 import type { IConceptAnswers, INote, IComment, IResource, IOutlineSection } from '@/models/ContentIdea';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -657,16 +658,18 @@ function ConceptStep({
               <p className="mb-2 text-xs text-[var(--color-text-muted)]">
                 {q.placeholder}
               </p>
-              <textarea
-                data-transparent
-                value={conceptAnswers[q.key]}
-                onChange={(e) => {
-                  setConceptAnswers({ ...conceptAnswers, [q.key]: e.target.value });
-                  onMarkChanged();
-                }}
-                rows={4}
-                className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
-              />
+              <VoiceInputWrapper onTranscript={(text) => { setConceptAnswers({ ...conceptAnswers, [q.key]: conceptAnswers[q.key] ? conceptAnswers[q.key] + '\n' + text : text }); onMarkChanged(); }}>
+                <textarea
+                  data-transparent
+                  value={conceptAnswers[q.key]}
+                  onChange={(e) => {
+                    setConceptAnswers({ ...conceptAnswers, [q.key]: e.target.value });
+                    onMarkChanged();
+                  }}
+                  rows={4}
+                  className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                />
+              </VoiceInputWrapper>
             </div>
           ))}
         </div>
@@ -1074,13 +1077,15 @@ function ResourcesStep({
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">Content</label>
-                    <textarea
-                      value={newResourceContent}
-                      onChange={(e) => setNewResourceContent(e.target.value)}
-                      rows={6}
-                      placeholder="Paste or type your notes, ideas, research, transcripts..."
-                      className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
-                    />
+                    <VoiceInputWrapper onTranscript={(text) => setNewResourceContent(newResourceContent ? newResourceContent + '\n' + text : text)}>
+                      <textarea
+                        value={newResourceContent}
+                        onChange={(e) => setNewResourceContent(e.target.value)}
+                        rows={6}
+                        placeholder="Paste or type your notes, ideas, research, transcripts..."
+                        className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+                      />
+                    </VoiceInputWrapper>
                   </div>
                   <div className="flex items-center gap-2 pt-1">
                     <button
@@ -1915,13 +1920,15 @@ function OutlineStep({
           </div>
         ) : isEditing || !outline.trim() ? (
           /* Legacy markdown editing */
-          <textarea
-            value={outline}
-            onChange={(e) => { setOutline(e.target.value); onMarkChanged(); }}
-            rows={16}
-            placeholder="Your video outline will appear here. Click 'Auto-generate' to create one from your concept and resources, or write your own."
-            className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 font-mono text-sm leading-relaxed text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
-          />
+          <VoiceInputWrapper onTranscript={(text) => { setOutline(outline ? outline + '\n' + text : text); onMarkChanged(); }}>
+            <textarea
+              value={outline}
+              onChange={(e) => { setOutline(e.target.value); onMarkChanged(); }}
+              rows={16}
+              placeholder="Your video outline will appear here. Click 'Auto-generate' to create one from your concept and resources, or write your own."
+              className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 font-mono text-sm leading-relaxed text-[var(--color-text-primary)] outline-none ring-0 transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+            />
+          </VoiceInputWrapper>
         ) : (
           /* Legacy markdown preview */
           <div

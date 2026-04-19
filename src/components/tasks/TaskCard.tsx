@@ -69,6 +69,22 @@ export default function TaskCard({ task, onStatusChange, onClick }: TaskCardProp
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showConfirm]);
 
+  useEffect(() => {
+    if (!showConfirm) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        setShowConfirm(false);
+        onStatusChange(task._id, "completed");
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowConfirm(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showConfirm, onStatusChange, task._id]);
+
   const handleToggleComplete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isCompleted) {

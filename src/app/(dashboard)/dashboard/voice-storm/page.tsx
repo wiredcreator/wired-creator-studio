@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import PageWrapper from '@/components/PageWrapper';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface VoiceStormSession {
   _id: string;
@@ -466,6 +467,7 @@ export default function VoiceStormPage() {
             {/* Text Input */}
             <div className="flex-1 min-w-0">
               {inputExpanded ? (
+                <VoiceInputWrapper onTranscript={(text) => setTranscript((prev) => prev ? prev + '\n' + text : text)}>
                 <textarea
                   ref={textareaRef}
                   value={transcript}
@@ -475,6 +477,7 @@ export default function VoiceStormPage() {
                   className="w-full p-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none focus:border-[var(--color-accent)]"
                   autoFocus
                 />
+                </VoiceInputWrapper>
               ) : (
                 <input
                   type="text"

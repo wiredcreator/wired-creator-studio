@@ -1,6 +1,7 @@
 'use client';
 
 import { ContentDNAFormData } from '@/types/onboarding';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface YourHistoryStepProps {
   data: ContentDNAFormData;
@@ -127,6 +128,7 @@ export default function VoiceSamplesStep({ data, onChange }: YourHistoryStepProp
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           Blog posts, social captions, past scripts, newsletters, emails to your audience. Anything you have written in your own voice. This helps us capture how you naturally communicate, even better. Paste multiple samples separated by a blank line. Totally optional.
         </p>
+        <VoiceInputWrapper onTranscript={(text) => onChange({ writtenSamples: data.writtenSamples ? data.writtenSamples + '\n' + text : text })}>
         <textarea
           id="writtenSamples"
           value={data.writtenSamples}
@@ -143,6 +145,7 @@ export default function VoiceSamplesStep({ data, onChange }: YourHistoryStepProp
           onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
           onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
+        </VoiceInputWrapper>
       </div>
     </div>
   );

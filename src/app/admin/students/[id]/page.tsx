@@ -8,6 +8,7 @@ import ToneOfVoiceEditor from "@/components/brand-brain/ToneOfVoiceEditor";
 import CoachNotes from "@/components/admin/CoachNotes";
 import EquipmentChecklist from "@/components/admin/EquipmentChecklist";
 import BodyDoubleAssignment from "@/components/admin/BodyDoubleAssignment";
+import VoiceInputWrapper from "@/components/VoiceInputWrapper";
 import type { ToneOfVoiceParameter } from "@/types/ai";
 
 interface StudentInfo {
@@ -1211,6 +1212,7 @@ export default function StudentDetailPage() {
                     <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
                       Description
                     </label>
+                    <VoiceInputWrapper onTranscript={(text) => setNewTask((prev) => ({ ...prev, description: prev.description ? prev.description + '\n' + text : text }))}>
                     <textarea
                       value={newTask.description}
                       onChange={(e) =>
@@ -1223,6 +1225,7 @@ export default function StudentDetailPage() {
                       rows={2}
                       className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none resize-none"
                     />
+                    </VoiceInputWrapper>
                   </div>
 
                   {/* Type */}
@@ -1439,6 +1442,7 @@ export default function StudentDetailPage() {
                                   />
                                 </div>
                                 <div className="sm:col-span-2">
+                                  <VoiceInputWrapper onTranscript={(text) => setEditForm((prev) => ({ ...prev, description: prev.description ? prev.description + '\n' + text : text }))}>
                                   <textarea
                                     value={editForm.description}
                                     onChange={(e) =>
@@ -1450,6 +1454,7 @@ export default function StudentDetailPage() {
                                     rows={2}
                                     className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none resize-none"
                                   />
+                                  </VoiceInputWrapper>
                                 </div>
                                 <select
                                   value={editForm.type}
@@ -2136,6 +2141,7 @@ export default function StudentDetailPage() {
                       <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
                         Transcript
                       </label>
+                      <VoiceInputWrapper onTranscript={(text) => setIngestTranscript((prev) => prev ? prev + '\n' + text : text)}>
                       <textarea
                         value={ingestTranscript}
                         onChange={(e) => setIngestTranscript(e.target.value)}
@@ -2143,6 +2149,7 @@ export default function StudentDetailPage() {
                         rows={6}
                         className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0 resize-y"
                       />
+                      </VoiceInputWrapper>
                     </div>
                     {ingestFeedback && (
                       <div
@@ -2280,6 +2287,7 @@ export default function StudentDetailPage() {
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">Content</label>
+                          <VoiceInputWrapper onTranscript={(text) => setAiDocForm((prev) => prev ? { ...prev, content: prev.content ? prev.content + '\n' + text : text } : prev)}>
                           <textarea
                             value={aiDocForm.content}
                             onChange={(e) => setAiDocForm({ ...aiDocForm, content: e.target.value })}
@@ -2287,6 +2295,7 @@ export default function StudentDetailPage() {
                             rows={6}
                             className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none ring-0"
                           />
+                          </VoiceInputWrapper>
                         </div>
                         <div className="flex gap-2">
                           <button

@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import AdminSidebar from '@/components/AdminSidebar';
+import UnsavedChangesGuard from '../(dashboard)/UnsavedChangesGuard';
 
 export default async function AdminLayout({
   children,
@@ -37,6 +38,7 @@ export default async function AdminLayout({
           {children}
         </main>
       </div>
+      <UnsavedChangesGuard />
     </div>
   );
 }

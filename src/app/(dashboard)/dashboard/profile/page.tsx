@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import PageWrapper from '@/components/PageWrapper';
 import { useTheme } from '@/components/ThemeProvider';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 type SettingsTab = 'profile' | 'content-dna' | 'ai-preferences';
 
@@ -76,6 +78,17 @@ export default function SettingsPage() {
   const [neurodivergentProfile, setNeurodivergentProfile] = useState('');
   const [contentGoals, setContentGoals] = useState('');
   const [timezone, setTimezone] = useState('America/New_York');
+
+  const hasProfileChanges = profile !== null && (
+    [firstName, lastName].filter(Boolean).join(' ') !== (profile.name || '') ||
+    background !== (profile.background || '') ||
+    neurodivergentProfile !== (profile.neurodivergentProfile || '') ||
+    contentGoals !== (profile.contentGoals || '') ||
+    timezone !== (profile.timezone || 'America/New_York') ||
+    profileImage !== (profile.profileImage || '')
+  );
+
+  useUnsavedChanges(hasProfileChanges);
 
   const fetchAiDocs = useCallback(async () => {
     setAiDocsLoading(true);
@@ -531,6 +544,7 @@ function ProfileTab({
             <label htmlFor="background" className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">
               Background
             </label>
+            <VoiceInputWrapper onTranscript={(text) => onBackgroundChange(background ? background + '\n' + text : text)}>
             <textarea
               id="background"
               value={background}
@@ -539,12 +553,14 @@ function ProfileTab({
               className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
               placeholder="A bit about you and your creator journey..."
             />
+            </VoiceInputWrapper>
           </div>
 
           <div>
             <label htmlFor="neurodivergentProfile" className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">
               About how you work best
             </label>
+            <VoiceInputWrapper onTranscript={(text) => onNeurodivergentProfileChange(neurodivergentProfile ? neurodivergentProfile + '\n' + text : text)}>
             <textarea
               id="neurodivergentProfile"
               value={neurodivergentProfile}
@@ -553,12 +569,14 @@ function ProfileTab({
               className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
               placeholder="e.g., I focus best in short bursts, visual cues help me stay on track..."
             />
+            </VoiceInputWrapper>
           </div>
 
           <div>
             <label htmlFor="contentGoals" className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">
               Content Goals
             </label>
+            <VoiceInputWrapper onTranscript={(text) => onContentGoalsChange(contentGoals ? contentGoals + '\n' + text : text)}>
             <textarea
               id="contentGoals"
               value={contentGoals}
@@ -567,6 +585,7 @@ function ProfileTab({
               className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
               placeholder="e.g., Post 3x a week on YouTube, grow to 10k subscribers..."
             />
+            </VoiceInputWrapper>
           </div>
 
           <div>
@@ -897,6 +916,7 @@ function AiPreferencesTab({
             </div>
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">Content</label>
+              <VoiceInputWrapper onTranscript={(text) => onFormChange('content', aiDocForm.content ? aiDocForm.content + '\n' + text : text)}>
               <textarea
                 value={aiDocForm.content}
                 onChange={(e) => onFormChange('content', e.target.value)}
@@ -904,6 +924,7 @@ function AiPreferencesTab({
                 className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
                 placeholder="Add any preferences for how your content should be generated, e.g. language, style, topics to avoid..."
               />
+              </VoiceInputWrapper>
             </div>
             <div className="flex gap-3 justify-end">
               <button
@@ -983,6 +1004,7 @@ function AiPreferencesTab({
                   </div>
                   <div>
                     <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">Content</label>
+                    <VoiceInputWrapper onTranscript={(text) => onFormChange('content', aiDocForm.content ? aiDocForm.content + '\n' + text : text)}>
                     <textarea
                       value={aiDocForm.content}
                       onChange={(e) => onFormChange('content', e.target.value)}
@@ -990,6 +1012,7 @@ function AiPreferencesTab({
                       className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
                       placeholder="Add any preferences for how your content should be generated, e.g. language, style, topics to avoid..."
                     />
+                    </VoiceInputWrapper>
                   </div>
                   <div className="flex gap-3 justify-end">
                     <button

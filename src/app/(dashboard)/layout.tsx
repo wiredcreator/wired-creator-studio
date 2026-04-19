@@ -6,6 +6,7 @@ import { checkPaidCustomer } from '@/lib/stripe';
 import Sidebar from '@/components/Sidebar';
 import BrainDumpFAB from '@/components/BrainDumpFAB';
 import DashboardHeader from '@/components/DashboardHeader';
+import UnsavedChangesGuard from './UnsavedChangesGuard';
 
 export default async function DashboardLayout({
   children,
@@ -60,6 +61,7 @@ export default async function DashboardLayout({
         </main>
       </div>
       <BrainDumpFAB />
+      <UnsavedChangesGuard />
     </div>
   );
 }

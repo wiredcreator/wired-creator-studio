@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PageWrapper from "@/components/PageWrapper";
+import VoiceInputWrapper from "@/components/VoiceInputWrapper";
 
 const issueTypes = [
   "UI / Display issue",
@@ -298,6 +299,7 @@ export default function BugReportPage() {
             >
               Describe exactly what you saw. The more specific, the better.
             </p>
+            <VoiceInputWrapper onTranscript={(text) => setDescription((prev) => prev ? prev + '\n' + text : text)}>
             <textarea
               id="bug-description"
               value={description}
@@ -310,6 +312,7 @@ export default function BugReportPage() {
                 color: "var(--color-text-primary)",
               }}
             />
+            </VoiceInputWrapper>
           </div>
 
           {/* Steps to reproduce */}
@@ -327,6 +330,7 @@ export default function BugReportPage() {
             >
               Optional - but very helpful.
             </p>
+            <VoiceInputWrapper onTranscript={(text) => setSteps((prev) => prev ? prev + '\n' + text : text)}>
             <textarea
               id="bug-steps"
               value={steps}
@@ -339,6 +343,7 @@ export default function BugReportPage() {
                 color: "var(--color-text-primary)",
               }}
             />
+            </VoiceInputWrapper>
           </div>
 
           {/* Severity */}

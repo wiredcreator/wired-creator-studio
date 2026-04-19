@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/PageWrapper";
+import VoiceInputWrapper from "@/components/VoiceInputWrapper";
 
 const TASK_TYPES = [
   { value: "watch_module", label: "Watch Module" },
@@ -374,6 +375,7 @@ export default function TaskTemplatesPage() {
                               <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
                                 Description
                               </label>
+                              <VoiceInputWrapper onTranscript={(text) => setEditForm((f) => ({ ...f, description: f.description ? f.description + '\n' + text : text }))}>
                               <textarea
                                 value={editForm.description}
                                 onChange={(e) =>
@@ -385,6 +387,7 @@ export default function TaskTemplatesPage() {
                                 rows={2}
                                 className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
                               />
+                              </VoiceInputWrapper>
                             </div>
                             <div className="mt-3">
                               <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
@@ -589,6 +592,7 @@ export default function TaskTemplatesPage() {
                         <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
                           Description
                         </label>
+                        <VoiceInputWrapper onTranscript={(text) => setNewForm((f) => ({ ...f, description: f.description ? f.description + '\n' + text : text }))}>
                         <textarea
                           value={newForm.description}
                           onChange={(e) =>
@@ -601,6 +605,7 @@ export default function TaskTemplatesPage() {
                           placeholder="Optional description"
                           className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
                         />
+                        </VoiceInputWrapper>
                       </div>
                       <div className="mt-3">
                         <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">

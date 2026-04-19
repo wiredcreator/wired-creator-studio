@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface BrainDumpMessageProps {
   sessionId: string;
@@ -196,12 +197,14 @@ export default function BrainDumpMessage({
                               onChange={(e) => updateIdea(i, 'title', e.target.value)}
                               className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-primary)] focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
                             />
-                            <textarea
-                              value={idea.description}
-                              onChange={(e) => updateIdea(i, 'description', e.target.value)}
-                              rows={2}
-                              className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-sm text-[var(--color-text-secondary)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
-                            />
+                            <VoiceInputWrapper onTranscript={(text) => updateIdea(i, 'description', idea.description ? idea.description + '\n' + text : text)}>
+                              <textarea
+                                value={idea.description}
+                                onChange={(e) => updateIdea(i, 'description', e.target.value)}
+                                rows={2}
+                                className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-sm text-[var(--color-text-secondary)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
+                              />
+                            </VoiceInputWrapper>
                           </div>
                         ) : (
                           <>
@@ -233,19 +236,23 @@ export default function BrainDumpMessage({
                       >
                         {isEditing ? (
                           <div className="space-y-2">
-                            <textarea
-                              value={story.summary}
-                              onChange={(e) => updateStory(i, 'summary', e.target.value)}
-                              rows={2}
-                              className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
-                            />
-                            {story.fullText && (
+                            <VoiceInputWrapper onTranscript={(text) => updateStory(i, 'summary', story.summary ? story.summary + '\n' + text : text)}>
                               <textarea
-                                value={story.fullText}
-                                onChange={(e) => updateStory(i, 'fullText', e.target.value)}
-                                rows={3}
-                                className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-xs text-[var(--color-text-secondary)] italic resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
+                                value={story.summary}
+                                onChange={(e) => updateStory(i, 'summary', e.target.value)}
+                                rows={2}
+                                className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
                               />
+                            </VoiceInputWrapper>
+                            {story.fullText && (
+                              <VoiceInputWrapper onTranscript={(text) => updateStory(i, 'fullText', story.fullText ? story.fullText + '\n' + text : text)}>
+                                <textarea
+                                  value={story.fullText}
+                                  onChange={(e) => updateStory(i, 'fullText', e.target.value)}
+                                  rows={3}
+                                  className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-xs text-[var(--color-text-secondary)] italic resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
+                                />
+                              </VoiceInputWrapper>
                             )}
                           </div>
                         ) : (

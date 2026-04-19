@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import ModalPortal from '@/components/ModalPortal';
 
 interface ConfirmDeleteModalProps {
@@ -22,6 +23,20 @@ export default function ConfirmDeleteModal({
   onConfirm,
   onCancel,
 }: ConfirmDeleteModalProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !isDeleting) {
+        e.preventDefault();
+        onConfirm();
+      } else if (e.key === 'Escape' && !isDeleting) {
+        e.preventDefault();
+        onCancel();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isDeleting, onConfirm, onCancel]);
+
   return (
     <ModalPortal>
       <div

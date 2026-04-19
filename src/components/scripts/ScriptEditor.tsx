@@ -5,6 +5,7 @@ import type { ScriptStatus } from '@/models/Script';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import ModalPortal from '@/components/ModalPortal';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -650,13 +651,15 @@ export default function ScriptEditor({
       {/* Content area */}
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)]">
         {viewMode === 'full' && (
-          <textarea
-            data-transparent
-            value={fullScript}
-            onChange={(e) => { setFullScript(e.target.value); markChanged(); }}
-            className="min-h-[400px] w-full resize-y rounded-[var(--radius-lg)] border-none bg-transparent p-6 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
-            placeholder="Write your full script here..."
-          />
+          <VoiceInputWrapper onTranscript={(text) => { setFullScript((prev) => prev ? prev + '\n\n' + text : text); markChanged(); }}>
+            <textarea
+              data-transparent
+              value={fullScript}
+              onChange={(e) => { setFullScript(e.target.value); markChanged(); }}
+              className="min-h-[400px] w-full resize-y rounded-[var(--radius-lg)] border-none bg-transparent p-6 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+              placeholder="Write your full script here..."
+            />
+          </VoiceInputWrapper>
         )}
 
         {viewMode === 'sections' && (
@@ -747,12 +750,14 @@ export default function ScriptEditor({
                 })()}
 
                 {/* Section content */}
-                <textarea
-                  value={section.content}
-                  onChange={(e) => handleSectionContentChange(index, e.target.value)}
-                  className="min-h-[120px] w-full resize-y border-none px-4 py-3 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
-                  placeholder="Write this section's content..."
-                />
+                <VoiceInputWrapper onTranscript={(text) => handleSectionContentChange(index, section.content ? section.content + '\n\n' + text : text)}>
+                  <textarea
+                    value={section.content}
+                    onChange={(e) => handleSectionContentChange(index, e.target.value)}
+                    className="min-h-[120px] w-full resize-y border-none px-4 py-3 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+                    placeholder="Write this section's content..."
+                  />
+                </VoiceInputWrapper>
               </div>
             ))}
 
@@ -1519,13 +1524,15 @@ export default function ScriptEditor({
             {/* Notes section */}
             <div className="mt-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
               <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">Notes</h3>
-              <textarea
-                data-transparent
-                value={notes}
-                onChange={(e) => { setNotes(e.target.value); markChanged(); }}
-                placeholder="Jot down any ideas, reminders, or things to research before filming..."
-                className="min-h-[100px] w-full resize-y border-none bg-transparent text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
-              />
+              <VoiceInputWrapper onTranscript={(text) => { setNotes((prev) => prev ? prev + '\n' + text : text); markChanged(); }}>
+                <textarea
+                  data-transparent
+                  value={notes}
+                  onChange={(e) => { setNotes(e.target.value); markChanged(); }}
+                  placeholder="Jot down any ideas, reminders, or things to research before filming..."
+                  className="min-h-[100px] w-full resize-y border-none bg-transparent text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+                />
+              </VoiceInputWrapper>
             </div>
           </div>
         </div>

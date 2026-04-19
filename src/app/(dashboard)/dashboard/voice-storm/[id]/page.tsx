@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import PageWrapper from '@/components/PageWrapper';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface VoiceStormSession {
   _id: string;
@@ -79,6 +81,11 @@ export default function VoiceStormDetailPage() {
   const [allIdeas, setAllIdeas] = useState<Idea[]>([]);
   const [loadingIdeas, setLoadingIdeas] = useState(false);
   const linkDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useUnsavedChanges(
+    (editingTitle && titleDraft !== (session?.title || '')) ||
+    (editingTranscript && transcriptDraft !== (session?.transcript || ''))
+  );
 
   const showToast = (message: string) => {
     setToast(message);
@@ -618,12 +625,14 @@ export default function VoiceStormDetailPage() {
 
         {editingTranscript ? (
           <div>
+            <VoiceInputWrapper onTranscript={(text) => setTranscriptDraft((prev) => prev ? prev + '\n' + text : text)}>
             <textarea
               className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-sm text-[var(--color-text)] resize-y min-h-[200px] focus:outline-none"
               rows={12}
               value={transcriptDraft}
               onChange={(e) => setTranscriptDraft(e.target.value)}
             />
+            </VoiceInputWrapper>
             <div className="flex items-center gap-3 mt-3">
               <button
                 onClick={() => handleSaveTranscript(transcriptDraft)}

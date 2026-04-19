@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface BrainDumpInputBarProps {
   onSubmit: (transcript: string, file?: File | null) => void;
@@ -245,16 +246,18 @@ export default function BrainDumpInputBar({ onSubmit, isSubmitting, onError }: B
 
           {/* Text input */}
           <div className="flex-1 min-w-0">
-            <textarea
-              ref={textareaRef}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type or paste your brain dump here..."
-              rows={1}
-              className="w-full resize-none rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
-              style={{ minHeight: '40px', maxHeight: '200px' }}
-            />
+            <VoiceInputWrapper onTranscript={(t) => setText((prev) => prev ? prev + '\n' + t : t)}>
+              <textarea
+                ref={textareaRef}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type or paste your brain dump here..."
+                rows={1}
+                className="w-full resize-none rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
+                style={{ minHeight: '40px', maxHeight: '200px' }}
+              />
+            </VoiceInputWrapper>
           </div>
 
           {/* Submit button */}

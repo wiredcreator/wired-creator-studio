@@ -4,21 +4,18 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 
 const CHUNK_INTERVAL_MS = 120_000; // Auto-transcribe every 2 minutes
 
-interface VoiceTextareaProps {
-  id: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  rows?: number;
+interface VoiceInputWrapperProps {
+  children: React.ReactNode;
+  onTranscript: (text: string) => void;
+  disabled?: boolean;
 }
 
-export default function VoiceTextarea({
-  id,
-  value,
-  onChange,
-  placeholder,
-  rows = 5,
-}: VoiceTextareaProps) {
+export default function VoiceInputWrapper({
+  children,
+  onTranscript,
+  disabled = false,
+}: VoiceInputWrapperProps) {
+  const [isHovered, setIsHovered] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -28,14 +25,8 @@ export default function VoiceTextarea({
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chunkTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const valueRef = useRef(value);
   const pendingTranscriptions = useRef(0);
-  const stoppingRef = useRef(false); // true when user clicks stop (final stop)
-
-  useEffect(() => {
-    valueRef.current = value;
-  }, [value]);
+  const stoppingRef = useRef(false);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -45,7 +36,10 @@ export default function VoiceTextarea({
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state === 'recording'
+      ) {
         mediaRecorderRef.current.stop();
       }
     };
@@ -71,9 +65,7 @@ export default function VoiceTextarea({
         if (res.ok) {
           const data = await res.json();
           if (data.text) {
-            const current = valueRef.current;
-            const updated = current ? current + '\n\n' + data.text : data.text;
-            onChange(updated);
+            onTranscript(data.text);
           }
         } else {
           setError('Failed to transcribe. Please try again.');
@@ -88,7 +80,7 @@ export default function VoiceTextarea({
         }
       }
     },
-    [onChange]
+    [onTranscript]
   );
 
   const createRecorder = useCallback(
@@ -107,7 +99,6 @@ export default function VoiceTextarea({
             transcribeBlob(blob);
           }
         }
-        // If this was the final stop (user clicked stop), kill the stream
         if (stoppingRef.current) {
           if (streamRef.current) {
             streamRef.current.getTracks().forEach((t) => t.stop());
@@ -127,11 +118,8 @@ export default function VoiceTextarea({
     const stream = streamRef.current;
     if (!recorder || !stream || recorder.state !== 'recording') return;
 
-    // Stop current recorder; its onstop will transcribe its own local chunks
-    // stoppingRef is false here so the stream stays alive
     recorder.stop();
 
-    // Start a fresh recorder on the same stream
     const newRecorder = createRecorder(stream);
     newRecorder.start();
     mediaRecorderRef.current = newRecorder;
@@ -149,9 +137,11 @@ export default function VoiceTextarea({
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
       setRecordingTime(0);
-      timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+      timerRef.current = setInterval(
+        () => setRecordingTime((t) => t + 1),
+        1000
+      );
 
-      // Auto-cycle every 2 minutes for chunked transcription
       chunkTimerRef.current = setInterval(cycleRecorder, CHUNK_INTERVAL_MS);
     } catch {
       setError('Could not access microphone. Please allow mic access.');
@@ -159,20 +149,19 @@ export default function VoiceTextarea({
   }, [createRecorder, cycleRecorder]);
 
   const stopRecording = useCallback(() => {
-    // Stop the chunk cycle timer first to prevent race conditions
     if (chunkTimerRef.current) {
       clearInterval(chunkTimerRef.current);
       chunkTimerRef.current = null;
     }
 
-    // Mark as final stop so onstop callback knows to kill the stream
     stoppingRef.current = true;
 
-    // Stop the recorder (onstop will handle transcription + stream cleanup)
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === 'recording'
+    ) {
       mediaRecorderRef.current.stop();
     } else {
-      // Recorder already stopped (e.g. cycle just happened), clean up stream directly
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -187,9 +176,11 @@ export default function VoiceTextarea({
     }
   }, []);
 
+  const showButton = isHovered || isRecording || isTranscribing;
+
   return (
-    <div className="relative">
-      {/* Recording / transcribing indicator above textarea */}
+    <div>
+      {/* Recording / transcribing status indicator */}
       {(isRecording || isTranscribing) && (
         <div
           className="flex items-center gap-2 text-sm mb-2 px-1"
@@ -249,59 +240,39 @@ export default function VoiceTextarea({
         </div>
       )}
 
-      {/* Textarea with mic button */}
-      <div className="group relative">
-        <textarea
-          ref={textareaRef}
-          id={id}
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value);
-            setError(null);
-          }}
-          placeholder={placeholder}
-          rows={rows}
-          className="w-full px-4 py-3 pr-12 text-base border transition-colors duration-200 resize-none outline-none ring-0"
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderColor: 'var(--color-border)',
-            color: 'var(--color-text-primary)',
-            borderRadius: 'var(--radius-md)',
-          }}
-          onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
-          onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
-        />
+      {/* Wrapper around the textarea child */}
+      <div
+        className="relative"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {children}
 
-        {/* Mic button inside textarea, bottom-right — visible on hover or when active */}
+        {/* Mic button, bottom-right */}
         <button
           type="button"
           onClick={isRecording ? stopRecording : startRecording}
-          disabled={isTranscribing}
-          className={`absolute bottom-2.5 right-2.5 flex items-center justify-center h-8 w-8 rounded-full transition-opacity duration-150 cursor-pointer ${
-            isRecording || isTranscribing
-              ? 'opacity-100'
-              : 'opacity-0 group-hover:opacity-100'
-          }`}
+          disabled={disabled || isTranscribing}
+          className="absolute bottom-2 right-2 flex items-center justify-center h-7 w-7 rounded-full transition-opacity duration-150 cursor-pointer"
           style={{
             backgroundColor: isRecording
               ? '#ef4444'
               : 'var(--color-bg-secondary)',
-            border: isRecording ? 'none' : '1px solid var(--color-border)',
-            ...(isTranscribing && { opacity: 0.5 }),
+            border: isRecording
+              ? 'none'
+              : '1px solid var(--color-border)',
+            opacity: showButton ? (disabled || isTranscribing ? 0.5 : 1) : 0,
+            pointerEvents: showButton ? 'auto' : 'none',
           }}
           title={isRecording ? 'Stop recording' : 'Record voice'}
         >
           {isRecording ? (
-            <svg
-              className="h-3.5 w-3.5"
-              fill="white"
-              viewBox="0 0 24 24"
-            >
+            <svg className="h-3 w-3 animate-pulse" fill="white" viewBox="0 0 24 24">
               <rect x="6" y="6" width="12" height="12" rx="2" />
             </svg>
           ) : (
             <svg
-              className="h-3.5 w-3.5"
+              className="h-3 w-3"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}

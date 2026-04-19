@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import type { INote, IComment } from '@/models/ContentIdea';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface DraftSidebarProps {
   callToAction: string;
@@ -237,13 +238,15 @@ export default function DraftSidebar({
             <div className="border-t border-[var(--color-border)] px-4 py-3">
               {panel.id === 'cta' && (
                 <div className="space-y-2">
-                  <textarea
-                    value={callToAction}
-                    onChange={(e) => { setCallToAction(e.target.value); onMarkChanged(); }}
-                    placeholder="What should viewers do next?"
-                    rows={3}
-                    className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
-                  />
+                  <VoiceInputWrapper onTranscript={(text) => { setCallToAction(callToAction ? callToAction + '\n' + text : text); onMarkChanged(); }}>
+                    <textarea
+                      value={callToAction}
+                      onChange={(e) => { setCallToAction(e.target.value); onMarkChanged(); }}
+                      placeholder="What should viewers do next?"
+                      rows={3}
+                      className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+                    />
+                  </VoiceInputWrapper>
                   <button
                     onClick={() => { onSaveCallToAction?.(callToAction); }}
                     className="rounded-md border border-[var(--color-border)] px-3 py-1 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] transition-colors"
@@ -381,19 +384,21 @@ export default function DraftSidebar({
 
                   {/* Comment input area */}
                   <div className="space-y-2 pt-1">
-                    <textarea
-                      value={commentInput}
-                      onChange={(e) => setCommentInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddComment();
-                        }
-                      }}
-                      placeholder="Leave a comment... type @ to tag someone"
-                      rows={2}
-                      className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
-                    />
+                    <VoiceInputWrapper onTranscript={(text) => setCommentInput((prev) => prev ? prev + '\n' + text : text)}>
+                      <textarea
+                        value={commentInput}
+                        onChange={(e) => setCommentInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddComment();
+                          }
+                        }}
+                        placeholder="Leave a comment... type @ to tag someone"
+                        rows={2}
+                        className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+                      />
+                    </VoiceInputWrapper>
                     <div className="flex items-center justify-between">
                       <button className="text-xs text-[var(--color-accent)] hover:underline">
                         @ Mention

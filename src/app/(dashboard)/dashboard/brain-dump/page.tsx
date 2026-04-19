@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface ExtractedData {
   contentIdeas: {
@@ -114,6 +116,8 @@ export default function BrainDumpPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useUnsavedChanges(text.trim().length > 0);
 
   useEffect(() => {
     async function getSession() {
@@ -687,6 +691,7 @@ export default function BrainDumpPage() {
                 Transcript
               </h2>
               <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4">
+                <VoiceInputWrapper onTranscript={(text) => setEditTranscript((prev) => prev ? prev + '\n' + text : text)}>
                 <textarea
                   data-transparent=""
                   style={{ backgroundColor: 'transparent' }}
@@ -694,6 +699,7 @@ export default function BrainDumpPage() {
                   onChange={(e) => setEditTranscript(e.target.value)}
                   className="w-full min-h-[300px] bg-transparent text-sm text-[var(--color-text-primary)] leading-relaxed resize-y focus:outline-none focus:ring-0 border-none p-0"
                 />
+                </VoiceInputWrapper>
                 <div className="mt-4 flex items-center gap-3">
                   <button
                     onClick={handleSaveTranscript}
@@ -882,6 +888,7 @@ export default function BrainDumpPage() {
 
           {/* Large textarea */}
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden">
+            <VoiceInputWrapper onTranscript={(text) => setText((prev) => prev ? prev + '\n' + text : text)}>
             <textarea
               data-transparent=""
               value={text}
@@ -891,6 +898,7 @@ export default function BrainDumpPage() {
               className="w-full resize-none bg-transparent px-5 py-4 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-0 border-none"
               style={{ minHeight: '200px', backgroundColor: 'transparent' }}
             />
+            </VoiceInputWrapper>
 
             {/* Attached file indicator inside textarea area */}
             {attachedFile && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 type Mode = null | 'voice' | 'write' | 'upload';
 
@@ -587,17 +588,19 @@ export default function BrainDumpFAB() {
           {/* Write Mode */}
           {mode === 'write' && !saved && !showRouting && (
             <div className="p-5 space-y-4">
-              <textarea
-                value={writeText}
-                onChange={(e) => {
-                  setWriteText(e.target.value);
-                  if (error) setError('');
-                }}
-                placeholder="What's on your mind? Just start typing..."
-                rows={5}
-                autoFocus
-                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
-              />
+              <VoiceInputWrapper onTranscript={(text) => setWriteText((prev) => prev ? prev + '\n' + text : text)}>
+                <textarea
+                  value={writeText}
+                  onChange={(e) => {
+                    setWriteText(e.target.value);
+                    if (error) setError('');
+                  }}
+                  placeholder="What's on your mind? Just start typing..."
+                  rows={5}
+                  autoFocus
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
+                />
+              </VoiceInputWrapper>
 
               {/* Error */}
               {error && <p className="text-xs text-[var(--color-error)] text-center">{error}</p>}
@@ -676,12 +679,14 @@ export default function BrainDumpFAB() {
 
                   {/* Extracted text preview / edit */}
                   {uploadText && (
-                    <textarea
-                      value={uploadText}
-                      onChange={(e) => setUploadText(e.target.value)}
-                      rows={5}
-                      className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
-                    />
+                    <VoiceInputWrapper onTranscript={(text) => setUploadText((prev) => prev ? prev + '\n' + text : text)}>
+                      <textarea
+                        value={uploadText}
+                        onChange={(e) => setUploadText(e.target.value)}
+                        rows={5}
+                        className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none focus:ring-0 focus:border-[var(--color-accent)]"
+                      />
+                    </VoiceInputWrapper>
                   )}
                 </>
               )}

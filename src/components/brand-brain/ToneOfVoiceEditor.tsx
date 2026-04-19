@@ -5,6 +5,7 @@ import type {
   ToneOfVoiceParameter,
   ToneParameterCategory,
 } from '@/types/ai';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -222,18 +223,20 @@ export default function ToneOfVoiceEditor({
         <label className="block text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide mb-2">
           Voice Summary
         </label>
-        <textarea
-          data-transparent=""
-          style={{ backgroundColor: 'transparent' }}
-          value={summary}
-          onChange={(e) => {
-            setSummary(e.target.value);
-            setHasUnsavedChanges(true);
-          }}
-          rows={3}
-          className="w-full bg-transparent text-[var(--color-text-primary)] text-sm leading-relaxed resize-none focus:outline-none"
-          placeholder="A brief summary of this creator's authentic voice..."
-        />
+        <VoiceInputWrapper onTranscript={(text) => { setSummary((prev) => prev ? prev + '\n' + text : text); setHasUnsavedChanges(true); }}>
+          <textarea
+            data-transparent=""
+            style={{ backgroundColor: 'transparent' }}
+            value={summary}
+            onChange={(e) => {
+              setSummary(e.target.value);
+              setHasUnsavedChanges(true);
+            }}
+            rows={3}
+            className="w-full bg-transparent text-[var(--color-text-primary)] text-sm leading-relaxed resize-none focus:outline-none"
+            placeholder="A brief summary of this creator's authentic voice..."
+          />
+        </VoiceInputWrapper>
       </div>
 
       {/* Parameters by Category */}
@@ -265,13 +268,15 @@ export default function ToneOfVoiceEditor({
                           className="w-full px-2 py-1 text-sm font-medium text-[var(--color-text-primary)] border border-[var(--color-border)] rounded focus:outline-none focus:border-[var(--color-accent)] ring-0"
                           placeholder="Parameter key"
                         />
-                        <textarea
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          rows={2}
-                          className="w-full px-2 py-1 text-sm text-[var(--color-text-primary)] border border-[var(--color-border)] rounded focus:outline-none focus:border-[var(--color-accent)] ring-0 resize-none"
-                          placeholder="Parameter value"
-                        />
+                        <VoiceInputWrapper onTranscript={(text) => setEditValue((prev) => prev ? prev + '\n' + text : text)}>
+                          <textarea
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            rows={2}
+                            className="w-full px-2 py-1 text-sm text-[var(--color-text-primary)] border border-[var(--color-border)] rounded focus:outline-none focus:border-[var(--color-accent)] ring-0 resize-none"
+                            placeholder="Parameter value"
+                          />
+                        </VoiceInputWrapper>
                         <div className="flex gap-2">
                           <button
                             onClick={saveEdit}
@@ -387,13 +392,15 @@ export default function ToneOfVoiceEditor({
             </div>
             <div>
               <label className="block text-xs text-[var(--color-text-muted)] mb-1">Value</label>
-              <textarea
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value)}
-                rows={2}
-                placeholder="Specific, actionable guidance..."
-                className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:border-[var(--color-accent)] ring-0 resize-none"
-              />
+              <VoiceInputWrapper onTranscript={(text) => setNewValue((prev) => prev ? prev + '\n' + text : text)}>
+                <textarea
+                  value={newValue}
+                  onChange={(e) => setNewValue(e.target.value)}
+                  rows={2}
+                  placeholder="Specific, actionable guidance..."
+                  className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:border-[var(--color-accent)] ring-0 resize-none"
+                />
+              </VoiceInputWrapper>
             </div>
             <div className="flex gap-2">
               <button
