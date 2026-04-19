@@ -253,6 +253,8 @@ export default function BrainDumpPath() {
         {/* Title input */}
         <div className="border-b border-[var(--color-border)] px-5 py-3">
           <input
+            data-transparent=""
+            style={{ backgroundColor: 'transparent' }}
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -264,6 +266,8 @@ export default function BrainDumpPath() {
         {/* Textarea */}
         <div className="px-5 py-4">
           <textarea
+            data-transparent=""
+            style={{ backgroundColor: 'transparent' }}
             value={transcript}
             onChange={(e) => {
               setTranscript(e.target.value);

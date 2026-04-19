@@ -219,7 +219,7 @@ export default function BrandBrainOverview({
                       value={pillar.title}
                       onChange={(e) => updatePillar(i, 'title', e.target.value)}
                       placeholder="Pillar title"
-                      className="text-sm font-medium text-[var(--color-text-primary)] bg-transparent border-b border-[var(--color-border)] focus:outline-none focus:border-[var(--color-text-muted)] flex-1"
+                      className="text-sm font-medium text-[var(--color-text-primary)] px-3 py-2 rounded-lg border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-text-muted)] flex-1"
                     />
                     <button
                       onClick={() => removePillar(i)}
@@ -247,7 +247,7 @@ export default function BrandBrainOverview({
                     }
                     placeholder="Description"
                     rows={2}
-                    className="w-full text-sm text-[var(--color-text-primary)] bg-transparent border-b border-[var(--color-border)] focus:outline-none focus:border-[var(--color-text-muted)] resize-none"
+                    className="w-full text-sm text-[var(--color-text-primary)] px-3 py-2 rounded-lg border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-text-muted)] resize-none"
                   />
                   <input
                     type="text"
@@ -260,7 +260,7 @@ export default function BrandBrainOverview({
                       )
                     }
                     placeholder="Keywords (comma-separated)"
-                    className="w-full text-xs text-[var(--color-text-muted)] bg-transparent border-b border-[var(--color-border)] focus:outline-none focus:border-[var(--color-text-muted)]"
+                    className="w-full text-xs text-[var(--color-text-muted)] px-3 py-2 rounded-lg border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-text-muted)]"
                   />
                 </div>
               ))}

@@ -383,7 +383,7 @@ export default function ScriptsPage() {
   // Editor view
   if (editingScript) {
     return (
-      <PageWrapper>
+      <PageWrapper wide>
         <ScriptEditor
           script={editingScript}
           onSave={handleSave}

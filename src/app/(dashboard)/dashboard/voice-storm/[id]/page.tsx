@@ -445,6 +445,8 @@ export default function VoiceStormDetailPage() {
         {/* Title */}
         {editingTitle ? (
           <input
+            data-transparent=""
+            style={{ backgroundColor: 'transparent' }}
             autoFocus
             className="text-2xl font-semibold bg-transparent border-b border-[var(--color-border)] text-[var(--color-text)] w-full pb-1 mb-2 focus:outline-none"
             value={titleDraft}

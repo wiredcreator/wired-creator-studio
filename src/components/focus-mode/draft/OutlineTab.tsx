@@ -260,11 +260,12 @@ export default function OutlineTab({
                 </div>
                 <input
                   type="text"
-                  data-transparent
+                  data-transparent=""
                   value={section.title}
                   onChange={(e) => updateSection(section.id, { title: e.target.value })}
                   onClick={(e) => e.stopPropagation()}
                   className="text-sm font-bold text-[var(--color-text)] bg-transparent outline-none ring-0 w-full border-b border-[var(--color-border)] pb-2"
+                  style={{ backgroundColor: 'transparent' }}
                 />
               </div>
               {/* Bullets */}
@@ -308,12 +309,13 @@ export default function OutlineTab({
                   <input
                     ref={bIdx === section.bullets.length - 1 ? newBulletRef : undefined}
                     type="text"
-                    data-transparent
+                    data-transparent=""
                     value={bullet}
                     onChange={(e) => updateBullet(section.id, bIdx, e.target.value)}
                     onKeyDown={(e) => handleBulletKeyDown(e, section.id, bIdx)}
                     placeholder="Add point..."
                     className="flex-1 bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+                    style={{ backgroundColor: 'transparent' }}
                   />
                 </div>
               ))}

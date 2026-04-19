@@ -1762,10 +1762,12 @@ function OutlineStep({
                       </span>
                       <input
                         type="text"
+                        data-transparent=""
                         value={section.title}
                         onChange={(e) => updateSectionTitle(section.id, e.target.value)}
                         placeholder="Section title..."
                         className="flex-1 bg-transparent text-base font-bold text-[var(--color-text-primary)] outline-none ring-0 placeholder:text-[var(--color-text-muted)]"
+                        style={{ backgroundColor: 'transparent' }}
                       />
                     </div>
                     <button
@@ -1835,10 +1837,12 @@ function OutlineStep({
                         {/* Bullet text (editable inline) */}
                         <input
                           type="text"
+                          data-transparent=""
                           value={bullet}
                           onChange={(e) => updateBullet(section.id, bulletIdx, e.target.value)}
                           placeholder="Talking point..."
                           className="flex-1 bg-transparent px-1 py-0.5 text-sm text-[var(--color-text-primary)] outline-none ring-0 placeholder:text-[var(--color-text-muted)]"
+                          style={{ backgroundColor: 'transparent' }}
                         />
                         {/* Remove bullet X */}
                         <button

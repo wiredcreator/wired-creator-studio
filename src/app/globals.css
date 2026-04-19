@@ -297,4 +297,5 @@ body::before {
   [data-theme="dark"] select {
     background-color: var(--color-bg-card) !important;
   }
+
 }

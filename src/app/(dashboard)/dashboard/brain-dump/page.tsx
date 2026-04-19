@@ -686,6 +686,8 @@ export default function BrainDumpPage() {
               </h2>
               <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4">
                 <textarea
+                  data-transparent=""
+                  style={{ backgroundColor: 'transparent' }}
                   value={editTranscript}
                   onChange={(e) => setEditTranscript(e.target.value)}
                   className="w-full min-h-[300px] bg-transparent text-sm text-[var(--color-text-primary)] leading-relaxed resize-y focus:outline-none focus:ring-0 border-none p-0"
@@ -879,12 +881,13 @@ export default function BrainDumpPage() {
           {/* Large textarea */}
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden">
             <textarea
+              data-transparent=""
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="What's on your mind? Press record, paste a transcript, upload a file or just start typing..."
               rows={8}
               className="w-full resize-none bg-transparent px-5 py-4 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-0 border-none"
-              style={{ minHeight: '200px' }}
+              style={{ minHeight: '200px', backgroundColor: 'transparent' }}
             />
 
             {/* Attached file indicator inside textarea area */}

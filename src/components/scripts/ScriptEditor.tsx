@@ -673,7 +673,7 @@ export default function ScriptEditor({
                 onDragOver={(e) => handleSectionDragOver(e, index)}
                 onDragEnd={handleSectionDragEnd}
                 onDrop={(e) => handleSectionDrop(e, index)}
-                className={`group rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] transition-all ${
+                className={`group rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] transition-all ${
                   sectionDragIndex === index
                     ? 'opacity-40'
                     : sectionOverIndex === index && sectionDragIndex !== null
@@ -746,10 +746,9 @@ export default function ScriptEditor({
 
                 {/* Section content */}
                 <textarea
-                  data-transparent
                   value={section.content}
                   onChange={(e) => handleSectionContentChange(index, e.target.value)}
-                  className="min-h-[120px] w-full resize-y border-none bg-transparent px-4 py-3 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+                  className="min-h-[120px] w-full resize-y border-none px-4 py-3 text-sm leading-relaxed text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
                   placeholder="Write this section's content..."
                 />
               </div>

@@ -217,6 +217,8 @@ export default function FindSourcesPanel({
             </p>
             {editingQuery ? (
               <input
+                data-transparent=""
+                style={{ backgroundColor: 'transparent' }}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

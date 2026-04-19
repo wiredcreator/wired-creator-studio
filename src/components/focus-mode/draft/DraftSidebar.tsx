@@ -273,6 +273,8 @@ export default function DraftSidebar({
                   </div>
                   {showTagInput ? (
                     <input
+                      data-transparent=""
+                      style={{ backgroundColor: 'transparent' }}
                       type="text"
                       value={tagInput}
                       onChange={(e) => setTagInput(e.target.value)}
@@ -326,6 +328,8 @@ export default function DraftSidebar({
                   {showNoteInput && (
                     <div className="flex gap-2">
                       <input
+                        data-transparent=""
+                        style={{ backgroundColor: 'transparent' }}
                         type="text"
                         value={noteInput}
                         onChange={(e) => setNoteInput(e.target.value)}

@@ -223,6 +223,8 @@ export default function ToneOfVoiceEditor({
           Voice Summary
         </label>
         <textarea
+          data-transparent=""
+          style={{ backgroundColor: 'transparent' }}
           value={summary}
           onChange={(e) => {
             setSummary(e.target.value);

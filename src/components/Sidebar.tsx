@@ -18,6 +18,7 @@ const navItems = [
   { href: "/dashboard/scripts", label: "Scripts" },
   { href: "/dashboard/today", label: "Tasks" },
   { href: "/dashboard/brain-dump", label: "Brain Dump" },
+  { href: "/dashboard/brand-brain", label: "Brand Brain" },
   { href: "/dashboard/side-quests", label: "Side Quests" },
   { href: "/dashboard/support", label: "Support" },
 ];

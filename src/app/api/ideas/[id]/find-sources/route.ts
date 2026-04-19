@@ -112,7 +112,9 @@ Find 5-8 high-quality, recent sources. Prefer authoritative sources (research in
         textParts.push(block.text);
       }
     }
-    const fullText = textParts.join('').replace(/<cite[^>]*>/g, '').replace(/<\/cite>/g, '');
+    // Strip any XML/HTML tags Claude may include (e.g. <cite>, <source>, <ref>)
+    // but preserve the text content inside them
+    const fullText = textParts.join('').replace(/<\/?[a-zA-Z][^>]*>/g, '');
 
     if (!fullText) {
       return NextResponse.json({ error: 'No text response from AI' }, { status: 500 });

@@ -631,7 +631,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
       );
     }
 
-    const dir = sortOrder === 'oldest' ? 1 : -1;
+    const dir = sortOrder === 'newest' ? 1 : -1;
     return result.sort(
       (a, b) =>
         dir * (new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
