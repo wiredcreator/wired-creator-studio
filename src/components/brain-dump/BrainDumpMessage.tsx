@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
 interface BrainDumpMessageProps {
   sessionId: string;
@@ -27,6 +28,7 @@ export default function BrainDumpMessage({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Editable state
   const [editIdeas, setEditIdeas] = useState(extractedIdeas);
@@ -162,7 +164,7 @@ export default function BrainDumpMessage({
                   )}
                   {onDelete && (
                     <button
-                      onClick={onDelete}
+                      onClick={() => setShowDeleteConfirm(true)}
                       className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-error)] transition-colors ml-1"
                       title="Delete session"
                     >
@@ -296,6 +298,15 @@ export default function BrainDumpMessage({
             </div>
           </div>
         </div>
+      )}
+
+      {showDeleteConfirm && onDelete && (
+        <ConfirmDeleteModal
+          itemType="session"
+          itemName={transcript.slice(0, 50) || 'this session'}
+          onConfirm={() => { onDelete(); setShowDeleteConfirm(false); }}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       )}
     </div>
   );

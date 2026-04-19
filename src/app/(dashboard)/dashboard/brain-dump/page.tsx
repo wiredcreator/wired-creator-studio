@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
 interface ExtractedData {
   contentIdeas: {
@@ -81,6 +82,7 @@ export default function BrainDumpPage() {
   const [listMode, setListMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [filterTag, setFilterTag] = useState<string>('');
+  const [sessionToDelete, setSessionToDelete] = useState<{id: string, title: string} | null>(null);
 
   // Form state
   const [text, setText] = useState('');
@@ -1170,7 +1172,10 @@ export default function BrainDumpPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteSession(session._id);
+                            setSessionToDelete({
+                              id: session._id,
+                              title: session.transcript.slice(0, 50) || 'this session',
+                            });
                           }}
                           className="flex-shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-error)] transition-colors opacity-0 group-hover:opacity-100"
                           title="Delete session"
@@ -1204,7 +1209,10 @@ export default function BrainDumpPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteSession(session._id);
+                          setSessionToDelete({
+                            id: session._id,
+                            title: session.transcript.slice(0, 50) || 'this session',
+                          });
                         }}
                         className="flex-shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-error)] transition-colors opacity-0 group-hover:opacity-100"
                         title="Delete session"
@@ -1252,6 +1260,15 @@ export default function BrainDumpPage() {
           )}
         </div>
       </div>
+
+      {sessionToDelete && (
+        <ConfirmDeleteModal
+          itemType="session"
+          itemName={sessionToDelete.title}
+          onConfirm={() => { handleDeleteSession(sessionToDelete.id); setSessionToDelete(null); }}
+          onCancel={() => setSessionToDelete(null)}
+        />
+      )}
     </div>
   );
 }

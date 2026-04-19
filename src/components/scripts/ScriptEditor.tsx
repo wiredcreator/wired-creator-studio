@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ScriptStatus } from '@/models/Script';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import ModalPortal from '@/components/ModalPortal';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -181,6 +182,7 @@ export default function ScriptEditor({
   const [teleprompterDarkMode, setTeleprompterDarkMode] = useState(true);
   const [teleprompterFontSize, setTeleprompterFontSize] = useState(28);
   const [teleprompterCopied, setTeleprompterCopied] = useState(false);
+  const [sectionToDelete, setSectionToDelete] = useState<{index: number, title: string} | null>(null);
 
   const markChanged = () => {
     if (!hasChanges) setHasChanges(true);
@@ -732,7 +734,7 @@ export default function ScriptEditor({
                   {/* Remove button */}
                   <button
                     type="button"
-                    onClick={() => handleRemoveSection(index)}
+                    onClick={() => setSectionToDelete({ index, title: section.title })}
                     className="shrink-0 rounded-[var(--radius-sm)] p-1 text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-[var(--color-error-light)] hover:text-[var(--color-error)] group-hover:opacity-100"
                     title="Remove section"
                   >
@@ -1613,6 +1615,14 @@ export default function ScriptEditor({
           </div>
         </div>
         </ModalPortal>
+      )}
+      {sectionToDelete && (
+        <ConfirmDeleteModal
+          itemType="section"
+          itemName={sectionToDelete.title}
+          onConfirm={() => { handleRemoveSection(sectionToDelete.index); setSectionToDelete(null); }}
+          onCancel={() => setSectionToDelete(null)}
+        />
       )}
     </div>
   );

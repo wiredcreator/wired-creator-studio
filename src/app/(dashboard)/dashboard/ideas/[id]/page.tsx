@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import PageWrapper from '@/components/PageWrapper';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import DraftSidebar from '@/components/focus-mode/draft/DraftSidebar';
 import FindSourcesPanel from '@/components/focus-mode/draft/FindSourcesPanel';
 import type { IConceptAnswers, INote, IComment, IResource, IOutlineSection } from '@/models/ContentIdea';
@@ -747,6 +748,7 @@ function ResourcesStep({
   onSourcesFound,
   onAddResource,
 }: ResourcesStepProps) {
+  const [deleteTarget, setDeleteTarget] = useState<{type: string, id: string, name: string, action: () => void} | null>(null);
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
@@ -1339,7 +1341,7 @@ function ResourcesStep({
                     )}
                     <button
                       type="button"
-                      onClick={() => onRemoveResource(index)}
+                      onClick={() => setDeleteTarget({ type: 'resource', id: String(index), name: resource.name, action: () => onRemoveResource(index) })}
                       className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-secondary)] hover:text-red-400"
                       title="Remove resource"
                     >
@@ -1428,6 +1430,15 @@ function ResourcesStep({
         conceptAnswers={conceptAnswers}
         onSourcesFound={onSourcesFound}
       />
+
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          itemType={deleteTarget.type}
+          itemName={deleteTarget.name}
+          onConfirm={() => { deleteTarget.action(); setDeleteTarget(null); }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1475,6 +1486,7 @@ function OutlineStep({
   onSkipAndGenerateScript,
   ideaId,
 }: OutlineStepProps) {
+  const [deleteTarget, setDeleteTarget] = useState<{type: string, id: string, name: string, action: () => void} | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [dragState, setDragState] = useState<{ sectionId: string; bulletIdx: number } | null>(null);
   const [dragOverState, setDragOverState] = useState<{ sectionId: string; bulletIdx: number } | null>(null);
@@ -1772,7 +1784,7 @@ function OutlineStep({
                     </div>
                     <button
                       type="button"
-                      onClick={() => removeSection(section.id)}
+                      onClick={() => setDeleteTarget({ type: 'section', id: section.id, name: section.title || 'Untitled section', action: () => removeSection(section.id) })}
                       title="Remove section"
                       className="shrink-0 ml-3 p-1.5 text-[var(--color-text-muted)] transition-colors hover:text-red-400"
                     >
@@ -2031,6 +2043,15 @@ function OutlineStep({
             </p>
           )}
         </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          itemType={deleteTarget.type}
+          itemName={deleteTarget.name}
+          onConfirm={() => { deleteTarget.action(); setDeleteTarget(null); }}
+          onCancel={() => setDeleteTarget(null)}
+        />
       )}
     </div>
   );
