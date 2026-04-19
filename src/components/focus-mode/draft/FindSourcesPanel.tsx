@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { IConceptAnswers, IResource } from '@/models/ContentIdea';
 
@@ -10,6 +10,7 @@ interface FindSourcesPanelProps {
   ideaId: string;
   ideaTitle: string;
   conceptAnswers: IConceptAnswers;
+  resources: IResource[];
   onSourcesFound: (resources: IResource[]) => void;
 }
 
@@ -89,6 +90,7 @@ export default function FindSourcesPanel({
   ideaId,
   ideaTitle,
   conceptAnswers,
+  resources,
   onSourcesFound,
 }: FindSourcesPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,16 +99,62 @@ export default function FindSourcesPanel({
     Object.fromEntries(CATEGORIES.map((c) => [c.id, c.checked]))
   );
   const [isSearching, setIsSearching] = useState(false);
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [refineOpen, setRefineOpen] = useState(false);
+  const lastInputHashRef = useRef('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Generate search query from idea context
+  // Build a hash of inputs to detect changes
+  const inputHash = useMemo(() => {
+    const parts = [
+      ideaTitle,
+      conceptAnswers.whoIsThisFor || '',
+      conceptAnswers.whatWillTheyLearn || '',
+      conceptAnswers.whyShouldTheyCare || '',
+      resources.map((r) => r.name).join(','),
+    ];
+    return parts.join('|');
+  }, [ideaTitle, conceptAnswers, resources]);
+
+  // Generate AI synthesis when panel opens or inputs change
   useEffect(() => {
-    if (isOpen && !searchQuery) {
-      const parts = [ideaTitle];
-      if (conceptAnswers.whoIsThisFor) parts.push(`for ${conceptAnswers.whoIsThisFor}`);
-      setSearchQuery(parts.join(' '));
-    }
-  }, [isOpen, ideaTitle, conceptAnswers, searchQuery]);
+    if (!isOpen) return;
+    if (inputHash === lastInputHashRef.current) return;
+
+    const hasConcept = conceptAnswers.whoIsThisFor || conceptAnswers.whatWillTheyLearn || conceptAnswers.whyShouldTheyCare;
+    if (!ideaTitle && !hasConcept) return;
+
+    let cancelled = false;
+    setIsSynthesizing(true);
+
+    fetch(`/api/ideas/${ideaId}/ai`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'synthesize' }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.synthesis) {
+          setSearchQuery(data.synthesis);
+          lastInputHashRef.current = inputHash;
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Fallback to simple concatenation
+        const parts = [ideaTitle];
+        if (conceptAnswers.whoIsThisFor) parts.push(`for ${conceptAnswers.whoIsThisFor}`);
+        setSearchQuery(parts.join(' '));
+        lastInputHashRef.current = inputHash;
+      })
+      .finally(() => {
+        if (!cancelled) setIsSynthesizing(false);
+      });
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, inputHash, ideaId, ideaTitle, conceptAnswers, refreshTrigger]);
 
   const toggleCategory = useCallback((id: string) => {
     setSelectedCategories((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -212,10 +260,29 @@ export default function FindSourcesPanel({
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           {/* AI Understanding */}
           <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(74, 111, 247, 0.08)' }}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">
-              AI Understood Your Idea As
-            </p>
-            {editingQuery ? (
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                AI Understood Your Idea As
+              </p>
+              {!isSynthesizing && !editingQuery && (
+                <button
+                  onClick={() => { lastInputHashRef.current = ''; setRefreshTrigger((n) => n + 1); }}
+                  className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                  title="Refresh synthesis"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+                  </svg>
+                  Refresh
+                </button>
+              )}
+            </div>
+            {isSynthesizing ? (
+              <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
+                Synthesizing from your concept and resources...
+              </div>
+            ) : editingQuery ? (
               <input
                 data-transparent=""
                 style={{ backgroundColor: 'transparent' }}

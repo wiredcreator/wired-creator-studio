@@ -219,6 +219,47 @@ Return the outline as a JSON array of sections with titles and bullet points. Th
         return NextResponse.json({ outline: outlineMarkdown, outlineSections });
       }
 
+      case 'synthesize': {
+        const conceptParts: string[] = [];
+        if (idea.conceptAnswers?.whoIsThisFor) {
+          conceptParts.push(`Target audience: ${idea.conceptAnswers.whoIsThisFor}`);
+        }
+        if (idea.conceptAnswers?.whatWillTheyLearn) {
+          conceptParts.push(`Key takeaway: ${idea.conceptAnswers.whatWillTheyLearn}`);
+        }
+        if (idea.conceptAnswers?.whyShouldTheyCare) {
+          conceptParts.push(`Why it matters: ${idea.conceptAnswers.whyShouldTheyCare}`);
+        }
+
+        const resourceSummaries: string[] = [];
+        if (idea.resources && idea.resources.length > 0) {
+          for (const resource of idea.resources.slice(0, 10)) {
+            const snippet = resource.content.length > 200
+              ? resource.content.slice(0, 200) + '...'
+              : resource.content;
+            resourceSummaries.push(`- ${resource.name}: ${snippet}`);
+          }
+        }
+
+        const startMs = Date.now();
+        const response = await client.messages.create({
+          model: 'claude-haiku-4-5',
+          max_tokens: 256,
+          system: 'You are a content strategist. Synthesize the given video idea context into one concise sentence that captures the core topic, angle, and target audience. This will be used as a search query to find relevant sources. Return ONLY the synthesized sentence, nothing else.',
+          messages: [
+            {
+              role: 'user',
+              content: `Video title: "${idea.title}"${idea.description ? `\nDescription: ${idea.description}` : ''}${conceptParts.length > 0 ? `\n\nConcept:\n${conceptParts.join('\n')}` : ''}${resourceSummaries.length > 0 ? `\n\nResources added so far:\n${resourceSummaries.join('\n')}` : ''}`,
+            },
+          ],
+        });
+
+        trackAIUsage({ userId: user.id, feature: 'idea_synthesize', response, durationMs: Date.now() - startMs });
+
+        const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+        return NextResponse.json({ synthesis: text });
+      }
+
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }

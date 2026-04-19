@@ -294,6 +294,7 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft, createDraftIfN
         ideaId={ideaId || ''}
         ideaTitle={title}
         conceptAnswers={conceptAnswers}
+        resources={resources}
         onSourcesFound={handleSourcesFound}
       />
     </div>

@@ -1443,6 +1443,7 @@ function ResourcesStep({
         ideaId={ideaId}
         ideaTitle={ideaTitle}
         conceptAnswers={conceptAnswers}
+        resources={resources}
         onSourcesFound={onSourcesFound}
       />
 
