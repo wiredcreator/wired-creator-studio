@@ -920,7 +920,9 @@ function ResourcesStep({
           <button
             type="button"
             onClick={() => setFindSourcesOpen(true)}
-            className="flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-secondary)]"
+            disabled={!conceptAnswers.whoIsThisFor.trim() || !conceptAnswers.whatWillTheyLearn.trim() || !conceptAnswers.whyShouldTheyCare.trim()}
+            title={!conceptAnswers.whoIsThisFor.trim() || !conceptAnswers.whatWillTheyLearn.trim() || !conceptAnswers.whyShouldTheyCare.trim() ? 'Complete all concept questions first' : undefined}
+            className="flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg className="h-4 w-4 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
