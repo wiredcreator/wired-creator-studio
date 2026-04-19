@@ -36,9 +36,12 @@ const TrendDataSchema = new Schema<ITrendData>(
 );
 
 // --- Resource Sub-document ---
+export type ResourceSource = 'written' | 'voice_storm' | 'brain_dump' | 'online' | 'upload';
+
 export interface IResource {
   _id?: Types.ObjectId;
   type: 'text' | 'file';
+  source?: ResourceSource;
   name: string;
   content: string; // text content or file URL
   fileType?: string; // e.g. 'pdf', 'doc'
@@ -48,6 +51,7 @@ export interface IResource {
 const ResourceSchema = new Schema<IResource>(
   {
     type: { type: String, enum: ['text', 'file'], required: true },
+    source: { type: String, enum: ['written', 'voice_storm', 'brain_dump', 'online', 'upload'] },
     name: { type: String, required: true },
     content: { type: String, default: '' },
     fileType: { type: String },

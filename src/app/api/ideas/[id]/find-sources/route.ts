@@ -133,6 +133,7 @@ Find 5-8 high-quality, recent sources. Prefer authoritative sources (research in
 
     const resources = parsed.map((source) => ({
       type: 'text' as const,
+      source: 'online' as const,
       name: source.title,
       content: `${source.summary}\n\nSource: ${source.url}`,
       createdAt: new Date(),

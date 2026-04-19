@@ -155,8 +155,10 @@ export default function IdeaParkingLotPage() {
   useEffect(() => {
     // Check local resources first (no async needed)
     const hasVoiceStormResource = resources.some((r) => {
+      // Prefer the deterministic source field; fall back to name matching for legacy resources
+      if (r.source === 'voice_storm') return true;
       const name = (r.name || '').toLowerCase();
-      return name.includes('voice storm') || name.includes('voicestorm') || name.includes('voice-storm');
+      return name.includes('voice storm') || name.includes('voicestorm');
     });
     if (hasVoiceStormResource) {
       setHasLinkedVoiceStorm(true);
@@ -289,6 +291,7 @@ export default function IdeaParkingLotPage() {
     if (!newResourceName.trim() || !newResourceContent.trim()) return;
     const newResource: IResource = {
       type: 'text',
+      source: 'written',
       name: newResourceName.trim(),
       content: newResourceContent.trim(),
       createdAt: new Date(),
@@ -719,8 +722,17 @@ interface ResourcesStepProps {
 
 function getResourceBadge(resource: IResource): { label: string; borderColor: string; bgColor: string; textColor: string } {
   const name = resource.name.toLowerCase();
-  if (name.includes('voice storm') || name.includes('voicestorm')) {
+  if (resource.source === 'voice_storm' || name.includes('voice storm') || name.includes('voicestorm')) {
     return { label: 'Voice Storm', borderColor: '#F59E0B', bgColor: '#78350F', textColor: '#FDE68A' };
+  }
+  if (resource.source === 'brain_dump') {
+    return { label: 'Brain Dump', borderColor: '#8B5CF6', bgColor: '#4C1D95', textColor: '#DDD6FE' };
+  }
+  if (resource.source === 'online') {
+    return { label: 'Online Resource', borderColor: '#3B82F6', bgColor: '#1E3A5F', textColor: '#BFDBFE' };
+  }
+  if (resource.source === 'upload') {
+    return { label: 'Uploaded File', borderColor: '#F59E0B', bgColor: '#78350F', textColor: '#FDE68A' };
   }
   if (resource.type === 'file') {
     return { label: resource.fileType?.toUpperCase() || 'File', borderColor: 'var(--color-accent)', bgColor: '#1E3A5F', textColor: '#93C5FD' };
@@ -839,6 +851,7 @@ function ResourcesStep({
     for (const dump of selected) {
       onAddResource({
         type: 'text',
+        source: 'brain_dump',
         name: `Brain Dump ${new Date(dump.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
         content: dump.transcript,
         createdAt: new Date(),
@@ -869,6 +882,7 @@ function ResourcesStep({
       const extractedText = data.text || data.content || '';
       const newResource: IResource = {
         type: 'text',
+        source: 'upload',
         name: file.name,
         content: extractedText,
         createdAt: new Date(),
@@ -1213,6 +1227,7 @@ function ResourcesStep({
                         if (!vsTranscript.trim()) return;
                         onAddResource({
                           type: 'text',
+                          source: 'voice_storm',
                           name: `Voice Storm ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
                           content: vsTranscript.trim(),
                           createdAt: new Date(),
