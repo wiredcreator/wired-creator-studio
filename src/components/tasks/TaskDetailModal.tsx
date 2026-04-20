@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { TaskComment, TaskData } from "./TaskCard";
 import ModalPortal from "@/components/ModalPortal";
+import { useTimezone } from "@/hooks/useTimezone";
 
 interface TaskDetailModalProps {
   task: TaskData;
@@ -26,11 +27,6 @@ function getYouTubeEmbedUrl(url: string): string | null {
   }
   if (url.includes("youtube.com/embed/")) return url;
   return null;
-}
-
-function formatDateLabel(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", { month: "long", day: "numeric" });
 }
 
 function isOverdue(dateString: string, isCompleted: boolean): boolean {
@@ -151,6 +147,7 @@ export default function TaskDetailModal({
   onMarkComplete,
   onTaskUpdated,
 }: TaskDetailModalProps) {
+  const { formatDate } = useTimezone();
   const overlayRef = useRef<HTMLDivElement>(null);
   const timePopoverRef = useRef<HTMLDivElement>(null);
   const isCompleted = task.status === "completed";
@@ -339,7 +336,7 @@ export default function TaskDetailModal({
 
             {task.dueDate && (
               <span className="inline-flex items-center rounded-full bg-[var(--color-bg-secondary)] px-3 py-1 text-xs font-medium text-[var(--color-text-primary)]">
-                Due {formatDateLabel(task.dueDate)}
+                Due {formatDate(task.dueDate, { month: "long", day: "numeric" })}
               </span>
             )}
 

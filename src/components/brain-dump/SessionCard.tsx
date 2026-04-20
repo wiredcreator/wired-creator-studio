@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTimezone } from '@/hooks/useTimezone';
 import BrainDumpResults from './BrainDumpResults';
 
 interface SessionCardProps {
@@ -26,9 +27,9 @@ const callTypeLabels: Record<string, string> = {
 
 export default function SessionCard({ session }: SessionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { formatDate } = useTimezone();
 
-  const date = new Date(session.callDate || session.createdAt);
-  const formattedDate = date.toLocaleDateString('en-US', {
+  const formattedDate = formatDate(session.callDate || session.createdAt, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

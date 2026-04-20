@@ -1,27 +1,9 @@
 import dbConnect from '@/lib/db';
+import User from '@/models/User';
 import UserXP, { IUserXP } from '@/models/UserXP';
 import { getXPForAction } from '@/lib/xp-config';
 import { createNotification } from '@/lib/notifications';
-
-/**
- * Check if two dates are the same calendar day (UTC).
- */
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getUTCFullYear() === b.getUTCFullYear() &&
-    a.getUTCMonth() === b.getUTCMonth() &&
-    a.getUTCDate() === b.getUTCDate()
-  );
-}
-
-/**
- * Check if date `a` is the calendar day immediately before date `b` (UTC).
- */
-function isYesterday(a: Date, b: Date): boolean {
-  const yesterday = new Date(b);
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  return isSameDay(a, yesterday);
-}
+import { isSameDayInTimezone, isYesterdayInTimezone } from '@/lib/format-date';
 
 /**
  * Award XP to a user for a specific action.
@@ -46,6 +28,10 @@ export async function awardXP(
   const points = pointsOverride ?? await getXPForAction(action);
   const now = new Date();
 
+  // Look up user's timezone for streak calculations
+  const userDoc = await User.findById(userId).select('timezone').lean();
+  const timezone = (userDoc?.timezone as string) || 'America/New_York';
+
   // Find or create the UserXP document
   let userXP = await UserXP.findOne({ userId });
 
@@ -63,13 +49,13 @@ export async function awardXP(
   // Add XP points
   userXP.lifetimeXP += points;
 
-  // Streak logic
+  // Streak logic (timezone-aware: "today" and "yesterday" are in the user's local timezone)
   if (userXP.lastActiveDate) {
     const lastActive = new Date(userXP.lastActiveDate);
-    if (isSameDay(lastActive, now)) {
-      // Same day — no streak change
-    } else if (isYesterday(lastActive, now)) {
-      // Consecutive day — increment streak
+    if (isSameDayInTimezone(lastActive, now, timezone)) {
+      // Same day in user's timezone — no streak change
+    } else if (isYesterdayInTimezone(lastActive, now, timezone)) {
+      // Consecutive day in user's timezone — increment streak
       userXP.currentStreak += 1;
     } else {
       // Streak broken — reset to 1

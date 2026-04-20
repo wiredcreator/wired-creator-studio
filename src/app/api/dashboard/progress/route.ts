@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import dbConnect from '@/lib/db';
+import User from '@/models/User';
 import Task from '@/models/Task';
 import ContentIdea from '@/models/ContentIdea';
 import Script from '@/models/Script';
 import UserXP from '@/models/UserXP';
+import { toLocalDateKey, getDayOfWeekInTimezone, getDatePartsInTimezone } from '@/lib/format-date';
 
 type Period = 'week' | 'month' | 'last30';
 
@@ -30,63 +32,75 @@ interface ProgressResponse {
   daily: DailyActivity[];
 }
 
-function getDateRange(period: Period): { start: Date; end: Date } {
+/**
+ * Compute the start and end date strings (YYYY-MM-DD) for a period in the user's timezone,
+ * and return corresponding UTC Date boundaries for MongoDB queries.
+ */
+function getDateRange(period: Period, timezone: string): { start: Date; end: Date; startStr: string; endStr: string } {
   const now = new Date();
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const todayStr = toLocalDateKey(now, timezone);
+  const { year, month } = getDatePartsInTimezone(now, timezone);
 
-  let start: Date;
+  let startStr: string;
+  const endStr = todayStr;
 
   switch (period) {
     case 'week': {
-      const currentDay = now.getDay();
+      const currentDay = getDayOfWeekInTimezone(now, timezone); // 0=Sun
       const diffToMonday = currentDay === 0 ? 6 : currentDay - 1;
-      start = new Date(now);
-      start.setDate(now.getDate() - diffToMonday);
-      start.setHours(0, 0, 0, 0);
+      const mondayDate = new Date(todayStr + 'T12:00:00Z');
+      mondayDate.setDate(mondayDate.getDate() - diffToMonday);
+      startStr = mondayDate.toISOString().split('T')[0];
       break;
     }
     case 'month': {
-      start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      startStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
       break;
     }
     case 'last30': {
-      start = new Date(now);
-      start.setDate(now.getDate() - 29);
-      start.setHours(0, 0, 0, 0);
+      const startDate = new Date(todayStr + 'T12:00:00Z');
+      startDate.setDate(startDate.getDate() - 29);
+      startStr = startDate.toISOString().split('T')[0];
       break;
     }
-    default:
-      start = new Date(now);
-      start.setDate(now.getDate() - 6);
-      start.setHours(0, 0, 0, 0);
+    default: {
+      const startDate = new Date(todayStr + 'T12:00:00Z');
+      startDate.setDate(startDate.getDate() - 6);
+      startStr = startDate.toISOString().split('T')[0];
+    }
   }
 
-  return { start, end };
+  // Convert to UTC Date objects for MongoDB queries (generous range to capture timezone edges)
+  const start = new Date(startStr + 'T00:00:00Z');
+  start.setDate(start.getDate() - 1); // 1 day buffer for timezone offset
+  const end = new Date(endStr + 'T23:59:59.999Z');
+  end.setDate(end.getDate() + 1); // 1 day buffer
+
+  return { start, end, startStr, endStr };
 }
 
-function getDayLabel(date: Date, period: Period): string {
+function getDayLabel(dateStr: string, period: Period): string {
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   if (period === 'week') {
-    return dayNames[date.getDay()];
+    const d = new Date(dateStr + 'T12:00:00Z');
+    return dayNames[d.getDay()];
   }
 
   // For month and last30, show compact date
-  return `${date.getMonth() + 1}/${date.getDate()}`;
+  const parts = dateStr.split('-');
+  return `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
 }
 
-function generateDateRange(start: Date, end: Date): Date[] {
-  const dates: Date[] = [];
-  const current = new Date(start);
-  while (current <= end) {
-    dates.push(new Date(current));
+function generateDateStrings(startStr: string, endStr: string): string[] {
+  const dates: string[] = [];
+  const current = new Date(startStr + 'T12:00:00Z');
+  const endDate = new Date(endStr + 'T12:00:00Z');
+  while (current <= endDate) {
+    dates.push(current.toISOString().split('T')[0]);
     current.setDate(current.getDate() + 1);
   }
   return dates;
-}
-
-function toDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 // GET /api/dashboard/progress?period=week|month|last30
@@ -100,11 +114,16 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const period = (searchParams.get('period') || 'week') as Period;
-    const { start, end } = getDateRange(period);
+
+    // Fetch user's timezone
+    const userDoc = await User.findById(user.id).select('timezone').lean();
+    const timezone = (userDoc?.timezone as string) || 'America/New_York';
+
+    const { start, end, startStr, endStr } = getDateRange(period, timezone);
 
     const userId = user.id;
 
-    // Fetch all data in parallel
+    // Fetch all data in parallel (using buffered UTC range for queries)
     const [completedTasks, createdIdeas, createdScripts, brainDumpIdeas, xpDoc] = await Promise.all([
       Task.find({
         userId,
@@ -131,21 +150,20 @@ export async function GET(request: NextRequest) {
       UserXP.findOne({ userId }).select('xpHistory').lean(),
     ]);
 
-    // Filter XP history to the date range
+    // Filter XP history to the date range (using timezone-aware date keys)
     const xpEntries = (xpDoc?.xpHistory ?? []).filter((entry) => {
-      const ts = new Date(entry.timestamp);
-      return ts >= start && ts <= end;
+      const key = toLocalDateKey(entry.timestamp, timezone);
+      return key >= startStr && key <= endStr;
     });
 
-    // Build daily buckets
-    const dates = generateDateRange(start, end);
+    // Build daily buckets using timezone-aware date strings
+    const dateStrings = generateDateStrings(startStr, endStr);
     const buckets: Record<string, DailyActivity> = {};
 
-    for (const date of dates) {
-      const key = toDateKey(date);
-      buckets[key] = {
-        date: key,
-        label: getDayLabel(date, period),
+    for (const dateStr of dateStrings) {
+      buckets[dateStr] = {
+        date: dateStr,
+        label: getDayLabel(dateStr, period),
         tasks: 0,
         ideas: 0,
         scripts: 0,
@@ -154,48 +172,48 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // Fill tasks
+    // Fill tasks (convert timestamps to user's local date)
     for (const task of completedTasks) {
       if (task.completedAt) {
-        const key = toDateKey(new Date(task.completedAt));
+        const key = toLocalDateKey(task.completedAt, timezone);
         if (buckets[key]) buckets[key].tasks++;
       }
     }
 
-    // Fill ideas (excluding brain dumps to avoid double-counting)
+    // Fill ideas
     for (const idea of createdIdeas) {
-      const key = toDateKey(new Date(idea.createdAt));
+      const key = toLocalDateKey(idea.createdAt, timezone);
       if (buckets[key]) buckets[key].ideas++;
     }
 
     // Fill scripts
     for (const script of createdScripts) {
-      const key = toDateKey(new Date(script.createdAt));
+      const key = toLocalDateKey(script.createdAt, timezone);
       if (buckets[key]) buckets[key].scripts++;
     }
 
     // Fill brain dumps
     for (const dump of brainDumpIdeas) {
-      const key = toDateKey(new Date(dump.createdAt));
+      const key = toLocalDateKey(dump.createdAt, timezone);
       if (buckets[key]) buckets[key].brainDumps++;
     }
 
     // Fill XP
     for (const entry of xpEntries) {
-      const key = toDateKey(new Date(entry.timestamp));
+      const key = toLocalDateKey(entry.timestamp, timezone);
       if (buckets[key]) buckets[key].xp += entry.points;
     }
 
     // Build ordered daily array
-    const daily = dates.map((date) => buckets[toDateKey(date)]);
+    const daily = dateStrings.map((dateStr) => buckets[dateStr]);
 
-    // Compute totals
+    // Compute totals (re-count from bucketed data to ensure timezone-correct totals)
     const totals = {
-      tasks: completedTasks.length,
-      ideas: createdIdeas.length,
-      scripts: createdScripts.length,
-      brainDumps: brainDumpIdeas.length,
-      xp: xpEntries.reduce((sum, e) => sum + e.points, 0),
+      tasks: daily.reduce((sum, d) => sum + d.tasks, 0),
+      ideas: daily.reduce((sum, d) => sum + d.ideas, 0),
+      scripts: daily.reduce((sum, d) => sum + d.scripts, 0),
+      brainDumps: daily.reduce((sum, d) => sum + d.brainDumps, 0),
+      xp: daily.reduce((sum, d) => sum + d.xp, 0),
     };
 
     const response: ProgressResponse = { period, totals, daily };

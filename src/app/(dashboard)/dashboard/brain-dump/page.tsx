@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+import { useTimezone } from "@/hooks/useTimezone";
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
@@ -75,6 +76,7 @@ function countWords(text: string): number {
 }
 
 export default function BrainDumpPage() {
+  const { formatDate } = useTimezone();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
@@ -540,12 +542,12 @@ export default function BrainDumpPage() {
         : view.data.contentIdeas.map((i) => ({ title: i.title, description: i.description }));
     const sessionDate =
       view.type === 'detail'
-        ? new Date(view.session.createdAt).toLocaleDateString('en-US', {
+        ? formatDate(view.session.createdAt, {
             month: 'long',
             day: 'numeric',
             year: 'numeric',
           })
-        : new Date().toLocaleDateString('en-US', {
+        : formatDate(new Date(), {
             month: 'long',
             day: 'numeric',
             year: 'numeric',
@@ -1093,7 +1095,7 @@ export default function BrainDumpPage() {
             <div className={listMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4' : 'flex flex-col gap-3'}>
               {filteredSessions.map((session) => {
                 const date = new Date(session.callDate || session.createdAt);
-                const formattedDate = date.toLocaleDateString('en-US', {
+                const formattedDate = formatDate(date, {
                   month: 'short',
                   day: 'numeric',
                   year: 'numeric',

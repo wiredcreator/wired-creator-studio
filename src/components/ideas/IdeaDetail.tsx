@@ -5,6 +5,7 @@ import type { ContentIdeaStatus, ContentIdeaSource } from '@/models/ContentIdea'
 import type { IdeaCardData } from './IdeaCard';
 import ModalPortal from '@/components/ModalPortal';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
+import { useTimezone } from '@/hooks/useTimezone';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,6 +51,7 @@ export default function IdeaDetail({
   onDelete,
   onStartScript,
 }: IdeaDetailProps) {
+  const { formatDate } = useTimezone();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [title, setTitle] = useState(idea.title);
@@ -95,11 +97,7 @@ export default function IdeaDetail({
   }, [showDeleteConfirm]);
 
   const createdDate = idea.createdAt
-    ? new Date(idea.createdAt).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
+    ? formatDate(idea.createdAt, { month: 'short', day: 'numeric', year: 'numeric' })
     : '';
 
   return (

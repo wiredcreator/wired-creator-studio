@@ -14,6 +14,7 @@ interface PersonalBaselinePayload {
     question: string;
     answer: string;
   }[];
+  browserTimezone?: string;
 }
 
 function validatePayload(data: PersonalBaselinePayload): string | null {
@@ -92,7 +93,8 @@ export async function POST(request: NextRequest) {
     const stateResponse = body.responses.find((r) => r.questionId === 'location-state');
     const city = cityResponse?.answer?.trim() || '';
     const stateAbbr = stateResponse?.answer?.trim().toUpperCase() || '';
-    const derivedTimezone = STATE_TO_TIMEZONE[stateAbbr] || 'America/New_York';
+    // Prefer the browser's detected timezone, fall back to state-based derivation
+    const derivedTimezone = body.browserTimezone || STATE_TO_TIMEZONE[stateAbbr] || 'America/New_York';
 
     // Mark personal baseline as completed on the user + save location/timezone
     await User.findByIdAndUpdate(user.id, {

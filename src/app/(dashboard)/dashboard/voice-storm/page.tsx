@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTimezone } from "@/hooks/useTimezone";
 import PageWrapper from '@/components/PageWrapper';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
@@ -43,6 +44,7 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
 export default function VoiceStormPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { formatDate } = useTimezone();
 
   // Sessions state
   const [sessions, setSessions] = useState<VoiceStormSession[]>([]);
@@ -768,7 +770,7 @@ export default function VoiceStormPage() {
                       {getSessionTitle(session)}
                     </h3>
                     <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap flex-shrink-0">
-                      {new Date(session.createdAt).toLocaleDateString(undefined, {
+                      {formatDate(session.createdAt, {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',

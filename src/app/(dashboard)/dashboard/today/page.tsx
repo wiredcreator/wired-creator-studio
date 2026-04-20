@@ -4,13 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/PageWrapper";
 import TaskCard, { TaskData } from "@/components/tasks/TaskCard";
 import TaskDetailModal from "@/components/tasks/TaskDetailModal";
-
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
+import { useTimezone } from "@/hooks/useTimezone";
+import { getLocalDateISO as getLocalDateISOForTz } from "@/lib/format-date";
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<TaskData[]>([]);
@@ -18,11 +13,12 @@ export default function DashboardPage() {
   const [error] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"todo" | "completed">("todo");
   const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
+  const { timezone, formatDate } = useTimezone();
 
   const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateISOForTz(timezone);
       const res = await fetch(`/api/tasks?date=${today}`);
       if (!res.ok) {
         setTasks([]);
@@ -35,7 +31,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [timezone]);
 
   useEffect(() => {
     fetchTasks();
@@ -102,7 +98,7 @@ export default function DashboardPage() {
 
   const activeTasks = activeTab === "todo" ? todoTasks : completedTasks;
 
-  const todayFormatted = new Date().toLocaleDateString("en-US", {
+  const todayFormatted = formatDate(new Date(), {
     weekday: "long",
     month: "long",
     day: "numeric",

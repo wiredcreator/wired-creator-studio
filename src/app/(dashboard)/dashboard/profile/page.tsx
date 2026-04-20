@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import PageWrapper from '@/components/PageWrapper';
 import { useTheme } from '@/components/ThemeProvider';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
+import { getTimezoneOptions } from '@/lib/format-date';
 
 type SettingsTab = 'profile' | 'content-dna' | 'ai-preferences';
 
@@ -24,15 +25,7 @@ interface ProfileData {
   createdAt: string;
 }
 
-const TIMEZONES = [
-  { value: 'America/New_York', label: 'Eastern Time (ET)' },
-  { value: 'America/Chicago', label: 'Central Time (CT)' },
-  { value: 'America/Denver', label: 'Mountain Time (MT)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
-  { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
-  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HT)' },
-  { value: 'UTC', label: 'UTC' },
-];
+// Timezone options are generated dynamically from Intl API (all IANA timezones)
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'profile', label: 'My Profile' },
@@ -345,6 +338,102 @@ export default function SettingsPage() {
 }
 
 /* ──────────────────────────────────────────── */
+/* Timezone Select                              */
+/* ──────────────────────────────────────────── */
+
+function TimezoneSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const groups = useMemo(() => getTimezoneOptions(), []);
+  const allOptions = useMemo(() => groups.flatMap((g) => g.options), [groups]);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selectedLabel = allOptions.find((o) => o.value === value)?.label || value;
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return groups;
+    const q = search.toLowerCase();
+    return groups
+      .map((g) => ({
+        ...g,
+        options: g.options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q)),
+      }))
+      .filter((g) => g.options.length > 0);
+  }, [groups, search]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div
+        onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 0); }}
+        className="flex h-11 w-full cursor-pointer items-center rounded-[var(--radius-md)] border border-[var(--color-border)] px-3.5 text-sm text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent)]"
+        style={{ backgroundColor: 'var(--color-bg-card)' }}
+      >
+        {open ? (
+          <input
+            ref={inputRef}
+            data-transparent
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search timezones..."
+            className="w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+          />
+        ) : (
+          <span className="truncate">{selectedLabel}</span>
+        )}
+        <svg className="ml-auto h-4 w-4 shrink-0 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+      {open && (
+        <div
+          className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-border)] shadow-lg"
+          style={{ backgroundColor: 'var(--color-bg-card)' }}
+        >
+          {filtered.length === 0 ? (
+            <div className="px-3.5 py-3 text-sm text-[var(--color-text-muted)]">No timezones found</div>
+          ) : (
+            filtered.map((group) => (
+              <div key={group.region}>
+                <div
+                  className="sticky top-0 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]"
+                  style={{ backgroundColor: 'var(--color-bg-secondary)' }}
+                >
+                  {group.region}
+                </div>
+                {group.options.map((tz) => (
+                  <button
+                    key={tz.value}
+                    type="button"
+                    onClick={() => { onChange(tz.value); setOpen(false); setSearch(''); }}
+                    className={`w-full px-3.5 py-2 text-left text-sm transition-colors hover:bg-[var(--color-bg-secondary)] ${tz.value === value ? 'font-medium text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]'}`}
+                    style={tz.value === value ? { backgroundColor: 'var(--color-bg-tertiary)' } : undefined}
+                  >
+                    {tz.label}
+                  </button>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────── */
 /* My Profile Tab                               */
 /* ──────────────────────────────────────────── */
 
@@ -592,16 +681,7 @@ function ProfileTab({
             <label htmlFor="timezone" className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">
               Timezone
             </label>
-            <select
-              id="timezone"
-              value={timezone}
-              onChange={(e) => onTimezoneChange(e.target.value)}
-              className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)]"
-            >
-              {TIMEZONES.map((tz) => (
-                <option key={tz.value} value={tz.value}>{tz.label}</option>
-              ))}
-            </select>
+            <TimezoneSelect value={timezone} onChange={onTimezoneChange} />
           </div>
         </div>
       </section>

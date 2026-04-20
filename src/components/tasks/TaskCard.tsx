@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTimezone } from "@/hooks/useTimezone";
 
 export interface TaskComment {
   _id: string;
@@ -38,11 +39,6 @@ interface TaskCardProps {
   onClick: (task: TaskData) => void;
 }
 
-function formatDateLabel(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", { month: "long", day: "numeric" });
-}
-
 function isOverdue(dateString: string): boolean {
   const date = new Date(dateString);
   const now = new Date();
@@ -52,6 +48,7 @@ function isOverdue(dateString: string): boolean {
 }
 
 export default function TaskCard({ task, onStatusChange, onClick }: TaskCardProps) {
+  const { formatDate } = useTimezone();
   const isCompleted = task.status === "completed";
   const overdue = !isCompleted && isOverdue(task.dueDate);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -140,7 +137,7 @@ export default function TaskCard({ task, onStatusChange, onClick }: TaskCardProp
 
           {/* Date tag */}
           <span className="inline-flex items-center rounded-full bg-[var(--color-bg-secondary)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-text-primary)]">
-            {formatDateLabel(task.dueDate)}
+            {formatDate(task.dueDate, { month: "long", day: "numeric" })}
           </span>
 
           {/* Overdue tag */}

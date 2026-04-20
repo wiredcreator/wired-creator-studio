@@ -6,6 +6,7 @@ import { checkPaidCustomer } from '@/lib/stripe';
 import Sidebar from '@/components/Sidebar';
 import BrainDumpFAB from '@/components/BrainDumpFAB';
 import DashboardHeader from '@/components/DashboardHeader';
+import { TimezoneProvider } from '@/components/TimezoneProvider';
 import UnsavedChangesGuard from './UnsavedChangesGuard';
 
 export default async function DashboardLayout({
@@ -51,17 +52,21 @@ export default async function DashboardLayout({
   //   ...
   // }
 
+  const userTimezone = (dbUser.timezone as string) || 'America/New_York';
+
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <Sidebar userName={userName} userRole={userRole} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <DashboardHeader />
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+    <TimezoneProvider timezone={userTimezone}>
+      <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
+        <Sidebar userName={userName} userRole={userRole} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <DashboardHeader />
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+        </div>
+        <BrainDumpFAB />
+        <UnsavedChangesGuard />
       </div>
-      <BrainDumpFAB />
-      <UnsavedChangesGuard />
-    </div>
+    </TimezoneProvider>
   );
 }

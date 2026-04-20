@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTimezone } from "@/hooks/useTimezone";
 import PageWrapper from '@/components/PageWrapper';
 import ScriptCard from '@/components/scripts/ScriptCard';
 import ScriptEditor from '@/components/scripts/ScriptEditor';
@@ -71,6 +72,7 @@ interface TranscriptOption {
 export default function ScriptsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { formatDate } = useTimezone();
   const preselectedIdeaId = searchParams.get('ideaId');
 
   // --- State ---
@@ -465,7 +467,7 @@ export default function ScriptsPage() {
                     {transcripts.map((t) => (
                       <option key={t._id} value={t._id}>
                         {t.sessionType} session —{' '}
-                        {new Date(t.createdAt).toLocaleDateString()}
+                        {formatDate(t.createdAt)}
                       </option>
                     ))}
                   </select>

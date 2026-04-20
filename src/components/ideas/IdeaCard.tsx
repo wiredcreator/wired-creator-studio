@@ -1,6 +1,7 @@
 'use client';
 
 import type { ContentIdeaStatus, ContentIdeaSource, ContentIdeaPriority } from '@/models/ContentIdea';
+import { useTimezone } from '@/hooks/useTimezone';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,15 +103,6 @@ const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
   none: { bg: 'var(--color-bg-secondary)', text: 'var(--color-text-secondary)' },
 };
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-}
-
-function formatDateShort(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -129,6 +121,7 @@ export default function IdeaCard({
   isSelected,
   onToggleSelect,
 }: IdeaCardProps) {
+  const { formatDate } = useTimezone();
   const isSuggested = variant === 'suggested';
 
   // Suggested variant: checkbox-based multi-select (no auto-save on click)
@@ -171,7 +164,7 @@ export default function IdeaCard({
                 {SUGGESTED_SOURCE_LABELS[idea.source]}
               </span>
               <span className="text-xs text-[var(--color-text-muted)]">
-                {formatDate(idea.createdAt)}
+                {formatDate(idea.createdAt, { month: 'long', day: 'numeric' })}
               </span>
             </div>
           </button>
@@ -275,7 +268,7 @@ export default function IdeaCard({
 
           {/* Date */}
           <span className="ml-auto text-xs text-[var(--color-text-muted)]">
-            {formatDateShort(idea.createdAt)}
+            {formatDate(idea.createdAt, { day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
         </div>
       </button>

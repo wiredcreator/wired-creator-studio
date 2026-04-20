@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTimezone } from '@/hooks/useTimezone';
 
 interface TaskComment {
   _id: string;
@@ -126,9 +127,9 @@ function getCommentUserName(userId: TaskComment['userId']): string {
   return 'User';
 }
 
-function formatDueDate(dateString: string): string {
+function formatDueDate(dateString: string, formatDateFn: (d: string | Date, opts?: Intl.DateTimeFormatOptions) => string): string {
   const date = new Date(dateString);
-  const month = date.toLocaleString('en-US', { month: 'long' });
+  const month = formatDateFn(date, { month: 'long' });
   const day = date.getDate();
   const suffix =
     day === 1 || day === 21 || day === 31 ? 'st' :
@@ -159,6 +160,7 @@ function TaskListView({
   onComplete: (task: Task) => void;
   updating: string | null;
 }) {
+  const { formatDate } = useTimezone();
   const [showCompleted, setShowCompleted] = useState(false);
 
   return (
@@ -189,7 +191,7 @@ function TaskListView({
                 </span>
                 {task.dueDate && (
                   <span className="inline-flex rounded-full border border-[var(--color-border)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">
-                    {formatDueDate(task.dueDate)}
+                    {formatDueDate(task.dueDate, formatDate)}
                   </span>
                 )}
               </div>
@@ -276,7 +278,7 @@ function TaskListView({
                       </span>
                       {task.dueDate && (
                         <span className="inline-flex rounded-full border border-[var(--color-border)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">
-                          {formatDueDate(task.dueDate)}
+                          {formatDueDate(task.dueDate, formatDate)}
                         </span>
                       )}
                     </div>

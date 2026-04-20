@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+import { useTimezone } from "@/hooks/useTimezone";
 import PageWrapper from '@/components/PageWrapper';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
@@ -48,6 +49,7 @@ function formatDuration(seconds: number): string {
 export default function VoiceStormDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { formatDate } = useTimezone();
   const id = params.id as string;
 
   const [session, setSession] = useState<VoiceStormSession | null>(null);
@@ -480,7 +482,7 @@ export default function VoiceStormDetailPage() {
         {/* Meta row */}
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <span className="text-[var(--color-text-muted)]">
-            {new Date(session.createdAt).toLocaleDateString('en-US', {
+            {formatDate(session.createdAt, {
               weekday: 'short',
               year: 'numeric',
               month: 'short',

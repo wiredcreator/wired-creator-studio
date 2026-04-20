@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTimezone } from "@/hooks/useTimezone";
 import PageWrapper from '@/components/PageWrapper';
 import BrandBrainOverview from '@/components/brand-brain/BrandBrainOverview';
 import ToneOfVoiceEditor from '@/components/brand-brain/ToneOfVoiceEditor';
@@ -63,6 +64,7 @@ interface BrandBrainData {
 // ---------------------------------------------------------------------------
 
 export default function BrandBrainPage() {
+  const { formatDate } = useTimezone();
   const [brandBrain, setBrandBrain] = useState<BrandBrainData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -353,7 +355,7 @@ export default function BrandBrainPage() {
 
   // --- Format date for display ---
   const formattedDate = brandBrain?.updatedAt
-    ? new Date(brandBrain.updatedAt).toLocaleDateString('en-US', {
+    ? formatDate(brandBrain.updatedAt, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',

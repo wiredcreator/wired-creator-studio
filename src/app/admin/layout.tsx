@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import AdminSidebar from '@/components/AdminSidebar';
+import { TimezoneProvider } from '@/components/TimezoneProvider';
 import UnsavedChangesGuard from '../(dashboard)/UnsavedChangesGuard';
 
 export default async function AdminLayout({
@@ -29,16 +30,19 @@ export default async function AdminLayout({
   }
 
   const userName = dbUser.name || session.user.name || 'User';
+  const userTimezone = (dbUser.timezone as string) || 'America/New_York';
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <AdminSidebar userName={userName} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+    <TimezoneProvider timezone={userTimezone}>
+      <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
+        <AdminSidebar userName={userName} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+        </div>
+        <UnsavedChangesGuard />
       </div>
-      <UnsavedChangesGuard />
-    </div>
+    </TimezoneProvider>
   );
 }

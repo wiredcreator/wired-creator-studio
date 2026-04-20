@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ScriptStatus } from '@/models/Script';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+import { useTimezone } from '@/hooks/useTimezone';
 import ModalPortal from '@/components/ModalPortal';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
@@ -108,14 +109,6 @@ const STATUS_COLORS: Record<ScriptStatus, string> = {
   published: 'text-[var(--color-success)]',
 };
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
 
 const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024; // 2MB
 
@@ -150,6 +143,7 @@ export default function ScriptEditor({
   isRegenerating = false,
   isReverting = false,
 }: ScriptEditorProps) {
+  const { formatDateTime } = useTimezone();
   const [viewMode, setViewMode] = useState<ViewMode>('full');
   const [title, setTitle] = useState(script.title);
   const [fullScript, setFullScript] = useState(script.fullScript);
@@ -1283,7 +1277,7 @@ export default function ScriptEditor({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-white">Feedback</span>
                     <span className="text-xs text-[var(--color-text-muted)]">
-                      {formatDate(fb.createdAt)}
+                      {formatDateTime(fb.createdAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-[var(--color-text-primary)]">{fb.text}</p>
@@ -1461,14 +1455,14 @@ export default function ScriptEditor({
               {/* Created */}
               <div>
                 <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Created</span>
-                <p className="text-sm text-[var(--color-text-secondary)]">{formatDate(script.createdAt)}</p>
+                <p className="text-sm text-[var(--color-text-secondary)]">{formatDateTime(script.createdAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
               </div>
 
               {/* Last Modified */}
               {script.updatedAt && (
                 <div>
                   <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Last Modified</span>
-                  <p className="text-sm text-[var(--color-text-secondary)]">{formatDate(script.updatedAt)}</p>
+                  <p className="text-sm text-[var(--color-text-secondary)]">{formatDateTime(script.updatedAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                 </div>
               )}
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import PageWrapper from "@/components/PageWrapper";
 import ModalPortal from "@/components/ModalPortal";
+import { useTimezone } from "@/hooks/useTimezone";
 
 interface StudentWithStats {
   _id: string;
@@ -78,7 +79,10 @@ interface AdminStats {
   stuckStudents: number;
 }
 
-function formatRelativeDate(dateStr: string | null): string {
+function formatRelativeDate(
+  dateStr: string | null,
+  formatDateFn: (date: string | Date, options?: Intl.DateTimeFormatOptions) => string
+): string {
   if (!dateStr) return "Never";
   const date = new Date(dateStr);
   const now = new Date();
@@ -91,18 +95,11 @@ function formatRelativeDate(dateStr: string | null): string {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatDateFn(date, { month: "short", day: "numeric" });
 }
 
 export default function AdminStudentsPage() {
+  const { formatDate, formatDateTime } = useTimezone();
   const [students, setStudents] = useState<StudentWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -459,7 +456,7 @@ export default function AdminStudentsPage() {
                       </td>
                       {/* Start Date */}
                       <td className="px-3 py-4 text-xs text-[var(--color-text-muted)]">
-                        {formatDate(student.createdAt)}
+                        {formatDate(student.createdAt, { month: "short", day: "numeric", year: "numeric" })}
                       </td>
                       {/* XP Earned */}
                       <td className="px-3 py-4 text-center">
@@ -478,7 +475,7 @@ export default function AdminStudentsPage() {
                       </td>
                       {/* Last Activity */}
                       <td className="px-3 py-4 text-right text-xs text-[var(--color-text-muted)]">
-                        {formatRelativeDate(student.lastActiveDate)}
+                        {formatRelativeDate(student.lastActiveDate, formatDate)}
                       </td>
                       {/* Plan */}
                       <td className="px-3 py-4 text-right">

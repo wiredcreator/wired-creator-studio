@@ -341,7 +341,10 @@ export default function PersonalBaselineQuestionnaire({
       const response = await fetch('/api/onboarding/personal-baseline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ responses }),
+        body: JSON.stringify({
+          responses,
+          browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
       });
 
       const result = await response.json();

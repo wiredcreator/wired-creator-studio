@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTimezone } from "@/hooks/useTimezone";
 
 interface NotificationItem {
   _id: string;
@@ -16,7 +17,7 @@ interface NotificationItem {
 
 const LAST_CHECKED_KEY = "wired_notifications_last_checked";
 
-function formatLastChecked(date: Date | null): string {
+function formatLastChecked(date: Date | null, formatDateFn: (d: Date) => string): string {
   if (!date) return "never";
   const now = Date.now();
   const diff = now - date.getTime();
@@ -27,10 +28,10 @@ function formatLastChecked(date: Date | null): string {
   if (seconds < 60) return "just now";
   if (minutes < 60) return `${minutes} min ago`;
   if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  return date.toLocaleDateString();
+  return formatDateFn(date);
 }
 
-function relativeTime(dateStr: string): string {
+function relativeTime(dateStr: string, formatDateFn: (d: string | Date) => string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diff = now - then;
@@ -43,7 +44,7 @@ function relativeTime(dateStr: string): string {
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  return formatDateFn(dateStr);
 }
 
 function getTypeIcon(type: string): React.ReactElement {
@@ -98,6 +99,7 @@ function getRelatedHref(relatedId?: string, relatedType?: string): string | null
 }
 
 export default function NotificationBell() {
+  const { formatDate } = useTimezone();
   const [open, setOpen] = useState(false);
   const [unretrievedCount, setUnretrievedCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -377,7 +379,7 @@ export default function NotificationBell() {
               borderBottom: "1px solid var(--color-border-light)",
             }}
           >
-            Last checked: {formatLastChecked(lastChecked)}
+            Last checked: {formatLastChecked(lastChecked, formatDate)}
           </div>
 
           {/* Retrieve banner */}
@@ -502,7 +504,7 @@ export default function NotificationBell() {
                         marginTop: 4,
                       }}
                     >
-                      {relativeTime(n.createdAt)}
+                      {relativeTime(n.createdAt, formatDate)}
                     </div>
                   </div>
                 </button>

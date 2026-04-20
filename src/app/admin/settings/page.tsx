@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import PageWrapper from "@/components/PageWrapper";
+import { useTimezone } from "@/hooks/useTimezone";
 
 interface XPConfigData {
   taskCompleted: number;
@@ -57,6 +58,7 @@ const XP_FIELDS: {
 ];
 
 export default function AdminSettingsPage() {
+  const { formatDateTime } = useTimezone();
   const [config, setConfig] = useState<XPConfigData | null>(null);
   const [draft, setDraft] = useState<XPConfigData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -252,7 +254,7 @@ export default function AdminSettingsPage() {
         {config?.updatedAt && (
           <p className="text-xs text-[var(--color-text-muted)]">
             Last updated:{" "}
-            {new Date(config.updatedAt).toLocaleString("en-US", {
+            {formatDateTime(config.updatedAt, {
               month: "short",
               day: "numeric",
               year: "numeric",

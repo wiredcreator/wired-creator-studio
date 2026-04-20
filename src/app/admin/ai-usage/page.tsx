@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/PageWrapper";
+import { useTimezone } from "@/hooks/useTimezone";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -80,24 +81,6 @@ function toTitleCase(s: string): string {
     .join(" ");
 }
 
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function fmtTimestamp(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
@@ -276,6 +259,7 @@ function DailyTrendTable({
   days: ByDay[];
   loading: boolean;
 }) {
+  const { formatDate } = useTimezone();
   const sorted = [...days].sort(
     (a, b) => new Date(b._id).getTime() - new Date(a._id).getTime()
   );
@@ -320,7 +304,7 @@ function DailyTrendTable({
                     className="border-b border-[var(--color-border)] last:border-b-0"
                   >
                     <td className="px-4 py-3 text-[var(--color-text-primary)]">
-                      {fmtDate(d._id)}
+                      {formatDate(d._id, { month: "short", day: "numeric", year: "numeric" })}
                     </td>
                     <td className="px-4 py-3 text-right text-[var(--color-text-primary)]">
                       {fmt(d.calls)}
@@ -357,6 +341,7 @@ function RecentCallsTable({
   logs: RecentLog[];
   loading: boolean;
 }) {
+  const { formatDateTime } = useTimezone();
   return (
     <div>
       <h2 className="mb-3 text-lg font-semibold text-[var(--color-text-primary)]">
@@ -436,7 +421,7 @@ function RecentCallsTable({
                       {fmtDuration(log.durationMs)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right text-[var(--color-text-muted)]">
-                      {fmtTimestamp(log.createdAt)}
+                      {formatDateTime(log.createdAt, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                     </td>
                   </tr>
                 ))}

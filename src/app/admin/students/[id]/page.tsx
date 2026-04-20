@@ -9,6 +9,7 @@ import CoachNotes from "@/components/admin/CoachNotes";
 import EquipmentChecklist from "@/components/admin/EquipmentChecklist";
 import BodyDoubleAssignment from "@/components/admin/BodyDoubleAssignment";
 import VoiceInputWrapper from "@/components/VoiceInputWrapper";
+import { useTimezone } from "@/hooks/useTimezone";
 import type { ToneOfVoiceParameter } from "@/types/ai";
 
 interface StudentInfo {
@@ -203,6 +204,7 @@ function EmptyState({ message }: { message: string }) {
 }
 
 export default function StudentDetailPage() {
+  const { formatDate, formatDateTime } = useTimezone();
   const params = useParams();
   const id = params.id as string;
 
@@ -786,7 +788,7 @@ export default function StudentDetailPage() {
                 </h2>
                 <p className="text-sm text-[var(--color-text-muted)]">
                   {student?.createdAt
-                    ? `Enrolled since ${new Date(student.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`
+                    ? `Enrolled since ${formatDate(student.createdAt, { month: "long", year: "numeric" })}`
                     : "Enrolled since --"}
                 </p>
               </div>
@@ -1054,7 +1056,7 @@ export default function StudentDetailPage() {
                     <p className="text-xs font-medium text-[var(--color-text-muted)]">Joined</p>
                     <p className="text-sm text-[var(--color-text-primary)]">
                       {student.createdAt
-                        ? new Date(student.createdAt).toLocaleDateString("en-US", {
+                        ? formatDate(student.createdAt, {
                             month: "long",
                             day: "numeric",
                             year: "numeric",
@@ -1747,7 +1749,7 @@ export default function StudentDetailPage() {
                         </span>
                       )}
                       <span className="text-xs text-[var(--color-text-muted)]">
-                        {new Date(idea.createdAt).toLocaleDateString("en-US", {
+                        {formatDate(idea.createdAt, {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
@@ -1802,7 +1804,7 @@ export default function StudentDetailPage() {
                         {wordCount > 0 && <span>{wordCount.toLocaleString()} words</span>}
                         {bulletCount > 0 && <span>{bulletCount} bullet points</span>}
                         <span>
-                          {new Date(script.createdAt).toLocaleDateString("en-US", {
+                          {formatDate(script.createdAt, {
                             month: "short",
                             day: "numeric",
                             year: "numeric",
@@ -1848,7 +1850,7 @@ export default function StudentDetailPage() {
                         </div>
                       </div>
                       <span className="shrink-0 text-xs text-[var(--color-text-muted)]">
-                        {new Date(dump.createdAt).toLocaleDateString("en-US", {
+                        {formatDate(dump.createdAt, {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
@@ -1918,7 +1920,7 @@ export default function StudentDetailPage() {
                           </div>
                         </div>
                         <span className="shrink-0 text-xs text-[var(--color-text-muted)]">
-                          {new Date(session.createdAt).toLocaleDateString("en-US", {
+                          {formatDate(session.createdAt, {
                             month: "short",
                             day: "numeric",
                             year: "numeric",
@@ -1975,7 +1977,7 @@ export default function StudentDetailPage() {
                 <div className="space-y-2">
                   <p className="text-xs text-[var(--color-text-muted)]">
                     Last compiled:{" "}
-                    {new Date(compiledProfile.compiledAt).toLocaleString("en-US", {
+                    {formatDateTime(compiledProfile.compiledAt, {
                       month: "short",
                       day: "numeric",
                       year: "numeric",

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ModalPortal from '@/components/ModalPortal';
+import { useTimezone } from '@/hooks/useTimezone';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,7 +53,7 @@ type SetupStep = 'idle' | 'discovering' | 'selecting' | 'scraping' | 'done';
 // Helpers
 // ---------------------------------------------------------------------------
 
-function relativeTime(dateStr: string): string {
+function relativeTime(dateStr: string, formatDateFn?: (date: string | Date, options?: Intl.DateTimeFormatOptions) => string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diff = now - then;
@@ -65,7 +66,8 @@ function relativeTime(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days} day${days !== 1 ? 's' : ''} ago`;
   if (weeks < 5) return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
-  return new Date(dateStr).toLocaleDateString();
+  if (formatDateFn) return formatDateFn(dateStr);
+  return dateStr;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -119,6 +121,8 @@ function VideoCard({
   video: ScoutVideo;
   onClick: (v: ScoutVideo) => void;
 }) {
+  const { formatDate } = useTimezone();
+
   return (
     <button
       type="button"
@@ -164,7 +168,7 @@ function VideoCard({
         <p className="text-xs text-[var(--color-text-muted)]">
           {video.channelName}
           {video.publishedAt && (
-            <> &middot; {relativeTime(video.publishedAt)}</>
+            <> &middot; {relativeTime(video.publishedAt, formatDate)}</>
           )}
         </p>
       </div>
@@ -185,6 +189,7 @@ function VideoDetailModal({
   onClose: () => void;
   userId: string;
 }) {
+  const { formatDate } = useTimezone();
   const [ideas, setIdeas] = useState<GeneratedIdea[]>([]);
   const [isLoadingIdeas, setIsLoadingIdeas] = useState(true);
   const [savingIdx, setSavingIdx] = useState<Set<number>>(new Set());
@@ -297,7 +302,7 @@ function VideoDetailModal({
         {/* Video info */}
         <div className="border-b border-[var(--color-border)] px-6 py-4">
           <p className="mb-1 text-xs text-[var(--color-text-muted)]">
-            {video.channelName} &middot; {relativeTime(video.publishedAt)}
+            {video.channelName} &middot; {relativeTime(video.publishedAt, formatDate)}
           </p>
           <h3 className="text-base font-bold text-[var(--color-text-primary)]">{video.title}</h3>
         </div>
@@ -877,6 +882,7 @@ function EditSourcesPanel({
 // ---------------------------------------------------------------------------
 
 export default function ContentScout({ userId }: { userId: string }) {
+  const { formatDate } = useTimezone();
   const [videos, setVideos] = useState<ScoutVideo[]>([]);
   const [uniqueIdeas, setUniqueIdeas] = useState<ScoutIdea[]>([]);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -1173,7 +1179,7 @@ export default function ContentScout({ userId }: { userId: string }) {
             <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
               Trending content from creators in your space
               {generatedAt && (
-                <> &middot; Last generated: {relativeTime(generatedAt)}</>
+                <> &middot; Last generated: {relativeTime(generatedAt, formatDate)}</>
               )}
             </p>
           </div>

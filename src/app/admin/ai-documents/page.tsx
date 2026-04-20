@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/PageWrapper";
 import ModalPortal from "@/components/ModalPortal";
 import VoiceInputWrapper from "@/components/VoiceInputWrapper";
+import { useTimezone } from "@/hooks/useTimezone";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -716,12 +717,13 @@ function DocumentCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { formatDateTime } = useTimezone();
   const [expanded, setExpanded] = useState(false);
 
   const previewLines = doc.content.split("\n").slice(0, 3).join("\n");
   const hasMore = doc.content.split("\n").length > 3;
 
-  const updatedAt = new Date(doc.updatedAt).toLocaleString("en-US", {
+  const updatedAt = formatDateTime(doc.updatedAt, {
     month: "short",
     day: "numeric",
     year: "numeric",

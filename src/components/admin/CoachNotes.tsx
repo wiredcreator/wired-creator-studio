@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTimezone } from "@/hooks/useTimezone";
 import VoiceInputWrapper from "@/components/VoiceInputWrapper";
 
 interface CoachNoteData {
@@ -11,7 +12,7 @@ interface CoachNoteData {
   updatedAt: string;
 }
 
-function relativeTime(dateStr: string): string {
+function relativeTime(dateStr: string, formatDateFn: (d: string | Date) => string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diffMs = now - then;
@@ -24,10 +25,11 @@ function relativeTime(dateStr: string): string {
   if (diffMin < 60) return `${diffMin}m ago`;
   if (diffHr < 24) return `${diffHr}h ago`;
   if (diffDay < 30) return `${diffDay}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  return formatDateFn(dateStr);
 }
 
 export default function CoachNotes({ studentId }: { studentId: string }) {
+  const { formatDate } = useTimezone();
   const [notes, setNotes] = useState<CoachNoteData[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -256,7 +258,7 @@ export default function CoachNotes({ studentId }: { studentId: string }) {
                       <span className="font-medium text-[var(--color-text-primary)]">
                         {note.authorId?.name || "Unknown"}
                       </span>
-                      <span>{relativeTime(note.createdAt)}</span>
+                      <span>{relativeTime(note.createdAt, formatDate)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       {/* Edit button */}

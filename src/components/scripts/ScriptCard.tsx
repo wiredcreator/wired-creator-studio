@@ -1,6 +1,7 @@
 'use client';
 
 import type { ScriptStatus } from '@/models/Script';
+import { useTimezone } from '@/hooks/useTimezone';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,18 +56,14 @@ function getPreview(fullScript: string, maxLength = 80): string {
   return trimmed.slice(0, maxLength).trim() + '...';
 }
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function ScriptCard({ script, onClick }: ScriptCardProps) {
+  const { formatDate } = useTimezone();
+
   return (
     <button
       type="button"
@@ -124,7 +121,7 @@ export default function ScriptCard({ script, onClick }: ScriptCardProps) {
 
           {/* Version + date */}
           <span className="ml-auto text-xs text-[var(--color-text-muted)]">
-            v{script.version} · {formatDate(script.updatedAt || script.createdAt)}
+            v{script.version} · {formatDate(script.updatedAt || script.createdAt, { month: 'short', day: 'numeric' })}
           </span>
         </div>
       </div>

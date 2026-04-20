@@ -9,6 +9,7 @@ import DraftSidebar from '@/components/focus-mode/draft/DraftSidebar';
 import FindSourcesPanel from '@/components/focus-mode/draft/FindSourcesPanel';
 import type { IConceptAnswers, INote, IComment, IResource, IOutlineSection } from '@/models/ContentIdea';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+import { useTimezone } from "@/hooks/useTimezone";
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 // ---------------------------------------------------------------------------
@@ -766,6 +767,7 @@ function ResourcesStep({
   onSourcesFound,
   onAddResource,
 }: ResourcesStepProps) {
+  const { formatDate } = useTimezone();
   const [deleteTarget, setDeleteTarget] = useState<{type: string, id: string, name: string, action: () => void} | null>(null);
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -858,7 +860,7 @@ function ResourcesStep({
       onAddResource({
         type: 'text',
         source: 'brain_dump',
-        name: `Brain Dump ${new Date(dump.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+        name: `Brain Dump ${formatDate(dump.createdAt, { month: 'short', day: 'numeric' })}`,
         content: dump.transcript,
         createdAt: new Date(),
       });
@@ -1238,7 +1240,7 @@ function ResourcesStep({
                         onAddResource({
                           type: 'text',
                           source: 'voice_storm',
-                          name: `Voice Storm ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+                          name: `Voice Storm ${formatDate(new Date(), { month: 'short', day: 'numeric' })}`,
                           content: vsTranscript.trim(),
                           createdAt: new Date(),
                         });
@@ -1276,7 +1278,7 @@ function ResourcesStep({
                     ) : (
                       filteredDumps.map((dump) => {
                         const isSelected = selectedDumps.has(dump._id);
-                        const dateStr = new Date(dump.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        const dateStr = formatDate(dump.createdAt, { month: 'short', day: 'numeric' });
                         const preview = dump.transcript.slice(0, 120) + (dump.transcript.length > 120 ? '...' : '');
                         return (
                           <button
@@ -1338,7 +1340,7 @@ function ResourcesStep({
             const isExpanded = expandedResource === resourceKey;
             const badge = getResourceBadge(resource);
             const dateStr = resource.createdAt
-              ? new Date(resource.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              ? formatDate(resource.createdAt, { month: 'short', day: 'numeric', year: 'numeric' })
               : '';
 
             return (

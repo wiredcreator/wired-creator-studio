@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTimezone } from '@/hooks/useTimezone';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
@@ -26,6 +27,7 @@ export default function BrainDumpMessage({
   onDelete,
 }: BrainDumpMessageProps) {
   const [isExpanded, setIsExpanded] = useState(!!isNew);
+  const { formatDateTime } = useTimezone();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -37,7 +39,7 @@ export default function BrainDumpMessage({
   const [editThemes, setEditThemes] = useState(extractedThemes);
 
   const formattedDate = createdAt
-    ? new Date(createdAt).toLocaleDateString('en-US', {
+    ? formatDateTime(createdAt, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
