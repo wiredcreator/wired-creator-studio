@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
 import type {
   ToneOfVoiceParameter,
   ToneParameterCategory,
@@ -47,7 +50,7 @@ const STATUS_CONFIG: Record<
   GuideStatus,
   { label: string; bg: string; text: string }
 > = {
-  draft: { label: 'Draft', bg: 'bg-[var(--color-warning-light)]', text: 'text-[var(--color-warning)]' },
+  draft: { label: 'Draft', bg: 'bg-amber-100', text: 'text-amber-800' },
   review: { label: 'In Review', bg: 'bg-blue-900', text: 'text-blue-300' },
   active: { label: 'Active', bg: 'bg-emerald-900', text: 'text-emerald-300' },
 };
@@ -79,13 +82,44 @@ export default function ToneOfVoiceEditor({
   const [currentStatus, setCurrentStatus] = useState<GuideStatus>(status);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // TipTap rich text editor for the summary
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit,
+      Placeholder.configure({
+        placeholder: 'Paste or type your tone of voice guide here. Use the toolbar for formatting.',
+      }),
+    ],
+    content: initialSummary || '',
+    onUpdate: ({ editor: e }) => {
+      setSummary(e.getHTML());
+      setHasUnsavedChanges(true);
+    },
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm prose-invert max-w-none focus:outline-none min-h-[120px] px-4 py-3 text-[var(--color-text-primary)]',
+      },
+    },
+  });
+
   // Sync editor state when parent provides new data (e.g., after regeneration)
+  // Use a ref to skip the sync that happens right after a user-initiated save
+  const justSaved = useRef(false);
   useEffect(() => {
+    if (justSaved.current) {
+      justSaved.current = false;
+      setHasUnsavedChanges(false);
+      return;
+    }
     setParameters(initialParameters);
     setSummary(initialSummary);
+    if (editor && initialSummary !== editor.getHTML()) {
+      editor.commands.setContent(initialSummary || '');
+    }
     setHasUnsavedChanges(false);
     setEditingIndex(null);
-  }, [initialParameters, initialSummary]);
+  }, [initialParameters, initialSummary, editor]);
 
   // --- Inline Edit ---
 
@@ -154,6 +188,7 @@ export default function ToneOfVoiceEditor({
   // --- Save ---
 
   const handleSave = useCallback(() => {
+    justSaved.current = true;
     onSave?.(parameters, summary);
     setHasUnsavedChanges(false);
   }, [parameters, summary, onSave]);
@@ -209,6 +244,7 @@ export default function ToneOfVoiceEditor({
           {/* Save */}
           {hasUnsavedChanges && (
             <button
+              type="button"
               onClick={handleSave}
               className="px-4 py-2 text-sm font-medium text-white bg-[var(--color-accent)] rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
             >
@@ -218,24 +254,62 @@ export default function ToneOfVoiceEditor({
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="mb-8 p-4 bg-[var(--color-bg-secondary)] rounded-xl border border-[var(--color-border)]">
-        <label className="block text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide mb-2">
+      {/* Summary — Rich Text Editor */}
+      <div className="mb-8 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden">
+        <label className="block px-4 pt-4 text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide mb-2">
           Voice Summary
         </label>
-        <VoiceInputWrapper onTranscript={(text) => { setSummary((prev) => prev ? prev + '\n' + text : text); setHasUnsavedChanges(true); }}>
-          <textarea
-            data-transparent=""
-            style={{ backgroundColor: 'transparent' }}
-            value={summary}
-            onChange={(e) => {
-              setSummary(e.target.value);
-              setHasUnsavedChanges(true);
-            }}
-            rows={3}
-            className="w-full bg-transparent text-[var(--color-text-primary)] text-sm leading-relaxed resize-none focus:outline-none"
-            placeholder="A brief summary of this creator's authentic voice..."
-          />
+        {/* Toolbar */}
+        {editor && (
+          <div className="flex flex-wrap items-center gap-1 px-4 pb-2 border-b border-[var(--color-border)]">
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+              className={`px-2 py-1 rounded text-xs font-semibold transition-colors ${editor.isActive('heading', { level: 2 }) ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card)]'}`}
+            >
+              H2
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+              className={`px-2 py-1 rounded text-xs font-semibold transition-colors ${editor.isActive('heading', { level: 3 }) ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card)]'}`}
+            >
+              H3
+            </button>
+            <div className="w-px h-5 bg-[var(--color-border)] mx-1" />
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleBold().run()}
+              className={`px-2 py-1 rounded text-xs font-bold transition-colors ${editor.isActive('bold') ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card)]'}`}
+            >
+              B
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+              className={`px-2 py-1 rounded text-xs italic font-medium transition-colors ${editor.isActive('italic') ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card)]'}`}
+            >
+              I
+            </button>
+            <div className="w-px h-5 bg-[var(--color-border)] mx-1" />
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+              className={`px-2 py-1 rounded text-xs transition-colors ${editor.isActive('bulletList') ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card)]'}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /><circle cx="1" cy="6" r="1" fill="currentColor" /><circle cx="1" cy="12" r="1" fill="currentColor" /><circle cx="1" cy="18" r="1" fill="currentColor" /></svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+              className={`px-2 py-1 rounded text-xs transition-colors ${editor.isActive('orderedList') ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card)]'}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
+            </button>
+          </div>
+        )}
+        <VoiceInputWrapper onTranscript={(text) => { if (editor) { editor.chain().focus().insertContent(text).run(); } }}>
+          <EditorContent editor={editor} />
         </VoiceInputWrapper>
       </div>
 

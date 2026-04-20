@@ -12,6 +12,11 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
     "@auth/mongodb-adapter": "^3.11.1",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tiptap/extension-placeholder": "^3.22.4",
+    "@tiptap/pm": "^3.22.4",
+    "@tiptap/react": "^3.22.4",
+    "@tiptap/starter-kit": "^3.22.4",
     "bcryptjs": "^3.0.3",
     "mammoth": "^1.12.0",
     "mongoose": "^9.3.0",

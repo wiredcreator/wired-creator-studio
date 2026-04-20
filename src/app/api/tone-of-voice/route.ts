@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     const body = await request.json();
-    const { parameters = [], brandBrainId } = body;
+    const { parameters = [], summary = '', brandBrainId } = body;
 
     if (!brandBrainId) {
       return NextResponse.json(
@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       brandBrainId,
       parameters,
+      summary,
       status: 'draft',
     });
 

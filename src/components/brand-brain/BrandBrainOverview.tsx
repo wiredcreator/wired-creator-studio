@@ -210,9 +210,16 @@ export default function BrandBrainOverview({
                   {toneOfVoice.parameterCount} parameters
                 </span>
               </div>
-              <p className="text-sm text-[var(--color-text-primary)] leading-relaxed">
-                {toneOfVoice.summary}
-              </p>
+              {toneOfVoice.summary.startsWith('<') ? (
+                <div
+                  className="prose prose-sm prose-invert max-w-none text-[var(--color-text-primary)] leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: toneOfVoice.summary }}
+                />
+              ) : (
+                <p className="text-sm text-[var(--color-text-primary)] leading-relaxed">
+                  {toneOfVoice.summary}
+                </p>
+              )}
             </div>
           ) : (
             <p className="text-sm text-[var(--color-text-muted)] italic">

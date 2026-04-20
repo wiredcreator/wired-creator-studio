@@ -202,6 +202,7 @@ export default function AdminStudentsPage() {
     <PageWrapper
       title="Students"
       subtitle="Overview of all students and their progress."
+      wide
     >
       <div className="space-y-6">
         {/* Stats row */}
@@ -381,7 +382,18 @@ export default function AdminStudentsPage() {
 
         {!loading && filteredStudents.length > 0 && (
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)]">
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col />
+                <col />
+                <col className="w-[90px]" />
+                <col className="w-[100px]" />
+                <col className="w-[96px]" />
+                <col className="w-[80px]" />
+                <col className="w-[108px]" />
+                <col className="w-[88px]" />
+                <col className="w-[40px]" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-[var(--color-border)]">
                   <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
@@ -390,25 +402,25 @@ export default function AdminStudentsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
                     Email
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                  <th className="px-3 py-3 text-center text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
                     Start Date
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-                    XP Earned
+                  <th className="px-3 py-3 text-center text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                    XP
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                  <th className="px-3 py-3 text-center text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
                     Risk
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-                    Last Activity
+                  <th className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                    Activity
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                  <th className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
                     Plan
                   </th>
-                  <th className="w-8 px-3 py-3" />
+                  <th className="px-2 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border-light)]">
@@ -422,8 +434,8 @@ export default function AdminStudentsPage() {
                   return (
                     <tr key={student._id} className="transition-colors hover:bg-[var(--color-bg-secondary)]">
                       {/* Name */}
-                      <td className="px-5 py-4">
-                        <Link href={`/admin/students/${student._id}`} className="flex items-center gap-3">
+                      <td className="px-5 py-4 overflow-hidden">
+                        <Link href={`/admin/students/${student._id}`} className="flex items-center gap-3 min-w-0">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-light)] text-xs font-semibold text-[var(--color-accent)]">
                             {student.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                           </div>
@@ -433,11 +445,11 @@ export default function AdminStudentsPage() {
                         </Link>
                       </td>
                       {/* Email */}
-                      <td className="px-4 py-4 text-xs text-[var(--color-text-muted)] truncate max-w-[180px]">
+                      <td className="px-4 py-4 text-xs text-[var(--color-text-muted)] truncate overflow-hidden">
                         {student.email}
                       </td>
                       {/* Status */}
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-3 py-4 text-center">
                         <span
                           className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
                           style={{ backgroundColor: statusColor.bg, color: statusColor.text }}
@@ -446,17 +458,17 @@ export default function AdminStudentsPage() {
                         </span>
                       </td>
                       {/* Start Date */}
-                      <td className="px-4 py-4 text-xs text-[var(--color-text-muted)]">
+                      <td className="px-3 py-4 text-xs text-[var(--color-text-muted)]">
                         {formatDate(student.createdAt)}
                       </td>
                       {/* XP Earned */}
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-3 py-4 text-center">
                         <span className="text-sm font-medium text-[var(--color-text-primary)]">
                           {student.lifetimeXP.toLocaleString()}
                         </span>
                       </td>
                       {/* Risk */}
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-3 py-4 text-center">
                         <span
                           className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
                           style={{ backgroundColor: riskColor.bg, color: riskColor.text }}
@@ -465,16 +477,16 @@ export default function AdminStudentsPage() {
                         </span>
                       </td>
                       {/* Last Activity */}
-                      <td className="px-4 py-4 text-right text-xs text-[var(--color-text-muted)]">
+                      <td className="px-3 py-4 text-right text-xs text-[var(--color-text-muted)]">
                         {formatRelativeDate(student.lastActiveDate)}
                       </td>
                       {/* Plan */}
-                      <td className="px-4 py-4 text-right">
+                      <td className="px-3 py-4 text-right">
                         <span className="text-xs font-medium text-[var(--color-accent)]">
                           {planLabel}
                         </span>
                       </td>
-                      <td className="px-3 py-4">
+                      <td className="px-2 py-4">
                         <Link href={`/admin/students/${student._id}`}>
                           <svg className="h-4 w-4 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />

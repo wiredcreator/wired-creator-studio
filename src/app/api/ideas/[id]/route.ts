@@ -112,6 +112,7 @@ export async function PUT(
         console.error('[Ideas] Brand Brain write-back failed (non-fatal):', bbError);
       }
     }
+    if (body.priority !== undefined) idea.priority = body.priority;
     if (body.contentPillar !== undefined) idea.contentPillar = body.contentPillar;
     if (body.tags !== undefined) idea.tags = body.tags;
     if (body.trendData !== undefined) idea.trendData = body.trendData;

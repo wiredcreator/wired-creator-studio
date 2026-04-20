@@ -105,6 +105,14 @@ export async function PUT(
       guide.parameters = body.parameters;
     }
 
+    if (body.summary !== undefined) {
+      guide.summary = body.summary;
+    }
+    // Auto-approve: when a student edits their own guide, set status to active
+    if (isOwner && !isPrivileged && body.parameters !== undefined && guide.status !== 'active') {
+      guide.status = 'active';
+    }
+
     // Increment version on each save
     guide.version += 1;
 

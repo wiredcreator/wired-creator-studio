@@ -43,6 +43,7 @@ interface ToneParameter {
 interface ToneOfVoiceGuide {
   _id: string;
   parameters: ToneParameter[];
+  summary: string;
   status: 'draft' | 'review' | 'active';
   version: number;
 }
@@ -95,7 +96,7 @@ export default function BrandBrainPage() {
       setError(null);
       setNotFound(false);
 
-      const res = await fetch('/api/brand-brain');
+      const res = await fetch('/api/brand-brain', { cache: 'no-store' });
 
       if (res.status === 404) {
         setNotFound(true);
@@ -174,19 +175,19 @@ export default function BrandBrainPage() {
     ? {
         status: brandBrain.toneOfVoiceGuide.status,
         parameterCount: brandBrain.toneOfVoiceGuide.parameters?.length ?? 0,
-        summary: buildToneSummary(brandBrain.toneOfVoiceGuide.parameters ?? []),
+        summary: brandBrain.toneOfVoiceGuide.summary || buildToneSummary(brandBrain.toneOfVoiceGuide.parameters ?? []),
       }
     : undefined;
 
   // --- Tone of Voice Editor save handler (optimistic) ---
   const handleToneSave = useCallback(
-    (params: ToneParameter[], _summary: string) => {
+    (params: ToneParameter[], summary: string) => {
       if (!brandBrain) return;
       const previous = brandBrain;
       setIsSaving(true);
 
       if (brandBrain.toneOfVoiceGuide?._id) {
-        // Update existing guide
+        // Update existing guide — optimistically update both parameters and summary
         setBrandBrain((prev) => {
           if (!prev?.toneOfVoiceGuide) return prev;
           return {
@@ -194,6 +195,7 @@ export default function BrandBrainPage() {
             toneOfVoiceGuide: {
               ...prev.toneOfVoiceGuide,
               parameters: params,
+              summary,
             },
           };
         });
@@ -203,12 +205,29 @@ export default function BrandBrainPage() {
           {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ parameters: params }),
+            body: JSON.stringify({ parameters: params, summary }),
           }
         )
           .then((res) => {
             if (!res.ok) return res.json().then((err: { error?: string }) => { throw new Error(err.error || 'Failed to save tone of voice'); });
-            return fetchBrandBrain();
+            return res.json();
+          })
+          .then((saved) => {
+            if (!saved) return;
+            // Sync local state with what the server actually persisted
+            setBrandBrain((prev) => {
+              if (!prev?.toneOfVoiceGuide) return prev;
+              return {
+                ...prev,
+                toneOfVoiceGuide: {
+                  ...prev.toneOfVoiceGuide,
+                  parameters: saved.parameters,
+                  summary: saved.summary,
+                  status: saved.status,
+                  version: saved.version,
+                },
+              };
+            });
           })
           .catch((err) => {
             console.error('Error saving tone of voice:', err);
@@ -223,7 +242,7 @@ export default function BrandBrainPage() {
         fetch('/api/tone-of-voice', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parameters: params, brandBrainId: brandBrain._id }),
+          body: JSON.stringify({ parameters: params, summary, brandBrainId: brandBrain._id }),
         })
           .then((res) => {
             if (!res.ok) return res.json().then((err: { error?: string }) => { throw new Error(err.error || 'Failed to create tone of voice'); });
@@ -446,7 +465,7 @@ export default function BrandBrainPage() {
 
               <ToneOfVoiceEditor
                 initialParameters={brandBrain.toneOfVoiceGuide?.parameters ?? []}
-                initialSummary={brandBrain.toneOfVoiceGuide ? buildToneSummary(brandBrain.toneOfVoiceGuide.parameters) : ''}
+                initialSummary={brandBrain.toneOfVoiceGuide ? (brandBrain.toneOfVoiceGuide.summary || buildToneSummary(brandBrain.toneOfVoiceGuide.parameters)) : ''}
                 status={brandBrain.toneOfVoiceGuide?.status ?? 'draft'}
                 onSave={handleToneSave}
                 onRegenerate={handleToneRegenerate}

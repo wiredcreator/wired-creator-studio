@@ -25,6 +25,7 @@ interface IdeaData {
   conceptAnswers?: IConceptAnswers;
   callToAction: string;
   alternativeTitles: string[];
+  priority: string;
   tags: string[];
   notes: INote[];
   comments: IComment[];
@@ -84,6 +85,7 @@ export default function IdeaParkingLotPage() {
   });
   const [callToAction, setCallToAction] = useState('');
   const [alternativeTitles, setAlternativeTitles] = useState<string[]>([]);
+  const [priority, setPriority] = useState('none');
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState<INote[]>([]);
   const [comments, setComments] = useState<IComment[]>([]);
@@ -128,6 +130,7 @@ export default function IdeaParkingLotPage() {
       const data: IdeaData = await res.json();
       setIdea(data);
       setTitle(data.title);
+      setPriority(data.priority || 'none');
       setConceptAnswers(data.conceptAnswers || {
         whoIsThisFor: '',
         whatWillTheyLearn: '',
@@ -419,25 +422,23 @@ export default function IdeaParkingLotPage() {
         Back
       </button>
 
-      {/* Idea title as page heading (editable) */}
-      <input
-        type="text"
-        data-transparent
-        value={title}
-        onChange={(e) => { setTitle(e.target.value); markChanged(); }}
-        onBlur={() => { if (title !== idea.title) saveIdea({ title }); }}
-        className="mb-1 w-full bg-transparent text-2xl font-bold text-[var(--color-text-primary)] outline-none ring-0"
-      />
-
-      {/* Status messages */}
-      <div className="mb-6 flex items-center gap-2">
+      {/* Idea title + status messages */}
+      <div className="mb-6 flex items-center gap-3">
+        <input
+          type="text"
+          data-transparent
+          value={title}
+          onChange={(e) => { setTitle(e.target.value); markChanged(); }}
+          onBlur={() => { if (title !== idea.title) saveIdea({ title }); }}
+          className="min-w-0 flex-1 bg-transparent text-2xl font-bold text-[var(--color-text-primary)] outline-none ring-0"
+        />
         {errorMessage && (
-          <span className="rounded-[var(--radius-md)] bg-red-900 px-3 py-1.5 text-xs font-medium text-red-200">
+          <span className="shrink-0 rounded-[var(--radius-md)] bg-red-900 px-3 py-1.5 text-xs font-medium text-red-200">
             {errorMessage}
           </span>
         )}
         {saveMessage && (
-          <span className="rounded-[var(--radius-md)] bg-green-900 px-3 py-1.5 text-xs font-medium text-green-200">
+          <span className="shrink-0 rounded-[var(--radius-md)] bg-green-900 px-3 py-1.5 text-xs font-medium text-green-200">
             {saveMessage}
           </span>
         )}
@@ -569,6 +570,8 @@ export default function IdeaParkingLotPage() {
         {/* Right sidebar with accordion panels */}
         <div className="w-72 shrink-0">
           <DraftSidebar
+            priority={priority}
+            onPriorityChange={(v) => { setPriority(v); saveIdea({ priority: v } as unknown as Partial<IdeaData>); }}
             callToAction={callToAction}
             setCallToAction={setCallToAction}
             onSaveCallToAction={(v) => { setCallToAction(v); saveIdea({ callToAction: v } as unknown as Partial<IdeaData>); }}

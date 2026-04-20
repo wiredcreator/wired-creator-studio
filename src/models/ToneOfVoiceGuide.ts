@@ -57,6 +57,7 @@ export interface IToneOfVoiceGuide extends Document {
   userId: Types.ObjectId;
   brandBrainId: Types.ObjectId;
   parameters: IToneParameter[];
+  summary: string;
   status: ToneOfVoiceStatus;
   generatedFrom: IGeneratedFrom;
   version: number;
@@ -77,6 +78,7 @@ const ToneOfVoiceGuideSchema = new Schema<IToneOfVoiceGuide>(
       required: true,
     },
     parameters: [ToneParameterSchema],
+    summary: { type: String, default: '' },
     status: {
       type: String,
       enum: ['draft', 'review', 'active'],

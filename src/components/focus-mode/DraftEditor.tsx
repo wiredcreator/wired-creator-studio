@@ -56,6 +56,7 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft, createDraftIfN
     whatWillTheyLearn: '',
     whyShouldTheyCare: '',
   });
+  const [priority, setPriority] = useState('none');
   const [callToAction, setCallToAction] = useState('');
   const [alternativeTitles, setAlternativeTitles] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
@@ -83,6 +84,7 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft, createDraftIfN
           const data: IdeaData = await res.json();
           setIdea(data);
           setTitle(data.title === 'Untitled Draft' ? '' : (data.title || ''));
+          setPriority((data as unknown as { priority?: string }).priority || 'none');
           setConceptAnswers(data.conceptAnswers || { whoIsThisFor: '', whatWillTheyLearn: '', whyShouldTheyCare: '' });
           setCallToAction(data.callToAction || '');
           setAlternativeTitles(data.alternativeTitles || []);
@@ -122,6 +124,7 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft, createDraftIfN
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
+          priority,
           conceptAnswers,
           callToAction,
           alternativeTitles,
@@ -139,7 +142,7 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft, createDraftIfN
     } finally {
       setIsSaving(false);
     }
-  }, [ideaId, isSaving, title, conceptAnswers, callToAction, alternativeTitles, tags, resources, outlineSections, rawNotes, notes, comments, createDraftIfNeeded]);
+  }, [ideaId, isSaving, title, priority, conceptAnswers, callToAction, alternativeTitles, tags, resources, outlineSections, rawNotes, notes, comments, createDraftIfNeeded]);
 
   const handleAutoGenerateConcept = useCallback(() => {
     alert('Coming soon! AI concept generation is not yet available.');
@@ -260,6 +263,8 @@ export default function DraftEditor({ ideaId, onBack, onNewDraft, createDraftIfN
           </div>
           <div className="w-[280px] flex-shrink-0 hidden lg:block">
             <DraftSidebar
+              priority={priority}
+              onPriorityChange={(v) => { setPriority(v); markChanged(); }}
               callToAction={callToAction}
               setCallToAction={setCallToAction}
               tags={tags}

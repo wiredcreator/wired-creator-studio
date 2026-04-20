@@ -5,6 +5,8 @@ import type { INote, IComment } from '@/models/ContentIdea';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface DraftSidebarProps {
+  priority: string;
+  onPriorityChange: (v: string) => void;
   callToAction: string;
   setCallToAction: (v: string) => void;
   onSaveCallToAction?: (v: string) => void;
@@ -21,6 +23,13 @@ interface DraftSidebarProps {
   onAddComment?: (text: string) => void;
 }
 
+const PRIORITY_OPTIONS = [
+  { value: 'high', label: 'High', bg: 'var(--color-error)', text: '#FFFFFF' },
+  { value: 'medium', label: 'Medium', bg: 'var(--color-accent)', text: '#FFFFFF' },
+  { value: 'low', label: 'Low', bg: 'var(--color-bg-elevated)', text: 'var(--color-text-primary)' },
+  { value: 'none', label: 'None', bg: 'var(--color-bg-secondary)', text: 'var(--color-text-secondary)' },
+];
+
 interface PanelConfig {
   id: string;
   label: string;
@@ -28,6 +37,15 @@ interface PanelConfig {
 }
 
 const PANELS: PanelConfig[] = [
+  {
+    id: 'priority',
+    label: 'Priority',
+    icon: (
+      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+      </svg>
+    ),
+  },
   {
     id: 'cta',
     label: 'Call to action',
@@ -77,6 +95,8 @@ const PANELS: PanelConfig[] = [
 ];
 
 export default function DraftSidebar({
+  priority,
+  onPriorityChange,
   callToAction,
   setCallToAction,
   onSaveCallToAction,
@@ -152,7 +172,7 @@ export default function DraftSidebar({
   return (
     <div className="space-y-3">
       {PANELS.map((panel) => {
-        const alwaysOpen = panel.id === 'cta' || panel.id === 'alt-titles';
+        const alwaysOpen = panel.id === 'priority' || panel.id === 'cta' || panel.id === 'alt-titles';
         const isOpen = alwaysOpen || expanded[panel.id];
         return (
         <div
@@ -236,6 +256,26 @@ export default function DraftSidebar({
           {/* Panel content */}
           {isOpen && (
             <div className="border-t border-[var(--color-border)] px-4 py-3">
+              {panel.id === 'priority' && (
+                <div className="flex flex-wrap gap-1.5">
+                  {PRIORITY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => onPriorityChange(opt.value)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
+                        priority === opt.value
+                          ? 'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-[var(--color-bg-card)]'
+                          : 'opacity-60 hover:opacity-100'
+                      }`}
+                      style={{ backgroundColor: opt.bg, color: opt.text }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {panel.id === 'cta' && (
                 <div className="space-y-2">
                   <VoiceInputWrapper onTranscript={(text) => { setCallToAction(callToAction ? callToAction + '\n' + text : text); onMarkChanged(); }}>

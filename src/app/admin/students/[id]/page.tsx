@@ -981,23 +981,40 @@ export default function StudentDetailPage() {
             <div className="space-y-4">
               {/* Risk Flags Card */}
               <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-sm)]">
-                <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
-                  Risk Flags
-                </h3>
+                <div className="mb-3 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    Risk Flags
+                  </h3>
+                  {student.riskFlags && student.riskFlags.length > 0 && (
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                      style={{
+                        backgroundColor: student.riskFlags.length >= 2 ? 'rgba(239,68,68,0.15)' : 'rgba(234,179,8,0.15)',
+                        color: student.riskFlags.length >= 2 ? '#ef4444' : '#eab308',
+                      }}
+                    >
+                      {student.riskFlags.length} {student.riskFlags.length === 1 ? 'flag' : 'flags'}
+                    </span>
+                  )}
+                </div>
                 {student.riskFlags && student.riskFlags.length > 0 ? (
-                  <ul className="space-y-1">
+                  <div className="space-y-2">
                     {student.riskFlags.map((flag, i) => (
-                      <li key={i} className="flex items-start gap-1.5">
-                        <span className="mt-[3px] shrink-0" style={{ color: 'var(--color-accent)' }}>•</span>
-                        <span
-                          className="text-[11px] leading-snug"
-                          style={{ color: 'var(--color-text)' }}
-                        >
-                          {flag}
-                        </span>
-                      </li>
+                      <div
+                        key={i}
+                        className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3"
+                      >
+                        <div className="flex items-start gap-2">
+                          <svg className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-warning)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                          </svg>
+                          <p className="text-sm leading-relaxed text-[var(--color-text-primary)]">
+                            {flag}
+                          </p>
+                        </div>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 ) : (
                   <p className="text-sm italic text-[var(--color-text-muted)]">No risk flags</p>
                 )}
