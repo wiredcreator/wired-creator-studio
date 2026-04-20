@@ -15,13 +15,13 @@
 
 /* ── Light Theme (default) ── */
 :root {
-  --color-bg: #E8ECF4;
-  --color-bg-primary: #E8ECF4;
-  --color-bg-secondary: #DFE4EF;
+  --color-bg: #ECEEF3;
+  --color-bg-primary: #ECEEF3;
+  --color-bg-secondary: #E3E5EC;
   --color-bg-card: #FFFFFF;
-  --color-bg-sidebar: #E8ECF4;
+  --color-bg-sidebar: #ECEEF3;
   --color-bg-elevated: #FFFFFF;
-  --color-bg-dark: #E8ECF4;
+  --color-bg-dark: #ECEEF3;
 
   --color-text: #1A1A2E;
   --color-text-primary: #1A1A2E;

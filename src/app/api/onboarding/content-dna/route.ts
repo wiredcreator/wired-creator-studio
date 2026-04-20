@@ -3,6 +3,8 @@ import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit'
 import dbConnect from '@/lib/db';
 import ContentDNAResponse from '@/models/ContentDNAResponse';
 import BrandBrain from '@/models/BrandBrain';
+
+export const maxDuration = 60; // seconds - onboarding generates content pillars + tone of voice in background
 import ToneOfVoiceGuide from '@/models/ToneOfVoiceGuide';
 import YouTubeTranscriptCache from '@/models/YouTubeTranscriptCache';
 import User from '@/models/User';

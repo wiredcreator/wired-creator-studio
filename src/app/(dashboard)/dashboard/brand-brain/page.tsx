@@ -70,6 +70,7 @@ export default function BrandBrainPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [userName, setUserName] = useState<string | undefined>(undefined);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isRegeneratingPillars, setIsRegeneratingPillars] = useState(false);
 
   // --- Fetch session ---
   useEffect(() => {
@@ -172,8 +173,8 @@ export default function BrandBrainPage() {
   const toneOfVoiceSummary = brandBrain?.toneOfVoiceGuide
     ? {
         status: brandBrain.toneOfVoiceGuide.status,
-        parameterCount: brandBrain.toneOfVoiceGuide.parameters.length,
-        summary: buildToneSummary(brandBrain.toneOfVoiceGuide.parameters),
+        parameterCount: brandBrain.toneOfVoiceGuide.parameters?.length ?? 0,
+        summary: buildToneSummary(brandBrain.toneOfVoiceGuide.parameters ?? []),
       }
     : undefined;
 
@@ -308,6 +309,28 @@ export default function BrandBrainPage() {
       setIsRegenerating(false);
     }
   }, [brandBrain, fetchBrandBrain]);
+
+  // --- Content Pillars regenerate handler ---
+  const handleRegeneratePillars = useCallback(async () => {
+    setIsRegeneratingPillars(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/ai/content-pillars', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to generate content pillars');
+      }
+      await fetchBrandBrain();
+    } catch (err) {
+      console.error('Error generating content pillars:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate content pillars. Please try again.');
+    } finally {
+      setIsRegeneratingPillars(false);
+    }
+  }, [fetchBrandBrain]);
 
   // --- Format date for display ---
   const formattedDate = brandBrain?.updatedAt
@@ -456,6 +479,8 @@ export default function BrandBrainPage() {
               onSavePillars={handleSavePillars}
               onSaveIndustryData={handleSaveIndustryData}
               onSaveEquipmentProfile={handleSaveEquipmentProfile}
+              onRegeneratePillars={handleRegeneratePillars}
+              isRegeneratingPillars={isRegeneratingPillars}
             />
           )}
         </>

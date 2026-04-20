@@ -3,6 +3,8 @@ import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit'
 import dbConnect from '@/lib/db';
 import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib/ai/client';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+
+export const maxDuration = 60; // seconds - web search + AI parsing can take a while
 import { trackAIUsage } from '@/lib/ai/usage-tracker';
 import ContentIdea from '@/models/ContentIdea';
 import { validateObjectId } from '@/lib/validation';

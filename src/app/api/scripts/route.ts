@@ -10,6 +10,8 @@ import { getAuthenticatedUser } from '@/lib/api-auth';
 import { parsePagination, paginationResponse } from '@/lib/pagination';
 import { awardXP } from '@/lib/xp-service';
 
+export const maxDuration = 60; // seconds - script generation via Claude can take a while
+
 // GET /api/scripts — List scripts with optional status filter
 export async function GET(request: NextRequest) {
   try {

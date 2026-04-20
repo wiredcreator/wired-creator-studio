@@ -3,6 +3,8 @@ import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit'
 import dbConnect from '@/lib/db';
 import ContentIdea from '@/models/ContentIdea';
 import BrandBrain from '@/models/BrandBrain';
+
+export const maxDuration = 60; // seconds - AI idea generation can take a while
 import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
 import { generateIdeas } from '@/lib/ai/generate';
 import { getIdeaPatterns } from '@/lib/ai/idea-patterns';

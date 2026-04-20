@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,6 +55,10 @@ interface BrandBrainOverviewProps {
   onSaveIndustryData?: (data: IndustryData) => void;
   /** Called when equipment profile is updated. */
   onSaveEquipmentProfile?: (profile: EquipmentProfile) => void;
+  /** Called to regenerate content pillars from Content DNA. */
+  onRegeneratePillars?: () => void;
+  /** Whether pillar regeneration is in progress. */
+  isRegeneratingPillars?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,6 +87,8 @@ export default function BrandBrainOverview({
   onSavePillars,
   onSaveIndustryData,
   onSaveEquipmentProfile,
+  onRegeneratePillars,
+  isRegeneratingPillars,
 }: BrandBrainOverviewProps) {
   // --- Content Pillars editing ---
   const [isEditingPillars, setIsEditingPillars] = useState(false);
@@ -101,7 +108,12 @@ export default function BrandBrainOverview({
   // --- Handlers ---
 
   const savePillars = () => {
-    onSavePillars?.(editedPillars);
+    const cleaned = editedPillars.map((p) => ({
+      ...p,
+      keywords: p.keywords.filter(Boolean),
+    }));
+    onSavePillars?.(cleaned);
+    setEditedPillars(cleaned);
     setIsEditingPillars(false);
   };
 
@@ -112,8 +124,17 @@ export default function BrandBrainOverview({
     ]);
   };
 
+  const [confirmDeletePillar, setConfirmDeletePillar] = useState<number | null>(null);
+
   const removePillar = (index: number) => {
-    setEditedPillars((prev) => prev.filter((_, i) => i !== index));
+    setConfirmDeletePillar(index);
+  };
+
+  const confirmRemovePillar = () => {
+    if (confirmDeletePillar !== null) {
+      setEditedPillars((prev) => prev.filter((_, i) => i !== confirmDeletePillar));
+      setConfirmDeletePillar(null);
+    }
   };
 
   const updatePillar = (
@@ -140,6 +161,14 @@ export default function BrandBrainOverview({
 
   return (
     <div className="max-w-4xl mx-auto">
+      {confirmDeletePillar !== null && (
+        <ConfirmDeleteModal
+          itemType="pillar"
+          itemName={editedPillars[confirmDeletePillar]?.title || undefined}
+          onConfirm={confirmRemovePillar}
+          onCancel={() => setConfirmDeletePillar(null)}
+        />
+      )}
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -173,9 +202,9 @@ export default function BrandBrainOverview({
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <span
-                  className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[toneOfVoice.status].bg} ${STATUS_STYLES[toneOfVoice.status].text}`}
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${(STATUS_STYLES[toneOfVoice.status] ?? STATUS_STYLES.draft).bg} ${(STATUS_STYLES[toneOfVoice.status] ?? STATUS_STYLES.draft).text}`}
                 >
-                  {STATUS_STYLES[toneOfVoice.status].label}
+                  {(STATUS_STYLES[toneOfVoice.status] ?? STATUS_STYLES.draft).label}
                 </span>
                 <span className="text-sm text-[var(--color-text-muted)]">
                   {toneOfVoice.parameterCount} parameters
@@ -286,15 +315,23 @@ export default function BrandBrainOverview({
                 </svg>
                 Add Pillar
               </button>
-              <button
-                onClick={() => {
-                  setEditedPillars(contentPillars);
-                  setIsEditingPillars(false);
-                }}
-                className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] ml-4"
-              >
-                Cancel
-              </button>
+              <div className="flex items-center gap-3 pt-3 border-t border-[var(--color-border-light)]">
+                <button
+                  onClick={savePillars}
+                  className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={() => {
+                    setEditedPillars(contentPillars);
+                    setIsEditingPillars(false);
+                  }}
+                  className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : contentPillars.length > 0 ? (
             <div className="space-y-3">
@@ -322,9 +359,27 @@ export default function BrandBrainOverview({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[var(--color-text-muted)] italic">
-              No content pillars defined yet.
-            </p>
+            <div className="text-center py-4">
+              <p className="text-sm text-[var(--color-text-muted)] italic mb-3">
+                No content pillars defined yet.
+              </p>
+              {onRegeneratePillars && (
+                <button
+                  onClick={onRegeneratePillars}
+                  disabled={isRegeneratingPillars}
+                  className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
+                >
+                  {isRegeneratingPillars ? (
+                    <>
+                      <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Generating...
+                    </>
+                  ) : (
+                    'Generate Content Pillars'
+                  )}
+                </button>
+              )}
+            </div>
           )}
         </Section>
 

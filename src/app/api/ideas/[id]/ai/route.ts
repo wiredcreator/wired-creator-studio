@@ -3,6 +3,8 @@ import { aiLimiter, getRateLimitKey, rateLimitResponse } from '@/lib/rate-limit'
 import dbConnect from '@/lib/db';
 import ContentIdea from '@/models/ContentIdea';
 import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib/ai/client';
+
+export const maxDuration = 60; // seconds - AI generation can take a while
 import { buildSystemPrompt } from '@/lib/ai/generate';
 import { randomUUID } from 'crypto';
 import { trackAIUsage } from '@/lib/ai/usage-tracker';
