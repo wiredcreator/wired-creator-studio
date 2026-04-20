@@ -108,8 +108,8 @@ export async function PUT(
     if (body.summary !== undefined) {
       guide.summary = body.summary;
     }
-    // Auto-approve: when a student edits their own guide, set status to active
-    if (isOwner && !isPrivileged && body.parameters !== undefined && guide.status !== 'active') {
+    // Auto-approve: when a user edits their own guide, set status to active
+    if (isOwner && guide.status !== 'active') {
       guide.status = 'active';
     }
 

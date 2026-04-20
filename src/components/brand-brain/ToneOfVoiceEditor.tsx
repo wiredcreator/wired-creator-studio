@@ -217,13 +217,13 @@ export default function ToneOfVoiceEditor({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Status Badge */}
-          <button
+          {/* Status Badge — hidden; status is auto-set to active on save */}
+          {/* <button
             onClick={cycleStatus}
             className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_CONFIG[currentStatus].bg} ${STATUS_CONFIG[currentStatus].text} hover:opacity-80 transition-opacity`}
           >
             {STATUS_CONFIG[currentStatus].label}
-          </button>
+          </button> */}
 
           {/* Regenerate */}
           <button
