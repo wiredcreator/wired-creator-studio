@@ -48,12 +48,16 @@ export async function POST(req: NextRequest) {
       const emailSent = await sendLoginLinkEmail(normalizedEmail, existingUser.name, plainToken);
       console.log('[MagicLink] Email sent:', emailSent);
     } else {
-      // New user: auto-create account (Stripe gating disabled during testing)
-      // TODO: Re-enable Stripe check before production launch
+      // New user: require Stripe payment before account creation
       const stripeResult = await checkPaidCustomer(normalizedEmail);
       const customerName = stripeResult.customerName || '';
       const customerId = stripeResult.customerId || '';
       console.log('[MagicLink] New user signup:', normalizedEmail, '| Stripe:', stripeResult.isPaid ? 'paid' : 'no payment');
+
+      if (!stripeResult.isPaid) {
+        // No payment found; return same generic message to avoid email enumeration
+        return NextResponse.json({ message: RESPONSE_MESSAGE });
+      }
 
       // Generate token
       const plainToken = crypto.randomBytes(32).toString('hex');

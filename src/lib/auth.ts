@@ -1,5 +1,6 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
@@ -78,21 +79,43 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
-        userId: { label: 'User ID', type: 'text' },
-        magicLinkVerified: { label: 'Magic Link Verified', type: 'text' },
+        magicLinkToken: { label: 'Magic Link Token', type: 'text' },
       },
       async authorize(credentials) {
-        // Mode 1: Magic link verification (internal only)
-        if (credentials.magicLinkVerified === 'true' && credentials.userId) {
-          await dbConnect();
-          const user = await User.findById(credentials.userId as string);
-          if (!user) return null;
-          return {
-            id: user._id.toString(),
-            email: user.email,
-            name: user.name,
-            role: user.role,
-          };
+        // Mode 1: Magic link token verification (atomic, server-side)
+        if (credentials.magicLinkToken) {
+          try {
+            const hashedToken = crypto
+              .createHash('sha256')
+              .update(credentials.magicLinkToken as string)
+              .digest('hex');
+
+            await dbConnect();
+
+            // Atomic find-and-consume: only one request can match and clear the token
+            const user = await User.findOneAndUpdate(
+              {
+                magicLinkToken: hashedToken,
+                magicLinkExpires: { $gt: new Date() },
+              },
+              {
+                $unset: { magicLinkToken: 1, magicLinkExpires: 1 },
+                $set: { emailVerified: true },
+              },
+              { new: true }
+            );
+
+            if (!user) return null;
+
+            return {
+              id: user._id.toString(),
+              email: user.email,
+              name: user.name,
+              role: user.role,
+            };
+          } catch {
+            return null;
+          }
         }
 
         // Mode 2: Password-based login

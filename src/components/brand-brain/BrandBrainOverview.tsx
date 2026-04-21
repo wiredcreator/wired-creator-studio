@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import DOMPurify from 'isomorphic-dompurify';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
@@ -213,7 +214,7 @@ export default function BrandBrainOverview({
               {toneOfVoice.summary.startsWith('<') ? (
                 <div
                   className="prose prose-sm prose-invert max-w-none text-[var(--color-text-primary)] leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: toneOfVoice.summary }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(toneOfVoice.summary) }}
                 />
               ) : (
                 <p className="text-sm text-[var(--color-text-primary)] leading-relaxed">

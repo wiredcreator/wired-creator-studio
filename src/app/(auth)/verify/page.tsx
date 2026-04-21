@@ -20,26 +20,21 @@ function VerifyContent() {
 
     (async () => {
       try {
-        const res = await fetch(`/api/auth/verify-magic-link?token=${token}`);
-        const data = await res.json();
-
-        if (!data.success) {
-          setStatus("error");
-          setErrorType(data.error || "invalid");
-          return;
-        }
-
+        // Atomic: pass raw token to authorize(), which hashes and verifies
+        // against the DB in a single findOneAndUpdate operation
         const result = await signIn("credentials", {
-          userId: data.userId,
-          magicLinkVerified: "true",
+          magicLinkToken: token,
           redirect: false,
         });
 
         if (result?.ok) {
-          router.push(data.redirectTo);
+          // Determine redirect based on onboarding status
+          const redirectRes = await fetch('/api/auth/post-login-redirect');
+          const { redirectTo } = await redirectRes.json();
+          router.push(redirectTo || '/dashboard');
         } else {
           setStatus("error");
-          setErrorType("auth_failed");
+          setErrorType("expired");
         }
       } catch {
         setStatus("error");

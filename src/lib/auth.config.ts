@@ -11,8 +11,7 @@ export default {
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
-        userId: { label: 'User ID', type: 'text' },
-        magicLinkVerified: { label: 'Magic Link Verified', type: 'text' },
+        magicLinkToken: { label: 'Magic Link Token', type: 'text' },
       },
       // authorize is intentionally omitted here — NextAuth will use the
       // full config in auth.ts for actual credential verification.
