@@ -1,6 +1,7 @@
 'use client';
 
 import { ContentDNAFormData } from '@/types/onboarding';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface YourBusinessStepProps {
   data: ContentDNAFormData;
@@ -37,6 +38,7 @@ export default function VisionStep({ data, onChange }: YourBusinessStepProps) {
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           Tell us about your offer, your service, your product, whatever it is. If you don&apos;t have one yet, tell us what you&apos;re working toward. We need to understand this because your content strategy should be built to drive people toward your thing, not just get views.
         </p>
+        <VoiceInputWrapper onTranscript={(text) => onChange({ offerAndContent: data.offerAndContent ? data.offerAndContent + '\n' + text : text })}>
         <textarea
           id="offerAndContent"
           value={data.offerAndContent}
@@ -53,6 +55,7 @@ export default function VisionStep({ data, onChange }: YourBusinessStepProps) {
           onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
           onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
+        </VoiceInputWrapper>
       </div>
 
       {/* Q5 */}
@@ -67,6 +70,7 @@ export default function VisionStep({ data, onChange }: YourBusinessStepProps) {
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           Think about the questions friends, coworkers, or clients keep asking you. The stuff people DM you about. The thing someone once said &quot;you should make content about that.&quot; What do you naturally become the go-to person for?
         </p>
+        <VoiceInputWrapper onTranscript={(text) => onChange({ goToPersonFor: data.goToPersonFor ? data.goToPersonFor + '\n' + text : text })}>
         <textarea
           id="goToPersonFor"
           value={data.goToPersonFor}
@@ -83,6 +87,7 @@ export default function VisionStep({ data, onChange }: YourBusinessStepProps) {
           onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
           onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
+        </VoiceInputWrapper>
       </div>
     </div>
   );

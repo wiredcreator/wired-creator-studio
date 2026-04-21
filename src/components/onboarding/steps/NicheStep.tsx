@@ -1,6 +1,7 @@
 'use client';
 
 import { ContentDNAFormData } from '@/types/onboarding';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface YourStoriesStepProps {
   data: ContentDNAFormData;
@@ -37,6 +38,7 @@ export default function NicheStep({ data, onChange }: YourStoriesStepProps) {
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           They don&apos;t need to be dramatic. A turning point, a failure, a moment of clarity, something funny that taught you something real. Stories are what make content stick. We want to know which ones are yours to tell.
         </p>
+        <VoiceInputWrapper onTranscript={(text) => onChange({ personalStories: data.personalStories ? data.personalStories + '\n' + text : text })}>
         <textarea
           id="personalStories"
           value={data.personalStories}
@@ -53,6 +55,7 @@ export default function NicheStep({ data, onChange }: YourStoriesStepProps) {
           onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
           onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
+        </VoiceInputWrapper>
       </div>
 
       {/* Q10 */}
@@ -67,6 +70,7 @@ export default function NicheStep({ data, onChange }: YourStoriesStepProps) {
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           Give us two of each. The &quot;for&quot; is what you want people to associate with your name every time they see your content. The &quot;against&quot; is the stuff in your industry that you reject, disagree with, or refuse to do. These become the ideas you&apos;ll repeat over and over through different stories and scenarios.
         </p>
+        <VoiceInputWrapper onTranscript={(text) => onChange({ knownForAndAgainst: data.knownForAndAgainst ? data.knownForAndAgainst + '\n' + text : text })}>
         <textarea
           id="knownForAndAgainst"
           value={data.knownForAndAgainst}
@@ -83,6 +87,7 @@ export default function NicheStep({ data, onChange }: YourStoriesStepProps) {
           onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
           onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
+        </VoiceInputWrapper>
       </div>
     </div>
   );

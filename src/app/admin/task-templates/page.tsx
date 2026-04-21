@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/PageWrapper";
+import ConfirmDeleteModal from "@/components/ConfirmDeleteModal";
 import VoiceInputWrapper from "@/components/VoiceInputWrapper";
 
 const TASK_TYPES = [
@@ -46,6 +47,8 @@ export default function TaskTemplatesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<TemplateData | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -159,14 +162,15 @@ export default function TaskTemplatesPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this template? This cannot be undone.")) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
 
-    const previous = templates.find((t) => t._id === id);
-    setTemplates((prev) => prev.filter((t) => t._id !== id));
+    const previous = templates.find((t) => t._id === deleteTarget._id);
+    setTemplates((prev) => prev.filter((t) => t._id !== deleteTarget._id));
 
     try {
-      const res = await fetch(`/api/admin/task-templates/${id}`, {
+      const res = await fetch(`/api/admin/task-templates/${deleteTarget._id}`, {
         method: "DELETE",
       });
       if (!res.ok && previous) {
@@ -176,6 +180,9 @@ export default function TaskTemplatesPage() {
       if (previous) {
         setTemplates((prev) => [...prev, previous]);
       }
+    } finally {
+      setDeleteTarget(null);
+      setIsDeleting(false);
     }
   };
 
@@ -483,7 +490,7 @@ export default function TaskTemplatesPage() {
                               </button>
                               {/* Delete */}
                               <button
-                                onClick={() => handleDelete(tmpl._id)}
+                                onClick={() => setDeleteTarget(tmpl)}
                                 className="rounded-[var(--radius-md)] p-1.5 text-[var(--color-text-muted)] hover:bg-red-500/20 hover:text-red-400"
                                 title="Delete"
                               >
@@ -674,6 +681,17 @@ export default function TaskTemplatesPage() {
           );
         })}
       </div>
+
+      {/* Delete confirmation */}
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          itemType="template"
+          itemName={deleteTarget.title}
+          isDeleting={isDeleting}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </PageWrapper>
   );
 }

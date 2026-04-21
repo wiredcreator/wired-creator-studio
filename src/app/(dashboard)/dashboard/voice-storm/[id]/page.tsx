@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { useTimezone } from "@/hooks/useTimezone";
 import PageWrapper from '@/components/PageWrapper';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface VoiceStormSession {
@@ -76,6 +77,14 @@ export default function VoiceStormDetailPage() {
 
   // Toast
   const [toast, setToast] = useState<string | null>(null);
+
+  // Delete insight confirm
+  const [deleteInsightTarget, setDeleteInsightTarget] = useState<string | null>(null);
+  const [isDeletingInsight, setIsDeletingInsight] = useState(false);
+
+  // Delete session confirm
+  const [showDeleteSession, setShowDeleteSession] = useState(false);
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
 
   // Link ideas dropdown
   const [linkDropdownOpen, setLinkDropdownOpen] = useState(false);
@@ -317,11 +326,11 @@ export default function VoiceStormDetailPage() {
       });
   };
 
-  const handleDeleteInsight = (insightId: string) => {
-    if (!session) return;
-    if (!confirm('Delete this insight?')) return;
+  const handleDeleteInsightConfirm = () => {
+    if (!session || !deleteInsightTarget) return;
+    setIsDeletingInsight(true);
     const previousInsights = session.extractedInsights;
-    const filtered = previousInsights.filter((i) => i._id !== insightId);
+    const filtered = previousInsights.filter((i) => i._id !== deleteInsightTarget);
     // Optimistic: remove from UI immediately
     setSession({ ...session, extractedInsights: filtered });
     showToast('Insight deleted');
@@ -338,17 +347,26 @@ export default function VoiceStormDetailPage() {
         // Revert on failure
         setSession((prev) => prev ? { ...prev, extractedInsights: previousInsights } : prev);
         showToast('Failed to delete insight');
+      })
+      .finally(() => {
+        setDeleteInsightTarget(null);
+        setIsDeletingInsight(false);
       });
   };
 
-  const handleDeleteSession = () => {
-    if (!confirm('Are you sure you want to delete this session? This cannot be undone.')) return;
-    // Optimistic: navigate immediately, fire DELETE in background
-    router.push('/dashboard/voice-storm');
-
-    fetch(`/api/voice-storming/${id}`, { method: 'DELETE' }).catch(() => {
-      // No revert — user can navigate back if needed
-    });
+  const handleDeleteSessionConfirm = async () => {
+    setIsDeletingSession(true);
+    try {
+      const res = await fetch(`/api/voice-storming/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/dashboard/voice-storm');
+      }
+    } catch {
+      // Silent fail, user can retry
+    } finally {
+      setShowDeleteSession(false);
+      setIsDeletingSession(false);
+    }
   };
 
   // Filtered ideas for the link dropdown
@@ -439,7 +457,7 @@ export default function VoiceStormDetailPage() {
                   <button
                     onClick={() => {
                       setMenuOpen(false);
-                      handleDeleteSession();
+                      setShowDeleteSession(true);
                     }}
                     className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[var(--color-border)] transition-colors focus:outline-none"
                   >
@@ -702,7 +720,7 @@ export default function VoiceStormDetailPage() {
                             )
                           )}
                           <button
-                            onClick={() => handleDeleteInsight(insight._id)}
+                            onClick={() => setDeleteInsightTarget(insight._id)}
                             className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:text-red-400 hover:bg-[var(--color-bg-secondary)] transition-colors focus:outline-none"
                             title="Delete insight"
                           >
@@ -744,6 +762,27 @@ export default function VoiceStormDetailPage() {
             Extracting ideas, stories, and themes from your session...
           </p>
         </div>
+      )}
+
+      {/* Delete insight confirmation */}
+      {deleteInsightTarget && (
+        <ConfirmDeleteModal
+          itemType="insight"
+          isDeleting={isDeletingInsight}
+          onConfirm={handleDeleteInsightConfirm}
+          onCancel={() => setDeleteInsightTarget(null)}
+        />
+      )}
+
+      {/* Delete session confirmation */}
+      {showDeleteSession && (
+        <ConfirmDeleteModal
+          itemType="session"
+          itemName={session?.title || 'Untitled Session'}
+          isDeleting={isDeletingSession}
+          onConfirm={handleDeleteSessionConfirm}
+          onCancel={() => setShowDeleteSession(false)}
+        />
       )}
     </PageWrapper>
   );

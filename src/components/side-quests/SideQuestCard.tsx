@@ -98,6 +98,48 @@ const ENERGY_ICONS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// Step definition builder
+// ---------------------------------------------------------------------------
+
+interface QuestStep {
+  id: string;
+  label: string;
+  type: 'info' | 'response' | 'bonus';
+}
+
+function buildSteps(quest: SideQuestCardData): QuestStep[] {
+  const steps: QuestStep[] = [];
+
+  // Step 1: Always the quest prompt
+  steps.push({ id: 'prompt', label: 'Your Quest', type: 'info' });
+
+  // Step 2: Why This Matters (if present)
+  if (quest.whyThisMatters) {
+    steps.push({ id: 'why', label: 'Why This Matters', type: 'info' });
+  }
+
+  // Step 3: Rescue Statement (if present)
+  if (quest.rescueStatement) {
+    steps.push({ id: 'rescue', label: 'Encouragement', type: 'info' });
+  }
+
+  // Step 4: Deliverable (if present)
+  if (quest.deliverable) {
+    steps.push({ id: 'deliverable', label: 'Deliverable', type: 'info' });
+  }
+
+  // Step N-1: Response (always)
+  steps.push({ id: 'response', label: 'Your Response', type: 'response' });
+
+  // Step N: Bonus Round (if present)
+  if (quest.bonusRound) {
+    steps.push({ id: 'bonus', label: 'Bonus Round', type: 'bonus' });
+  }
+
+  return steps;
+}
+
+// ---------------------------------------------------------------------------
 // Countdown Timer
 // ---------------------------------------------------------------------------
 
@@ -266,6 +308,80 @@ function CountdownTimer({ minutes }: { minutes: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// Step Progress Indicator
+// ---------------------------------------------------------------------------
+
+function StepProgress({
+  steps,
+  currentStep,
+  visitedSteps,
+  onStepClick,
+}: {
+  steps: QuestStep[];
+  currentStep: number;
+  visitedSteps: Set<number>;
+  onStepClick: (index: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 px-1">
+      {steps.map((step, i) => {
+        const isCompleted = visitedSteps.has(i) && i < currentStep;
+        const isCurrent = i === currentStep;
+        const isClickable = visitedSteps.has(i) || i <= currentStep;
+
+        return (
+          <div key={step.id} className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => isClickable && onStepClick(i)}
+              disabled={!isClickable}
+              className="relative flex items-center justify-center transition-all duration-200"
+              title={`${step.label}${isCompleted ? ' (completed)' : ''}`}
+              style={{ cursor: isClickable ? 'pointer' : 'default' }}
+            >
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-all duration-200"
+                style={{
+                  backgroundColor: isCompleted
+                    ? 'var(--color-success)'
+                    : isCurrent
+                    ? 'var(--color-accent)'
+                    : 'var(--color-bg-secondary)',
+                  color: isCompleted || isCurrent
+                    ? '#FFFFFF'
+                    : 'var(--color-text-muted)',
+                  border: isCompleted || isCurrent
+                    ? 'none'
+                    : '1px solid var(--color-border)',
+                }}
+              >
+                {isCompleted ? (
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                ) : (
+                  i + 1
+                )}
+              </div>
+            </button>
+            {i < steps.length - 1 && (
+              <div
+                className="h-0.5 w-4 rounded-full transition-colors duration-200"
+                style={{
+                  backgroundColor: isCompleted
+                    ? 'var(--color-success)'
+                    : 'var(--color-border)',
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -276,7 +392,12 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(quest.savedToBrandBrain || false);
 
-  const needsResponse = quest.type === 'research_task' || quest.type === 'content_exercise';
+  // Wizard step state
+  const steps = buildSteps(quest);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [visitedSteps, setVisitedSteps] = useState<Set<number>>(new Set([0]));
+
+  const needsResponse = quest.type === 'research_task' || quest.type === 'content_exercise' || quest.type === 'voice_storm_prompt';
 
   const handleSaveToBrain = async () => {
     if (saved || isSaving) return;
@@ -302,6 +423,33 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
     setTimeout(() => setIsSubmitting(false), 500);
   };
 
+  const goToStep = (index: number) => {
+    setCurrentStep(index);
+    setVisitedSteps((prev) => {
+      const next = new Set(prev);
+      next.add(index);
+      return next;
+    });
+  };
+
+  const goNext = () => {
+    if (currentStep < steps.length - 1) {
+      goToStep(currentStep + 1);
+    }
+  };
+
+  const goPrev = () => {
+    if (currentStep > 0) {
+      goToStep(currentStep - 1);
+    }
+  };
+
+  const handleStartQuest = () => {
+    setIsExpanded(true);
+    setCurrentStep(0);
+    setVisitedSteps(new Set([0]));
+  };
+
   // Completed state
   if (quest.completed) {
     return (
@@ -323,7 +471,7 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
                 {TYPE_LABELS[quest.type]}
               </span>
               {quest.xpReward != null && (
-                <span className="inline-flex items-center gap-1 rounded-[var(--radius-full)] bg-[#3a3a2a] px-2 py-0.5 text-xs font-medium text-[#a0a060]">
+                <span className="inline-flex items-center gap-1 rounded-[var(--radius-full)] bg-[var(--color-warning-light)] px-2 py-0.5 text-xs font-medium text-[var(--color-warning)]">
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                   </svg>
@@ -337,7 +485,7 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
               </p>
             )}
 
-            {/* Save to Brand Brain button — only for quests with a response */}
+            {/* Save to Brand Brain button */}
             {quest.response && (
               <div className="mt-3">
                 <button
@@ -380,6 +528,123 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
     );
   }
 
+  // Render step content
+  const renderStepContent = (step: QuestStep) => {
+    switch (step.id) {
+      case 'prompt':
+        return (
+          <div className="animate-fadeIn">
+            <div className="rounded-[var(--radius-md)] bg-[var(--color-accent-subtle)] p-5">
+              <p className="text-sm font-medium text-[var(--color-accent)] mb-2">Your Quest</p>
+              <p className="text-sm leading-relaxed text-[var(--color-text-primary)]">
+                {quest.prompt}
+              </p>
+            </div>
+            {/* Timer shown on the prompt step */}
+            {quest.estimatedMinutes != null && quest.estimatedMinutes > 0 && (
+              <div className="mt-4">
+                <CountdownTimer minutes={quest.estimatedMinutes} />
+              </div>
+            )}
+          </div>
+        );
+      case 'why':
+        return (
+          <div className="animate-fadeIn">
+            <div className="rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] p-5">
+              <p className="text-sm font-medium text-[var(--color-text-primary)] mb-2">Why This Matters</p>
+              <p className="text-sm leading-relaxed text-[var(--color-text-secondary)]">
+                {quest.whyThisMatters}
+              </p>
+            </div>
+          </div>
+        );
+      case 'rescue':
+        return (
+          <div className="animate-fadeIn">
+            <div
+              className="rounded-[var(--radius-md)] p-5"
+              style={{
+                backgroundColor: 'var(--color-bg-secondary)',
+                border: '1px solid var(--color-border-light)',
+              }}
+            >
+              <p className="text-sm font-medium text-[var(--color-text-primary)] mb-2">A Little Encouragement</p>
+              <p className="text-sm leading-relaxed text-[var(--color-text-secondary)] italic">
+                {quest.rescueStatement}
+              </p>
+            </div>
+          </div>
+        );
+      case 'deliverable':
+        return (
+          <div className="animate-fadeIn">
+            <div className="rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)] p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="h-4 w-4 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                <p className="text-sm font-medium text-[var(--color-text-primary)]">Deliverable</p>
+              </div>
+              <p className="text-sm leading-relaxed text-[var(--color-text-secondary)]">
+                {quest.deliverable}
+              </p>
+            </div>
+          </div>
+        );
+      case 'response':
+        return (
+          <div className="animate-fadeIn">
+            <label className="mb-2 block text-sm font-medium text-[var(--color-text-primary)]">
+              Your Response
+            </label>
+            <p className="mb-3 text-xs text-[var(--color-text-muted)]">
+              Tap the mic to record a voice memo, or type your thoughts below. Take your time.
+            </p>
+            <VoiceTextarea
+              id={`quest-response-${quest._id}`}
+              value={response}
+              onChange={setResponse}
+              placeholder={quest.type === 'voice_storm_prompt'
+                ? "Hit the mic button to record your voice memo, or type your thoughts here..."
+                : "Record a voice memo or write your response here... Take your time, there's no rush."}
+              rows={5}
+            />
+          </div>
+        );
+      case 'bonus':
+        return (
+          <div className="animate-fadeIn">
+            <div
+              className="rounded-[var(--radius-md)] p-5"
+              style={{
+                border: '1px dashed var(--color-border)',
+                backgroundColor: 'var(--color-bg-card)',
+              }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="h-4 w-4 text-[var(--color-warning)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                </svg>
+                <p className="text-sm font-semibold text-[var(--color-text-primary)]">Bonus Round</p>
+                <span className="text-xs text-[var(--color-text-muted)]">(optional)</span>
+              </div>
+              <p className="text-sm leading-relaxed text-[var(--color-text-secondary)]">
+                {quest.bonusRound}
+              </p>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const currentStepData = steps[currentStep];
+  const isLastStep = currentStep === steps.length - 1;
+  const isResponseStep = currentStepData?.id === 'response';
+  const canComplete = isResponseStep || isLastStep;
+
   return (
     <div
       className={`rounded-[var(--radius-lg)] border bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)] transition-all duration-200 ${
@@ -392,7 +657,7 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
       <button
         type="button"
         className="w-full cursor-pointer p-5 text-left"
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => isExpanded ? setIsExpanded(false) : handleStartQuest()}
       >
         <div className="flex items-start gap-3">
           {/* Type icon */}
@@ -426,7 +691,7 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
               </span>
 
               {quest.xpReward != null && (
-                <span className="inline-flex items-center gap-1 rounded-[var(--radius-full)] px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: 'rgba(234,179,8,0.15)', color: '#EAB308', borderColor: 'rgba(234,179,8,0.3)' }}>
+                <span className="inline-flex items-center gap-1 rounded-[var(--radius-full)] bg-[var(--color-warning-light)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-warning)]">
                   +{quest.xpReward} XP
                 </span>
               )}
@@ -448,7 +713,7 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
 
               {!isExpanded && (
                 <span className="ml-auto inline-flex items-center gap-1 text-xs text-[var(--color-accent)]">
-                  Start
+                  Start Quest
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                   </svg>
@@ -459,123 +724,106 @@ export default function SideQuestCard({ quest, onComplete, onSaveToBrain }: Side
         </div>
       </button>
 
-      {/* Expanded content */}
+      {/* ================================================================ */}
+      {/* Expanded: Step-by-step wizard flow                               */}
+      {/* ================================================================ */}
       {isExpanded && (
-        <div className="animate-fadeIn border-t border-[var(--color-border-light)] p-5">
-          {/* Full prompt */}
-          <div className="rounded-[var(--radius-md)] bg-[var(--color-accent-subtle)] p-4">
-            <p className="text-sm font-medium text-[var(--color-accent)] mb-2">Your Quest</p>
-            <p className="text-sm leading-relaxed text-[var(--color-text-primary)]">
-              {quest.prompt}
-            </p>
-          </div>
-
-          {/* Why This Matters */}
-          {quest.whyThisMatters && (
-            <p style={{
-              marginTop: 10, fontSize: 13, color: 'var(--color-text-secondary)',
-              lineHeight: 1.5,
-            }}>
-              {quest.whyThisMatters}
-            </p>
-          )}
-
-          {/* Rescue statement */}
-          {quest.rescueStatement && (
-            <p style={{
-              margin: '12px 0', padding: '10px 14px', borderRadius: 10,
-              backgroundColor: 'var(--color-bg-secondary)', fontSize: 13,
-              color: 'var(--color-text-secondary)', fontStyle: 'italic',
-              lineHeight: 1.5,
-            }}>
-              {quest.rescueStatement}
-            </p>
-          )}
-
-          {/* Deliverable */}
-          {quest.deliverable && (
-            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 8 }}>
-              Deliverable: {quest.deliverable}
-            </p>
-          )}
-
-          {/* Optional countdown timer */}
-          {quest.estimatedMinutes != null && quest.estimatedMinutes > 0 && (
-            <div className="mt-4">
-              <CountdownTimer minutes={quest.estimatedMinutes} />
-            </div>
-          )}
-
-          {/* Voice-first response area (all quest types) */}
-          <div className="mt-4">
-            <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]">
-              Your Response
-              <span className="ml-1.5 font-normal text-[var(--color-text-muted)]">
-                (tap the mic to record a voice memo, or type)
-              </span>
-            </label>
-            <VoiceTextarea
-              id={`quest-response-${quest._id}`}
-              value={response}
-              onChange={setResponse}
-              placeholder={quest.type === 'voice_storm_prompt'
-                ? "Hit the mic button to record your voice memo, or type your thoughts here..."
-                : "Record a voice memo or write your response here... Take your time, there's no rush."}
-              rows={4}
+        <div className="animate-fadeIn border-t border-[var(--color-border-light)]">
+          {/* Step progress indicator */}
+          <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border-light)] bg-[var(--color-bg-secondary)]">
+            <StepProgress
+              steps={steps}
+              currentStep={currentStep}
+              visitedSteps={visitedSteps}
+              onStepClick={goToStep}
             />
+            <span className="ml-3 shrink-0 text-xs font-medium text-[var(--color-text-muted)]">
+              Step {currentStep + 1} of {steps.length}
+            </span>
           </div>
 
-          {/* Complete button */}
-          <div className="mt-4 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={handleComplete}
-              disabled={isSubmitting || (needsResponse && !response.trim())}
+          {/* Step label */}
+          <div className="px-5 pt-4 pb-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+              {currentStepData.label}
+            </p>
+          </div>
 
-              className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-success)] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <>
-                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          {/* Step content */}
+          <div className="px-5 py-3" style={{ minHeight: 120 }}>
+            {renderStepContent(currentStepData)}
+          </div>
+
+          {/* Navigation footer */}
+          <div className="flex items-center justify-between border-t border-[var(--color-border-light)] px-5 py-3">
+            {/* Left: Previous / Collapse */}
+            <div className="flex items-center gap-2">
+              {currentStep > 0 ? (
+                <button
+                  type="button"
+                  onClick={goPrev}
+                  className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                   </svg>
-                  Completing...
-                </>
+                  Back
+                </button>
               ) : (
-                <>
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                  </svg>
-                  Mark Complete
-                </>
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(false)}
+                  className="text-xs text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)]"
+                >
+                  Collapse
+                </button>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsExpanded(false)}
-              className="text-xs text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)]"
-            >
-              Collapse
-            </button>
-          </div>
-
-          {/* Bonus round */}
-          {quest.bonusRound && !quest.completed && (
-            <div style={{
-              marginTop: 12, padding: '10px 14px', borderRadius: 10,
-              border: '1px dashed var(--color-border)',
-              backgroundColor: 'var(--color-bg-card)',
-            }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
-                Bonus Round (optional)
-              </p>
-              <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-                {quest.bonusRound}
-              </p>
             </div>
-          )}
+
+            {/* Right: Next / Complete */}
+            <div className="flex items-center gap-2">
+              {/* Show Complete button on response step or last step */}
+              {canComplete && (
+                <button
+                  type="button"
+                  onClick={handleComplete}
+                  disabled={isSubmitting || (needsResponse && !response.trim())}
+                  className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-success)] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Completing...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                      Mark Complete
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Next button (only if not on last step) */}
+              {!isLastStep && (
+                <button
+                  type="button"
+                  onClick={goNext}
+                  className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+                >
+                  Next
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

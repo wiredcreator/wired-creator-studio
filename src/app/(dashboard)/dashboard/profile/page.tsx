@@ -5,6 +5,7 @@ import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import PageWrapper from '@/components/PageWrapper';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import { useTheme } from '@/components/ThemeProvider';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 import { getTimezoneOptions } from '@/lib/format-date';
@@ -62,6 +63,8 @@ export default function SettingsPage() {
   const [editingAiDoc, setEditingAiDoc] = useState<any>(null);
   const [aiDocForm, setAiDocForm] = useState({ title: '', category: '', content: '' });
   const [aiDocSaving, setAiDocSaving] = useState(false);
+  const [deleteAiDocTarget, setDeleteAiDocTarget] = useState<any>(null);
+  const [isDeletingAiDoc, setIsDeletingAiDoc] = useState(false);
 
   // Profile form state
   const [profileImage, setProfileImage] = useState('');
@@ -141,13 +144,17 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDeleteAiDoc = async (id: string) => {
-    if (!confirm('Delete this AI preference? This cannot be undone.')) return;
+  const handleDeleteAiDocConfirm = async () => {
+    if (!deleteAiDocTarget) return;
+    setIsDeletingAiDoc(true);
     try {
-      await fetch(`/api/ai-documents/${id}`, { method: 'DELETE' });
+      await fetch(`/api/ai-documents/${deleteAiDocTarget._id}`, { method: 'DELETE' });
       fetchAiDocs();
     } catch (err) {
       console.error('Failed to delete AI document:', err);
+    } finally {
+      setDeleteAiDocTarget(null);
+      setIsDeletingAiDoc(false);
     }
   };
 
@@ -330,7 +337,21 @@ export default function SettingsPage() {
           }
           onCreate={handleCreateAiDoc}
           onUpdate={handleUpdateAiDoc}
-          onDelete={handleDeleteAiDoc}
+          onDelete={(id: string) => {
+            const doc = aiDocs.find((d) => d._id === id);
+            if (doc) setDeleteAiDocTarget(doc);
+          }}
+        />
+      )}
+
+      {/* Delete AI preference confirmation */}
+      {deleteAiDocTarget && (
+        <ConfirmDeleteModal
+          itemType="AI preference"
+          itemName={deleteAiDocTarget.title}
+          isDeleting={isDeletingAiDoc}
+          onConfirm={handleDeleteAiDocConfirm}
+          onCancel={() => setDeleteAiDocTarget(null)}
         />
       )}
     </PageWrapper>

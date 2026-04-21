@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/PageWrapper";
 import ModalPortal from "@/components/ModalPortal";
+import ConfirmDeleteModal from "@/components/ConfirmDeleteModal";
 
 interface TeamMember {
   _id: string;
@@ -19,6 +20,8 @@ export default function TeamPage() {
   const [addEmail, setAddEmail] = useState("");
   const [addError, setAddError] = useState("");
   const [addLoading, setAddLoading] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const fetchTeam = useCallback(async () => {
     try {
@@ -68,11 +71,12 @@ export default function TeamPage() {
     }
   }
 
-  async function handleRemove(id: string, name: string) {
-    if (!confirm(`Remove ${name} from the team? They will be demoted to a student.`)) return;
+  async function handleRemoveConfirm() {
+    if (!removeTarget) return;
+    setIsRemoving(true);
 
     try {
-      const res = await fetch(`/api/admin/team/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/team/${removeTarget._id}`, { method: "DELETE" });
 
       if (res.ok) {
         await fetchTeam();
@@ -82,6 +86,9 @@ export default function TeamPage() {
       }
     } catch {
       alert("Something went wrong");
+    } finally {
+      setRemoveTarget(null);
+      setIsRemoving(false);
     }
   }
 
@@ -159,7 +166,7 @@ export default function TeamPage() {
                 <div className="flex items-center gap-2">
                   {/* Remove button */}
                   <button
-                    onClick={() => handleRemove(member._id, member.name)}
+                    onClick={() => setRemoveTarget(member)}
                     className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-2 text-[var(--color-text-muted)] transition-colors hover:text-red-400"
                     title="Remove from team"
                   >
@@ -233,6 +240,17 @@ export default function TeamPage() {
             </div>
           </div>
           </ModalPortal>
+        )}
+
+        {/* Remove confirmation */}
+        {removeTarget && (
+          <ConfirmDeleteModal
+            itemType="team member"
+            itemName={removeTarget.name}
+            isDeleting={isRemoving}
+            onConfirm={handleRemoveConfirm}
+            onCancel={() => setRemoveTarget(null)}
+          />
         )}
       </div>
     </PageWrapper>

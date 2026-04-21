@@ -1,6 +1,7 @@
 'use client';
 
 import { ContentDNAFormData } from '@/types/onboarding';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface YourStoryStepProps {
   data: ContentDNAFormData;
@@ -37,6 +38,7 @@ export default function IdentityStep({ data, onChange }: YourStoryStepProps) {
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           Tell us about your work, your business, or whatever you spend most of your energy building. The messy path, the wins and failures, the stuff that actually got you to where you are now.
         </p>
+        <VoiceInputWrapper onTranscript={(text) => onChange({ yourStory: data.yourStory ? data.yourStory + '\n' + text : text })}>
         <textarea
           id="yourStory"
           value={data.yourStory}
@@ -53,6 +55,7 @@ export default function IdentityStep({ data, onChange }: YourStoryStepProps) {
           onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
           onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
+        </VoiceInputWrapper>
       </div>
 
       {/* Q2 */}
@@ -67,6 +70,7 @@ export default function IdentityStep({ data, onChange }: YourStoryStepProps) {
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           Numbers, outcomes, things you&apos;ve built, problems you&apos;ve solved, clients you&apos;ve helped. Even small ones count. If you&apos;re earlier in your journey, tell us what you&apos;re actively studying, experimenting with, or working toward becoming the person who knows this stuff. This becomes your credibility bank — it&apos;s what gives your content weight.
         </p>
+        <VoiceInputWrapper onTranscript={(text) => onChange({ winsAndMilestones: data.winsAndMilestones ? data.winsAndMilestones + '\n' + text : text })}>
         <textarea
           id="winsAndMilestones"
           value={data.winsAndMilestones}
@@ -83,6 +87,7 @@ export default function IdentityStep({ data, onChange }: YourStoryStepProps) {
           onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
           onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
+        </VoiceInputWrapper>
       </div>
 
       {/* Q3 */}
@@ -97,6 +102,7 @@ export default function IdentityStep({ data, onChange }: YourStoryStepProps) {
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           Not &quot;get more followers.&quot; What&apos;s the real outcome you&apos;re after? Maybe it&apos;s filling your coaching program. Maybe it&apos;s landing speaking gigs. Maybe it&apos;s quitting your job in 12 months. If your content worked exactly the way you wanted it to, what changes in your life or business?
         </p>
+        <VoiceInputWrapper onTranscript={(text) => onChange({ contentGoal: data.contentGoal ? data.contentGoal + '\n' + text : text })}>
         <textarea
           id="contentGoal"
           value={data.contentGoal}
@@ -113,6 +119,7 @@ export default function IdentityStep({ data, onChange }: YourStoryStepProps) {
           onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
           onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
+        </VoiceInputWrapper>
       </div>
     </div>
   );

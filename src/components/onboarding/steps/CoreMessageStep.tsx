@@ -1,6 +1,7 @@
 'use client';
 
 import { ContentDNAFormData } from '@/types/onboarding';
+import VoiceInputWrapper from '@/components/VoiceInputWrapper';
 
 interface CoreMessageStepProps {
   data: ContentDNAFormData;
@@ -37,6 +38,7 @@ export default function CoreMessageStep({ data, onChange }: CoreMessageStepProps
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           Not a tagline. The thread that ties everything together. The thing that makes someone say &quot;that&apos;s what they&apos;re about.&quot;
         </p>
+        <VoiceInputWrapper onTranscript={(text) => onChange({ coreMessage: data.coreMessage ? data.coreMessage + '\n' + text : text })}>
         <textarea
           id="coreMessage"
           value={data.coreMessage}
@@ -53,6 +55,7 @@ export default function CoreMessageStep({ data, onChange }: CoreMessageStepProps
           onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
           onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
+        </VoiceInputWrapper>
       </div>
     </div>
   );

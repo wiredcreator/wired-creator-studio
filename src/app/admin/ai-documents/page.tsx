@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/PageWrapper";
 import ModalPortal from "@/components/ModalPortal";
+import ConfirmDeleteModal from "@/components/ConfirmDeleteModal";
 import VoiceInputWrapper from "@/components/VoiceInputWrapper";
 import { useTimezone } from "@/hooks/useTimezone";
 
@@ -383,6 +384,10 @@ export default function AIDocumentsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
+  // Delete confirm state
+  const [deleteTarget, setDeleteTarget] = useState<AIDocument | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Recompile all state
   const [recompiling, setRecompiling] = useState(false);
   const [recompileStatus, setRecompileStatus] = useState<string | null>(null);
@@ -493,19 +498,15 @@ export default function AIDocumentsPage() {
   }
 
   // ── Delete ───────────────────────────────────────────────────────────────
-  async function handleDelete(doc: AIDocument) {
-    if (
-      !confirm(
-        `Delete "${doc.title}"? This cannot be undone and will affect any AI features using this document.`
-      )
-    )
-      return;
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
 
     const previous = [...documents];
-    setDocuments((prev) => prev.filter((d) => d._id !== doc._id));
+    setDocuments((prev) => prev.filter((d) => d._id !== deleteTarget._id));
 
     try {
-      const res = await fetch(`/api/admin/ai-documents/${doc._id}`, {
+      const res = await fetch(`/api/admin/ai-documents/${deleteTarget._id}`, {
         method: "DELETE",
       });
       if (!res.ok) {
@@ -513,6 +514,9 @@ export default function AIDocumentsPage() {
       }
     } catch {
       setDocuments(previous);
+    } finally {
+      setDeleteTarget(null);
+      setIsDeleting(false);
     }
   }
 
@@ -682,7 +686,7 @@ export default function AIDocumentsPage() {
                   key={doc._id}
                   doc={doc}
                   onEdit={() => openEdit(doc)}
-                  onDelete={() => handleDelete(doc)}
+                  onDelete={() => setDeleteTarget(doc)}
                 />
               ))}
             </div>
@@ -700,6 +704,17 @@ export default function AIDocumentsPage() {
           onChange={patchForm}
           onSave={handleSave}
           onClose={closeModal}
+        />
+      )}
+
+      {/* Delete confirmation */}
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          itemType="document"
+          itemName={deleteTarget.title}
+          isDeleting={isDeleting}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTarget(null)}
         />
       )}
     </>
