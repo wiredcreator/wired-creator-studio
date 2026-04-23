@@ -18,7 +18,7 @@ function buildSmoothPath(points: { x: number; y: number }[]): string {
     const p1 = points[i];
     const p2 = points[i + 1];
     const p3 = points[Math.min(i + 2, points.length - 1)];
-    const tension = 0.3;
+    const tension = 0;
     const cp1x = p1.x + (p2.x - p0.x) * tension;
     const cp1y = p1.y + (p2.y - p0.y) * tension;
     const cp2x = p2.x - (p3.x - p1.x) * tension;
@@ -179,7 +179,7 @@ export default function WeeklyProgress() {
             cursor: 'pointer',
           }}
         >
-          <option value="week">Select</option>
+          <option value="week">Week</option>
           <option value="month">Month</option>
           <option value="ytd">Year to Date</option>
         </select>

@@ -459,7 +459,7 @@ function ChannelSelectionScreen({
 }) {
   const [allCandidates, setAllCandidates] = useState<DiscoveredCandidate[]>(candidates);
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(candidates.map((c) => c.channelId))
+    () => new Set<string>()
   );
   const [manualUrl, setManualUrl] = useState('');
   const [addingManual, setAddingManual] = useState(false);

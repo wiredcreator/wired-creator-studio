@@ -887,12 +887,21 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
                 type="button"
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-50"
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+                  suggestedIdeas.length === 0 && !isGenerating
+                    ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)] hover:bg-[var(--color-accent-hover)]'
+                    : 'border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'
+                }`}
               >
                 {isGenerating ? (
                   <span className="flex items-center gap-2">
                     <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     Generating...
+                  </span>
+                ) : suggestedIdeas.length === 0 ? (
+                  <span className="flex items-center gap-1.5">
+                    <span>✦</span>
+                    Generate Ideas
                   </span>
                 ) : (
                   <span className="flex items-center gap-1.5">
