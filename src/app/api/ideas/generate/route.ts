@@ -71,15 +71,30 @@ export async function POST(request: NextRequest) {
 
     // Save all generated ideas to MongoDB
     const savedIdeas = await ContentIdea.insertMany(
-      generatedIdeas.map((idea) => ({
-        userId: targetUserId,
-        title: idea.title,
-        description: idea.description,
-        status: 'suggested',
-        source: 'ai_generated',
-        contentPillar: idea.contentPillar || '',
-        tags: [],
-      }))
+      generatedIdeas.map((idea) => {
+        // Build initial resource from description + angle so detail page isn't empty
+        const resources: Array<{ type: string; source: string; name: string; content: string }> = [];
+        const descriptionContent = [idea.description, idea.angle].filter(Boolean).join('\n\n');
+        if (descriptionContent) {
+          resources.push({
+            type: 'text',
+            source: 'written',
+            name: 'AI-generated concept brief',
+            content: descriptionContent,
+          });
+        }
+
+        return {
+          userId: targetUserId,
+          title: idea.title,
+          description: idea.description,
+          status: 'suggested',
+          source: 'ai_generated',
+          contentPillar: idea.contentPillar || '',
+          tags: [],
+          resources,
+        };
+      })
     );
 
     // Notify the student when an admin generates ideas on their behalf

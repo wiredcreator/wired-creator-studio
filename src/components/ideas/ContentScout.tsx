@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import ModalPortal from '@/components/ModalPortal';
 import { useTimezone } from '@/hooks/useTimezone';
 
@@ -881,7 +881,11 @@ function EditSourcesPanel({
 // Main ContentScout Component
 // ---------------------------------------------------------------------------
 
-export default function ContentScout({ userId }: { userId: string }) {
+export interface ContentScoutHandle {
+  regenerate: () => void;
+}
+
+const ContentScout = forwardRef<ContentScoutHandle, { userId: string }>(function ContentScout({ userId }, ref) {
   const { formatDate } = useTimezone();
   const [videos, setVideos] = useState<ScoutVideo[]>([]);
   const [uniqueIdeas, setUniqueIdeas] = useState<ScoutIdea[]>([]);
@@ -1026,6 +1030,9 @@ export default function ContentScout({ userId }: { userId: string }) {
       setSetupStep('idle');
     }
   };
+
+  // Expose regenerate to parent via ref
+  useImperativeHandle(ref, () => ({ regenerate: handleRegenerate }), [handleRegenerate]);
 
   // --- Multi-select handlers for unique ideas ---
   const toggleUniqueSelect = (id: string) => {
@@ -1314,4 +1321,6 @@ export default function ContentScout({ userId }: { userId: string }) {
       )}
     </div>
   );
-}
+});
+
+export default ContentScout;

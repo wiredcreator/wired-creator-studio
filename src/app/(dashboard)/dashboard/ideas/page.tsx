@@ -7,6 +7,7 @@ import IdeaCard from '@/components/ideas/IdeaCard';
 import IdeaDetail from '@/components/ideas/IdeaDetail';
 import IdeaStats from '@/components/ideas/IdeaStats';
 import ContentScout from '@/components/ideas/ContentScout';
+import type { ContentScoutHandle } from '@/components/ideas/ContentScout';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import type { IdeaCardData } from '@/components/ideas/IdeaCard';
 import type { ContentIdeaStatus } from '@/models/ContentIdea';
@@ -140,6 +141,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
     router.push(viewMap[v]);
   }, [router]);
   const [findIdeasTab, setFindIdeasTab] = useState<FindIdeasTab>('brand-brain');
+  const contentScoutRef = useRef<ContentScoutHandle>(null);
 
   // --- Data State ---
   const [userId, setUserId] = useState('');
@@ -883,33 +885,47 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
               >
                 Content Scout
               </button>
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
-                  suggestedIdeas.length === 0 && !isGenerating
-                    ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)] hover:bg-[var(--color-accent-hover)]'
-                    : 'border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'
-                }`}
-              >
-                {isGenerating ? (
-                  <span className="flex items-center gap-2">
-                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Generating...
-                  </span>
-                ) : suggestedIdeas.length === 0 ? (
-                  <span className="flex items-center gap-1.5">
-                    <span>✦</span>
-                    Generate Ideas
-                  </span>
-                ) : (
+              {findIdeasTab === 'brand-brain' && (
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+                    suggestedIdeas.length === 0 && !isGenerating
+                      ? 'bg-[var(--color-accent)] text-[var(--color-bg-dark)] hover:bg-[var(--color-accent-hover)]'
+                      : 'border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'
+                  }`}
+                >
+                  {isGenerating ? (
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Generating...
+                    </span>
+                  ) : suggestedIdeas.length === 0 ? (
+                    <span className="flex items-center gap-1.5">
+                      <span>✦</span>
+                      Generate Ideas
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5">
+                      <span>&#8635;</span>
+                      Regenerate
+                    </span>
+                  )}
+                </button>
+              )}
+              {findIdeasTab === 'content-scout' && (
+                <button
+                  type="button"
+                  onClick={() => contentScoutRef.current?.regenerate()}
+                  className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                >
                   <span className="flex items-center gap-1.5">
                     <span>&#8635;</span>
                     Regenerate
                   </span>
-                )}
-              </button>
+                </button>
+              )}
             </div>
           </div>
 
@@ -998,7 +1014,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
 
           {/* Content Scout Tab */}
           {findIdeasTab === 'content-scout' && (
-            <ContentScout userId={userId} />
+            <ContentScout ref={contentScoutRef} userId={userId} />
           )}
         </div>
       )}
