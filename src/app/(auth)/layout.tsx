@@ -6,7 +6,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-[var(--color-bg)]">
+    <div data-theme="light" className="flex min-h-screen bg-[var(--color-bg)]">
       {/* Left panel — sky gradient with clouds */}
       <div className="hidden lg:flex lg:w-[45%] lg:max-w-[520px] flex-col justify-between relative overflow-hidden"
         style={{ background: 'linear-gradient(180deg, #EEF1F7 0%, #B8DEF0 35%, #6CC7E5 60%, #2683EB 100%)' }}
