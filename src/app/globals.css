@@ -299,6 +299,14 @@ body::before {
     background-color: var(--color-bg-card) !important;
   }
 
+  /* Force light inputs inside auth layout (data-theme="light" wrapper) even when
+     html has data-theme="dark". Same specificity as dark rule above, but later = wins. */
+  [data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="color"]):not([type="hidden"]):not([data-transparent]),
+  [data-theme="light"] textarea:not([data-transparent]),
+  [data-theme="light"] select {
+    background-color: #FFFFFF !important;
+  }
+
 }
 
 /* ── TipTap Rich Text Editor ── */
