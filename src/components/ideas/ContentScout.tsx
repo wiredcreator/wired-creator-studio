@@ -926,7 +926,7 @@ const ContentScout = forwardRef<ContentScoutHandle, { userId: string }>(function
       } else {
         setNeedsSetup(false);
         setVideos(data.videos || []);
-        setUniqueIdeas(data.uniqueIdeas || []);
+        setUniqueIdeas(data.generatedIdeas || []);
         setGeneratedAt(data.generatedAt || null);
       }
     } catch (err) {

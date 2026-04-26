@@ -49,7 +49,7 @@ export default function SideQuestXPSidebar({ quests }: SideQuestXPSidebarProps) 
         Quest Progress
       </p>
 
-      {/* Total XP earned */}
+      {/* Total XP earned from quests */}
       <div className="flex items-baseline gap-2 mb-1">
         <span
           className="text-3xl font-bold tabular-nums"
@@ -58,7 +58,7 @@ export default function SideQuestXPSidebar({ quests }: SideQuestXPSidebarProps) 
           {totalXPEarned.toLocaleString()}
         </span>
         <span className="text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
-          XP earned
+          Quest XP
         </span>
       </div>
 

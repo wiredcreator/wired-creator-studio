@@ -10,6 +10,7 @@ import { getAnthropicClient, CLAUDE_MODEL, extractJsonFromResponse } from '@/lib
 import { withRetry } from '@/lib/retry';
 import { trackAIUsage } from '@/lib/ai/usage-tracker';
 import { resolveChannelId, getChannelRSSUrl, getVideoThumbnail } from '@/lib/youtube-utils';
+import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
 import type { ICachedVideo } from '@/models/YouTubeChannelCache';
 
 const CACHE_DURATION_MS = 12 * 60 * 60 * 1000; // 12 hours
@@ -60,7 +61,7 @@ async function fetchChannelVideos(
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const timeout = setTimeout(() => controller.abort(), 30_000);
 
     const response = await fetch(feedUrl, { signal: controller.signal });
     clearTimeout(timeout);
@@ -119,13 +120,35 @@ async function isYouTubeShort(videoId: string): Promise<boolean> {
   }
 }
 
+async function isVideoUnavailable(videoId: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5_000);
+
+    const res = await fetch(
+      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeout);
+
+    // 200 = available, anything else = unavailable/restricted
+    return res.status !== 200;
+  } catch {
+    // On error, assume available (better to show than over-filter)
+    return false;
+  }
+}
+
 async function filterOutShorts(videos: ICachedVideo[]): Promise<ICachedVideo[]> {
   if (videos.length === 0) return videos;
 
   const results = await Promise.all(
     videos.map(async (video) => {
-      const isShort = await isYouTubeShort(video.videoId);
-      return isShort ? null : video;
+      const [isShort, unavailable] = await Promise.all([
+        isYouTubeShort(video.videoId),
+        isVideoUnavailable(video.videoId),
+      ]);
+      return (isShort || unavailable) ? null : video;
     })
   );
 
@@ -299,6 +322,52 @@ export async function POST(request: NextRequest) {
       },
       { upsert: true, new: true }
     );
+
+    // Generate unique ideas from scraped videos (non-blocking best-effort)
+    if (sortedVideos.length > 0) {
+      try {
+        const brandBrainContext = await assembleBrandBrainContext(userId, {
+          includeToneOfVoice: true,
+          includeContentPillars: true,
+          includeIndustryData: true,
+          includeEquipmentProfile: false,
+          includeTranscripts: false,
+        });
+
+        const videoSummary = sortedVideos.slice(0, 8).map((v) =>
+          `- "${v.title}" by ${v.channelName} (${v.url})`
+        ).join('\n');
+
+        const client = getAnthropicClient();
+        const startMs = Date.now();
+        const response = await withRetry(() =>
+          client.messages.create({
+            model: CLAUDE_MODEL,
+            max_tokens: 2048,
+            system: `You are a content strategist. Generate unique content ideas inspired by trending videos, tailored to the student's niche and Brand Brain context. Each idea should combine trending topics with the student's unique perspective.`,
+            messages: [{
+              role: 'user',
+              content: `## Trending Videos\n${videoSummary}\n\n${brandBrainContext || '(No Brand Brain context available.)'}\n\nGenerate 4-6 unique content ideas inspired by these trending videos. Each idea should put a unique spin relevant to the student's niche.\n\nReturn a JSON array of objects with:\n- title: string (compelling video title)\n- description: string (2-3 sentences on the angle)\n- sourceVideoTitle: string (which trending video inspired this)\n- sourceVideoUrl: string (URL of that video)\n- category: string (e.g. "reaction", "tutorial", "commentary", "behind-the-scenes")\n\nReturn ONLY the JSON array.`,
+            }],
+          })
+        );
+
+        trackAIUsage({ userId, feature: 'content_scout_ideas', response, durationMs: Date.now() - startMs });
+
+        const textBlock = response.content.find((b) => b.type === 'text');
+        if (textBlock && textBlock.type === 'text') {
+          const ideas = extractJsonFromResponse(textBlock.text);
+          if (Array.isArray(ideas) && ideas.length > 0) {
+            await ContentScoutResult.updateOne(
+              { userId },
+              { $set: { generatedIdeas: ideas } }
+            );
+          }
+        }
+      } catch (err) {
+        console.error('Failed to generate unique ideas (non-blocking):', err);
+      }
+    }
 
     return NextResponse.json({
       success: true,
