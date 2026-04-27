@@ -894,7 +894,6 @@ export default function BrainDumpPage() {
 
       {/* Form area */}
       <div className="px-6 sm:px-10 pb-6">
-        <div className="max-w-4xl">
           {/* Error */}
           {error && (
             <div className="mb-4 rounded-[var(--radius-md)] bg-[var(--color-error-light)] border border-[var(--color-error)] px-4 py-3">
@@ -1041,12 +1040,10 @@ export default function BrainDumpPage() {
               </button>
             </div>
           </div>
-        </div>
       </div>
 
       {/* Previously saved sessions */}
       <div className="px-6 sm:px-10 pb-10 flex-1">
-        <div className="max-w-6xl">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
               Previously saved sessions
@@ -1297,7 +1294,6 @@ export default function BrainDumpPage() {
               })}
             </div>
           )}
-        </div>
       </div>
 
       {sessionToDelete && (
