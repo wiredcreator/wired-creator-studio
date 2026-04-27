@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import BrandBrain from '@/models/BrandBrain';
-import '@/models/ToneOfVoiceGuide';
+import ToneOfVoiceGuide from '@/models/ToneOfVoiceGuide';
+// Ensure ToneOfVoiceGuide schema is registered for .populate('toneOfVoiceGuide')
+void ToneOfVoiceGuide;
 import { getAuthenticatedUser } from '@/lib/api-auth';
 
 // GET /api/brand-brain — Fetch current user's Brand Brain
