@@ -96,6 +96,7 @@ export default function ScriptsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [generatingMessage, setGeneratingMessage] = useState('');
+  const [generateError, setGenerateError] = useState('');
 
   // Fetch session to get userId
   useEffect(() => {
@@ -136,7 +137,7 @@ export default function ScriptsPage() {
   // --- Fetch ideas for dropdown ---
   const fetchIdeas = useCallback(async () => {
     try {
-      const res = await fetch(`/api/ideas?userId=${userId}`);
+      const res = await fetch(`/api/ideas?userId=${userId}&limit=100`);
       if (!res.ok) return;
       const raw = await res.json();
       const data: IdeaOption[] = raw.data || raw;
@@ -175,6 +176,7 @@ export default function ScriptsPage() {
     if (!selectedIdeaId) return;
 
     setIsGenerating(true);
+    setGenerateError('');
     setGeneratingMessage(GENERATING_MESSAGES[0]);
 
     const interval = setInterval(() => {
@@ -194,7 +196,11 @@ export default function ScriptsPage() {
         }),
       });
 
-      if (!res.ok) throw new Error('Generation failed');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        const message = errorData?.error || `Generation failed (${res.status})`;
+        throw new Error(message);
+      }
 
       const newScript = await res.json();
       setScripts((prev) => [newScript, ...prev]);
@@ -206,6 +212,7 @@ export default function ScriptsPage() {
       handleOpenEditor(newScript._id);
     } catch (err) {
       console.error('Failed to generate script:', err);
+      setGenerateError(err instanceof Error ? err.message : 'Script generation failed. Please try again.');
     } finally {
       clearInterval(interval);
       setIsGenerating(false);
@@ -422,7 +429,7 @@ export default function ScriptsPage() {
           {!showGenerateForm && (
             <button
               type="button"
-              onClick={() => setShowGenerateForm(true)}
+              onClick={() => { setShowGenerateForm(true); setGenerateError(''); }}
               style={{ backgroundColor: 'var(--color-accent)', color: '#FFFFFF', borderRadius: 12, padding: '8px 16px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer' }}
             >
               + New Script
@@ -514,6 +521,13 @@ export default function ScriptsPage() {
             <p className="animate-pulse text-sm font-medium text-[var(--color-accent)]">
               {generatingMessage}
             </p>
+          </div>
+        )}
+
+        {/* Generation error */}
+        {generateError && !isGenerating && (
+          <div className="mt-4 rounded-[var(--radius-md)] border border-red-400/50 bg-red-400/10 px-4 py-3 text-sm text-red-400">
+            {generateError}
           </div>
         )}
 
