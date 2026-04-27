@@ -261,14 +261,36 @@ export default function BrainDumpPage() {
       return;
     }
 
+    setAttachedFile(file);
+    setLastInputMethod('file_upload');
+
     if (file.type === 'text/plain') {
       const fileText = await file.text();
       setText((prev) => (prev ? prev + '\n\n' + fileText : fileText));
-      setAttachedFile(file);
     } else {
-      setAttachedFile(file);
+      // Extract text from PDF/docx via server
+      setError('');
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/brain-dump/extract-text', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.error || 'Failed to extract text from file');
+        }
+        const data = await res.json();
+        if (data.text) {
+          setText((prev) => (prev ? prev + '\n\n' + data.text : data.text));
+        } else {
+          setError('No text could be extracted from this file. Try pasting the content manually.');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to extract text from file.');
+      }
     }
-    setLastInputMethod('file_upload');
 
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
