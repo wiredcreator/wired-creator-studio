@@ -6,6 +6,52 @@ import { getAuthenticatedUser } from '@/lib/api-auth';
 
 const VALID_STATUSES = ['suggested', 'approved', 'rejected', 'saved', 'scripted', 'filmed', 'published'];
 
+// DELETE /api/ideas/bulk — Delete ideas by status (e.g. clear all suggested)
+export async function DELETE(request: NextRequest) {
+  try {
+    const authResult = await getAuthenticatedUser();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
+
+    await dbConnect();
+
+    const { status } = await request.json();
+
+    if (!status || !VALID_STATUSES.includes(status)) {
+      return NextResponse.json(
+        { error: `status must be one of: ${VALID_STATUSES.join(', ')}` },
+        { status: 400 },
+      );
+    }
+
+    const filter: Record<string, unknown> = { status };
+    if (user.role === 'student') {
+      filter.userId = user.id;
+    } else {
+      // Admins must provide a userId to avoid accidentally deleting all users' ideas
+      const targetUserId = request.nextUrl.searchParams.get('userId');
+      if (targetUserId) {
+        filter.userId = targetUserId;
+      } else {
+        filter.userId = user.id;
+      }
+    }
+
+    const result = await ContentIdea.deleteMany(filter);
+
+    return NextResponse.json({
+      success: true,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error('Error bulk deleting ideas:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    );
+  }
+}
+
 export async function PUT(request: NextRequest) {
   try {
     const authResult = await getAuthenticatedUser();

@@ -162,6 +162,9 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
   const [selectedSuggestedIds, setSelectedSuggestedIds] = useState<Set<string>>(new Set());
   const [isBulkSaving, setIsBulkSaving] = useState(false);
 
+  // Clear suggested ideas
+  const [isClearing, setIsClearing] = useState(false);
+
   // Brand Brain pillars
   const [brandBrainPillars, setBrandBrainPillars] = useState<string[]>([]);
 
@@ -476,6 +479,31 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
       fetchIdeas();
     } finally {
       setIsBulkSaving(false);
+    }
+  };
+
+  // --- Clear all suggested ideas ---
+  const handleClearSuggested = async () => {
+    if (suggestedIdeas.length === 0 || isClearing) return;
+    setIsClearing(true);
+
+    const previousSuggested = [...suggestedIdeas];
+    setSuggestedIdeas([]);
+    setSelectedSuggestedIds(new Set());
+
+    try {
+      const res = await fetch('/api/ideas/bulk', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'suggested' }),
+      });
+      if (!res.ok) {
+        setSuggestedIdeas(previousSuggested);
+      }
+    } catch {
+      setSuggestedIdeas(previousSuggested);
+    } finally {
+      setIsClearing(false);
     }
   };
 
@@ -966,6 +994,21 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
               {/* Suggested ideas cards */}
               {suggestedIdeas.length > 0 && !isGenerating && (
                 <div>
+                  {/* Clear All bar */}
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-sm text-[var(--color-text-muted)]">
+                      {suggestedIdeas.length} idea{suggestedIdeas.length !== 1 ? 's' : ''} generated
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleClearSuggested}
+                      disabled={isClearing}
+                      className="rounded-[var(--radius-md)] border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:border-red-400 hover:text-red-400 disabled:opacity-50"
+                    >
+                      {isClearing ? 'Clearing...' : 'Clear All'}
+                    </button>
+                  </div>
+
                   {/* Bulk action bar */}
                   {selectedSuggestedIds.size > 0 && (
                     <div className="mb-3 flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-bg-secondary)] px-4 py-2.5">
