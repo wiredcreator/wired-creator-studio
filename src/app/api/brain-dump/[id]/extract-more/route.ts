@@ -63,6 +63,12 @@ export async function POST(
     // Save new ideas to ContentIdea model
     const savedIdeas = [];
     for (const idea of extracted.contentIdeas) {
+      const resources = idea.description ? [{
+        type: 'text',
+        source: 'written',
+        name: 'AI-generated concept brief',
+        content: idea.description,
+      }] : [];
       const contentIdea = await ContentIdea.create({
         userId: session.userId,
         title: idea.title,
@@ -71,6 +77,7 @@ export async function POST(
         source: 'brain_dump',
         contentPillar: idea.contentPillar,
         tags: [],
+        resources,
       });
       savedIdeas.push(contentIdea);
     }
