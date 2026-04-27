@@ -83,6 +83,7 @@ export default function ScriptsPage() {
 
   // Editor state
   const [editingScript, setEditingScript] = useState<ScriptEditorData | null>(null);
+  const [isOpeningScript, setIsOpeningScript] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isReverting, setIsReverting] = useState(false);
 
@@ -213,13 +214,20 @@ export default function ScriptsPage() {
 
   // --- Open script in editor ---
   const handleOpenEditor = async (scriptId: string) => {
+    if (isOpeningScript) return;
+    setIsOpeningScript(true);
     try {
       const res = await fetch(`/api/scripts/${scriptId}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.error('Failed to load script:', res.status);
+        return;
+      }
       const data: ScriptEditorData = await res.json();
       setEditingScript(data);
     } catch (err) {
       console.error('Failed to load script:', err);
+    } finally {
+      setIsOpeningScript(false);
     }
   };
 
@@ -584,7 +592,7 @@ export default function ScriptsPage() {
 
           {/* Script cards */}
           {filteredScripts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4${isOpeningScript ? ' pointer-events-none opacity-60' : ''}`}>
               {filteredScripts.map((script) => (
                 <ScriptCard
                   key={script._id}
