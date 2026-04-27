@@ -174,7 +174,7 @@ export default function BrandBrainOverview({
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-heading text-2xl font-semibold text-[var(--color-text-primary)]">
-            {studentName ? `${studentName}'s Brand Brain` : 'Brand Brain'}
+            {studentName ? `${studentName}${studentName.endsWith('s') ? "'" : "'s"} Brand Brain` : 'Brand Brain'}
           </h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Your AI context layer — everything that shapes your content.

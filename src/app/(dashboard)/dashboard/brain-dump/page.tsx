@@ -337,6 +337,11 @@ export default function BrainDumpPage() {
       fetchSessions();
 
       // Navigate to detail view for the new result
+      setEditTranscript(transcript);
+      setSavedIdeaIndices(new Set());
+      setDetailTags([]);
+      setDetailPriority('medium');
+      setExtraIdeas([]);
       setView({
         type: 'detail-new',
         sessionId: data.session._id,
@@ -415,17 +420,39 @@ export default function BrainDumpPage() {
   const handleSaveIdea = async (idea: { title: string; description: string }, index: number) => {
     setSavingIdeaIndex(index);
     try {
-      const res = await fetch('/api/ideas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: idea.title,
-          description: idea.description,
-          source: 'brain_dump',
-          status: 'suggested',
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to save idea');
+      // Find the existing suggested idea by title and update its status,
+      // rather than creating a duplicate
+      const searchRes = await fetch(`/api/ideas?userId=${userId}&limit=100&status=suggested`);
+      let existingId: string | null = null;
+      if (searchRes.ok) {
+        const searchData = await searchRes.json();
+        const matches = (searchData.data || searchData) as { _id: string; title: string }[];
+        const match = matches.find((m) => m.title === idea.title);
+        if (match) existingId = match._id;
+      }
+
+      if (existingId) {
+        // Update existing idea's status to 'saved'
+        const res = await fetch(`/api/ideas/${existingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'saved' }),
+        });
+        if (!res.ok) throw new Error('Failed to save idea');
+      } else {
+        // Fallback: create new if no matching suggested idea found
+        const res = await fetch('/api/ideas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: idea.title,
+            description: idea.description,
+            source: 'brain_dump',
+            status: 'saved',
+          }),
+        });
+        if (!res.ok) throw new Error('Failed to save idea');
+      }
       setSavedIdeaIndices((prev) => new Set(prev).add(index));
     } catch {
       setError('Failed to save idea. Please try again.');
@@ -580,16 +607,6 @@ export default function BrainDumpPage() {
         : view.type === 'detail-new' && view.data.contentIdeas.length > 0
           ? `Brain Dump: ${view.data.contentIdeas[0].title}`
           : 'Brain Dump Session';
-
-    // Initialize editTranscript when entering detail-new view
-    if (view.type === 'detail-new' && editTranscript !== transcript) {
-      setEditTranscript(transcript);
-    }
-
-    // Initialize detail state for new sessions
-    if (view.type === 'detail-new' && detailTags.length === 0 && detailPriority === 'medium' && extraIdeas.length === 0) {
-      // Already defaults
-    }
 
     const themes =
       view.type === 'detail'
@@ -1170,11 +1187,6 @@ export default function BrainDumpPage() {
                               >
                                 {priority}
                               </span>
-                              {pillar && (
-                                <span className="text-[11px] text-white bg-[var(--color-accent)] px-2 py-0.5 rounded-[var(--radius-full)]">
-                                  Pillar: {pillar}
-                                </span>
-                              )}
                               <span className="text-[11px] text-[var(--color-text-muted)]">
                                 {wordCount} words
                               </span>
@@ -1271,11 +1283,6 @@ export default function BrainDumpPage() {
                       >
                         {priority}
                       </span>
-                      {pillar && (
-                        <span className="text-[11px] text-white bg-[var(--color-accent)] px-2 py-0.5 rounded-[var(--radius-full)]">
-                          Pillar: {pillar}
-                        </span>
-                      )}
                       <span className="text-[11px] text-[var(--color-text-muted)] ml-auto">
                         {wordCount} words
                       </span>
