@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { useTimezone } from "@/hooks/useTimezone";
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
@@ -76,6 +77,7 @@ function countWords(text: string): number {
 }
 
 export default function BrainDumpPage() {
+  const router = useRouter();
   const { formatDate } = useTimezone();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -102,6 +104,7 @@ export default function BrainDumpPage() {
   const [transcriptSaveSuccess, setTranscriptSaveSuccess] = useState(false);
   const [savingIdeaIndex, setSavingIdeaIndex] = useState<number | null>(null);
   const [savedIdeaIndices, setSavedIdeaIndices] = useState<Set<number>>(new Set());
+  const [savedIdeaMap, setSavedIdeaMap] = useState<Map<number, string>>(new Map());
 
   // Tag input state (detail view)
   const [tagInput, setTagInput] = useState('');
@@ -339,6 +342,7 @@ export default function BrainDumpPage() {
       // Navigate to detail view for the new result
       setEditTranscript(transcript);
       setSavedIdeaIndices(new Set());
+      setSavedIdeaMap(new Map());
       setDetailTags([]);
       setDetailPriority('medium');
       setExtraIdeas([]);
@@ -387,6 +391,7 @@ export default function BrainDumpPage() {
     setEditTranscript(session.transcript);
     setTranscriptSaveSuccess(false);
     setSavedIdeaIndices(new Set());
+    setSavedIdeaMap(new Map());
     setDetailTags(session.tags || []);
     setDetailPriority(session.priority || 'medium');
     setTagInput('');
@@ -422,14 +427,16 @@ export default function BrainDumpPage() {
     try {
       // Find the existing suggested idea by title and update its status,
       // rather than creating a duplicate
-      const searchRes = await fetch(`/api/ideas?userId=${userId}&limit=100&status=suggested`);
+      const searchRes = await fetch(`/api/ideas?userId=${userId}&limit=100&status=suggested&source=brain_dump`);
       let existingId: string | null = null;
       if (searchRes.ok) {
         const searchData = await searchRes.json();
-        const matches = (searchData.data || searchData) as { _id: string; title: string }[];
+        const matches = (searchData.data || searchData) as { _id: string; title: string; source?: string }[];
         const match = matches.find((m) => m.title === idea.title);
         if (match) existingId = match._id;
       }
+
+      let ideaId: string | null = null;
 
       if (existingId) {
         // Update existing idea's status to 'saved'
@@ -439,6 +446,7 @@ export default function BrainDumpPage() {
           body: JSON.stringify({ status: 'saved' }),
         });
         if (!res.ok) throw new Error('Failed to save idea');
+        ideaId = existingId;
       } else {
         // Fallback: create new if no matching suggested idea found
         const res = await fetch('/api/ideas', {
@@ -452,8 +460,13 @@ export default function BrainDumpPage() {
           }),
         });
         if (!res.ok) throw new Error('Failed to save idea');
+        const created = await res.json();
+        ideaId = created._id || created.data?._id || null;
       }
       setSavedIdeaIndices((prev) => new Set(prev).add(index));
+      if (ideaId) {
+        setSavedIdeaMap((prev) => new Map(prev).set(index, ideaId));
+      }
     } catch {
       setError('Failed to save idea. Please try again.');
     } finally {
@@ -787,10 +800,14 @@ export default function BrainDumpPage() {
               </div>
               {ideas.length > 0 || extraIdeas.length > 0 ? (
                 <div className="space-y-3">
-                  {ideas.map((idea, i) => (
+                  {ideas.map((idea, i) => {
+                    const isSaved = savedIdeaIndices.has(i);
+                    const ideaId = savedIdeaMap.get(i);
+                    return (
                     <div
                       key={`orig-${i}`}
-                      className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4"
+                      onClick={isSaved && ideaId ? () => router.push(`/dashboard/ideas/${ideaId}`) : undefined}
+                      className={`rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4${isSaved && ideaId ? ' cursor-pointer hover:border-[var(--color-accent)] transition-colors' : ''}`}
                     >
                       <h3 className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug">
                         {idea.title}
@@ -799,13 +816,25 @@ export default function BrainDumpPage() {
                         {idea.description}
                       </p>
                       <div className="mt-3">
-                        {savedIdeaIndices.has(i) ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-[var(--color-success)]">
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                            </svg>
-                            Saved
-                          </span>
+                        {isSaved ? (
+                          ideaId ? (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/ideas/${ideaId}`); }}
+                              className="inline-flex items-center gap-1 text-xs text-[var(--color-success)] hover:underline outline-none ring-0"
+                            >
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              </svg>
+                              Saved — View Idea
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs text-[var(--color-success)]">
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              </svg>
+                              Saved
+                            </span>
+                          )
                         ) : (
                           <button
                             onClick={() => handleSaveIdea(idea, i)}
@@ -817,7 +846,8 @@ export default function BrainDumpPage() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Extra ideas from "Extract More" */}
                   {extraIdeas.length > 0 && (
@@ -831,10 +861,13 @@ export default function BrainDumpPage() {
                       </div>
                       {extraIdeas.map((idea, i) => {
                         const globalIdx = ideas.length + i;
+                        const isSaved = savedIdeaIndices.has(globalIdx);
+                        const ideaId = savedIdeaMap.get(globalIdx);
                         return (
                           <div
                             key={`extra-${i}`}
-                            className="rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-bg-card)] p-4"
+                            onClick={isSaved && ideaId ? () => router.push(`/dashboard/ideas/${ideaId}`) : undefined}
+                            className={`rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-bg-card)] p-4${isSaved && ideaId ? ' cursor-pointer hover:border-[var(--color-accent)] transition-colors' : ''}`}
                           >
                             <h3 className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug">
                               {idea.title}
@@ -843,13 +876,25 @@ export default function BrainDumpPage() {
                               {idea.description}
                             </p>
                             <div className="mt-3">
-                              {savedIdeaIndices.has(globalIdx) ? (
-                                <span className="inline-flex items-center gap-1 text-xs text-[var(--color-success)]">
-                                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                  </svg>
-                                  Saved
-                                </span>
+                              {isSaved ? (
+                                ideaId ? (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/ideas/${ideaId}`); }}
+                                    className="inline-flex items-center gap-1 text-xs text-[var(--color-success)] hover:underline outline-none ring-0"
+                                  >
+                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                    </svg>
+                                    Saved — View Idea
+                                  </button>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-xs text-[var(--color-success)]">
+                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                    </svg>
+                                    Saved
+                                  </span>
+                                )
                               ) : (
                                 <button
                                   onClick={() => handleSaveIdea(idea, globalIdx)}

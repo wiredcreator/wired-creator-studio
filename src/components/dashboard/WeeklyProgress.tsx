@@ -31,6 +31,7 @@ function buildSmoothPath(points: { x: number; y: number }[]): string {
 function LineChart({ data, maxPoints }: { data: DayProgress[]; maxPoints: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const measure = useCallback(() => {
     if (containerRef.current) {
@@ -45,15 +46,20 @@ function LineChart({ data, maxPoints }: { data: DayProgress[]; maxPoints: number
     return () => ro.disconnect();
   }, [measure]);
 
-  const chartHeight = 130;
-  const paddingTop = 16;
+  const chartHeight = 140;
+  const paddingTop = 20;
   const paddingBottom = 24;
-  const paddingX = 24;
+  const paddingLeft = 44;
+  const paddingRight = 24;
   const drawHeight = chartHeight - paddingTop - paddingBottom;
-  const drawWidth = width - paddingX * 2;
+  const drawWidth = width - paddingLeft - paddingRight;
+
+  // Y-axis ticks: 0, mid, max (deduplicated for small values)
+  const niceMax = maxPoints;
+  const yTicks = [...new Set([0, Math.round(niceMax / 2), niceMax])];
 
   const points = data.map((d, i) => {
-    const x = paddingX + (data.length > 1 ? (i / (data.length - 1)) * drawWidth : drawWidth / 2);
+    const x = paddingLeft + (data.length > 1 ? (i / (data.length - 1)) * drawWidth : drawWidth / 2);
     const yRatio = maxPoints > 0 ? d.points / maxPoints : 0;
     const y = paddingTop + drawHeight - yRatio * drawHeight;
     return { x, y };
@@ -82,6 +88,36 @@ function LineChart({ data, maxPoints }: { data: DayProgress[]; maxPoints: number
             </linearGradient>
           </defs>
 
+          {/* Y-axis gridlines and labels */}
+          {yTicks.map((tick, tickIdx) => {
+            const yRatio = maxPoints > 0 ? tick / maxPoints : 0;
+            const y = paddingTop + drawHeight - yRatio * drawHeight;
+            return (
+              <g key={`y-${tickIdx}`}>
+                <line
+                  x1={paddingLeft}
+                  y1={y}
+                  x2={width - paddingRight}
+                  y2={y}
+                  stroke="var(--color-border)"
+                  strokeWidth={1}
+                  strokeDasharray="4 3"
+                  opacity={0.45}
+                />
+                <text
+                  x={paddingLeft - 8}
+                  y={y + 3.5}
+                  textAnchor="end"
+                  fill="var(--color-text-muted)"
+                  fontSize={10}
+                  fontFamily="inherit"
+                >
+                  {tick}
+                </text>
+              </g>
+            );
+          })}
+
           {/* Area fill */}
           {areaPath && (
             <path d={areaPath} fill={`url(#${gradientId})`} />
@@ -99,6 +135,20 @@ function LineChart({ data, maxPoints }: { data: DayProgress[]; maxPoints: number
             />
           )}
 
+          {/* Invisible wider hit targets for easier hover (rendered first so dots & tooltip paint on top) */}
+          {points.map((p, i) => (
+            <circle
+              key={`hit-${i}`}
+              cx={p.x}
+              cy={p.y}
+              r={12}
+              fill="transparent"
+              style={{ cursor: "pointer" }}
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
+          ))}
+
           {/* Data point dots */}
           {points.map((p, i) => (
             <circle
@@ -109,8 +159,54 @@ function LineChart({ data, maxPoints }: { data: DayProgress[]; maxPoints: number
               fill="var(--color-bg-card)"
               stroke="var(--color-accent)"
               strokeWidth={2}
+              style={{
+                cursor: "pointer",
+                transition: "transform 0.15s ease",
+                transformOrigin: `${p.x}px ${p.y}px`,
+                transform: hoveredIndex === i ? "scale(1.4)" : "scale(1)",
+              }}
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
             />
           ))}
+
+          {/* Tooltip */}
+          {hoveredIndex !== null && (() => {
+            const tooltipText = `${data[hoveredIndex].label}: ${data[hoveredIndex].points} XP`;
+            const charWidth = 6.6;
+            const tooltipPadding = 16;
+            const tooltipWidth = Math.max(72, tooltipText.length * charWidth + tooltipPadding);
+            const halfWidth = tooltipWidth / 2;
+            const minX = 2;
+            const maxX = width - 2;
+            const rawX = points[hoveredIndex].x;
+            const clampedX = Math.max(minX + halfWidth, Math.min(maxX - halfWidth, rawX));
+            return (
+              <g style={{ pointerEvents: "none" }}>
+                <rect
+                  x={clampedX - halfWidth}
+                  y={points[hoveredIndex].y - 34}
+                  width={tooltipWidth}
+                  height={22}
+                  rx={6}
+                  fill="var(--color-bg-elevated)"
+                  stroke="var(--color-border)"
+                  strokeWidth={1}
+                />
+                <text
+                  x={clampedX}
+                  y={points[hoveredIndex].y - 19}
+                  textAnchor="middle"
+                  fill="var(--color-text)"
+                  fontSize={11}
+                  fontWeight={500}
+                  fontFamily="inherit"
+                >
+                  {tooltipText}
+                </text>
+              </g>
+            );
+          })()}
 
           {/* X-axis labels */}
           {data.map((d, i) => (

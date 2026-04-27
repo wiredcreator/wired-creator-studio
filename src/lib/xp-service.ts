@@ -32,57 +32,74 @@ export async function awardXP(
   const userDoc = await User.findById(userId).select('timezone').lean();
   const timezone = (userDoc?.timezone as string) || 'America/New_York';
 
-  // Find or create the UserXP document
-  let userXP = await UserXP.findOne({ userId });
+  // Step 1: Atomically increment lifetimeXP and push to xpHistory.
+  // Uses upsert + $setOnInsert for first-time creation.
+  const userXP = await UserXP.findOneAndUpdate(
+    { userId },
+    {
+      $inc: { lifetimeXP: points },
+      $push: {
+        xpHistory: {
+          action,
+          points,
+          timestamp: now,
+          metadata,
+        },
+      },
+      $setOnInsert: {
+        currentStreak: 0,
+        bestStreak: 0,
+        lastActiveDate: null,
+      },
+    },
+    { upsert: true, returnDocument: 'after' }
+  );
 
-  if (!userXP) {
-    userXP = new UserXP({
-      userId,
-      lifetimeXP: 0,
-      currentStreak: 0,
-      bestStreak: 0,
-      lastActiveDate: null,
-      xpHistory: [],
-    });
-  }
+  // Step 2: Compute streak updates from the returned document.
+  // Streak logic is safe against concurrent calls because same-day calls
+  // are no-ops, and cross-day races are extremely unlikely.
+  let newStreak = userXP.currentStreak;
 
-  // Add XP points
-  userXP.lifetimeXP += points;
-
-  // Streak logic (timezone-aware: "today" and "yesterday" are in the user's local timezone)
   if (userXP.lastActiveDate) {
     const lastActive = new Date(userXP.lastActiveDate);
     if (isSameDayInTimezone(lastActive, now, timezone)) {
-      // Same day in user's timezone — no streak change
+      // Same day in user's timezone, no streak change
     } else if (isYesterdayInTimezone(lastActive, now, timezone)) {
-      // Consecutive day in user's timezone — increment streak
-      userXP.currentStreak += 1;
+      // Consecutive day in user's timezone, increment streak
+      newStreak += 1;
     } else {
-      // Streak broken — reset to 1
-      userXP.currentStreak = 1;
+      // Streak broken, reset to 1
+      newStreak = 1;
     }
   } else {
-    // First ever action — start streak at 1
-    userXP.currentStreak = 1;
+    // First ever action, start streak at 1
+    newStreak = 1;
   }
 
-  // Update best streak
-  if (userXP.currentStreak > userXP.bestStreak) {
-    userXP.bestStreak = userXP.currentStreak;
+  const newBestStreak = Math.max(newStreak, userXP.bestStreak);
+
+  // Only issue a second update if streak or lastActiveDate changed
+  if (
+    newStreak !== userXP.currentStreak ||
+    newBestStreak !== userXP.bestStreak ||
+    !userXP.lastActiveDate ||
+    !isSameDayInTimezone(new Date(userXP.lastActiveDate), now, timezone)
+  ) {
+    await UserXP.updateOne(
+      { userId },
+      {
+        $set: {
+          currentStreak: newStreak,
+          bestStreak: newBestStreak,
+          lastActiveDate: now,
+        },
+      }
+    );
+    // Update the in-memory document to reflect the streak changes
+    userXP.currentStreak = newStreak;
+    userXP.bestStreak = newBestStreak;
+    userXP.lastActiveDate = now;
   }
-
-  // Update last active date
-  userXP.lastActiveDate = now;
-
-  // Push to history
-  userXP.xpHistory.push({
-    action,
-    points,
-    timestamp: now,
-    metadata,
-  });
-
-  await userXP.save();
 
   // Fire-and-forget XP earned notification
   const actionLabels: Record<string, string> = {
