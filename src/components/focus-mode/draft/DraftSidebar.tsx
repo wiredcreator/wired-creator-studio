@@ -438,25 +438,25 @@ export default function DraftSidebar({
                             if (!tagInput.trim()) setShowTagInput(false);
                           }, 150);
                         }}
-                        placeholder="Type + Enter to add"
+                        placeholder="Type to add new tag..."
                         className="w-full bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
                         autoFocus
                       />
-                      {/* Saved tag suggestions dropdown */}
-                      {tagInput.trim() && (() => {
+                      {/* Unselected saved tags shown below input for quick one-click adding */}
+                      {(() => {
                         const query = tagInput.trim().toLowerCase();
-                        const suggestions = savedTags.filter(
+                        const availableTags = savedTags.filter(
                           (st) =>
-                            st.name.includes(query) &&
-                            !tags.some((t) => t.toLowerCase() === st.name)
+                            !tags.some((t) => t.toLowerCase() === st.name) &&
+                            (!query || st.name.includes(query))
                         );
-                        if (suggestions.length === 0) return null;
+                        if (availableTags.length === 0) return null;
                         return (
                           <div
                             data-tag-suggestions=""
                             className="mt-1.5 flex flex-wrap gap-1.5"
                           >
-                            {suggestions.map((st) => (
+                            {availableTags.map((st) => (
                               <button
                                 key={st.name}
                                 onMouseDown={(e) => e.preventDefault()}
