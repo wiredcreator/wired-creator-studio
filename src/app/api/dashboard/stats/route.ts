@@ -19,7 +19,7 @@ export async function GET() {
     // Fetch all counts in parallel
     const [taskCount, ideaCount, scriptCount, sideQuestCount] = await Promise.all([
       Task.countDocuments({ userId }),
-      ContentIdea.countDocuments({ userId }),
+      ContentIdea.countDocuments({ userId, status: { $nin: ['suggested', 'rejected'] } }),
       Script.countDocuments({ userId }),
       SideQuest.countDocuments({ userId }),
     ]);

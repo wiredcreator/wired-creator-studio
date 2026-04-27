@@ -255,7 +255,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
     }
 
     try {
-      const res = await fetch(`/api/ideas?userId=${userId}`);
+      const res = await fetch(`/api/ideas?userId=${userId}&limit=100`);
       if (!res.ok) return;
       const raw = await res.json();
       const data: IdeaCardData[] = raw.data || raw;
