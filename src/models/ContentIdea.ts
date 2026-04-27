@@ -169,9 +169,9 @@ const ContentIdeaSchema = new Schema<IContentIdea>(
     conceptAnswers: { type: ConceptAnswersSchema },
     callToAction: { type: String, default: '' },
     alternativeTitles: [{ type: String }],
-    resources: [{ type: ResourceSchema }],
+    resources: { type: [ResourceSchema], default: [] },
     outline: { type: String, default: '' },
-    outlineSections: [{ type: OutlineSectionSchema }],
+    outlineSections: { type: [OutlineSectionSchema], default: [] },
     rawNotes: { type: String, default: '' },
     notes: [{
       text: { type: String, required: true },
