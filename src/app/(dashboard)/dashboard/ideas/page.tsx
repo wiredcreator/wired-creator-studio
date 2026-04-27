@@ -165,6 +165,9 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
   // Brand Brain pillars
   const [brandBrainPillars, setBrandBrainPillars] = useState<string[]>([]);
 
+  // Saved tag library (for colored tag pills)
+  const [savedTags, setSavedTags] = useState<Array<{ name: string; color: string }>>([]);
+
   // Manual idea form
   const [manualTitle, setManualTitle] = useState('');
   const [manualDescription, setManualDescription] = useState('');
@@ -225,6 +228,23 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
       }
     }
     fetchBrandBrain();
+  }, []);
+
+  // --- Fetch saved tag library ---
+  useEffect(() => {
+    async function fetchTags() {
+      try {
+        const res = await fetch('/api/tags');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.tags && Array.isArray(data.tags)) {
+          setSavedTags(data.tags);
+        }
+      } catch {
+        // Tag library fetch failed — tags will render without colors
+      }
+    }
+    fetchTags();
   }, []);
 
   // --- Fetch existing ideas on mount ---
@@ -986,6 +1006,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
                           onClick={setSelectedIdea}
                           isSelected={selectedSuggestedIds.has(idea._id)}
                           onToggleSelect={toggleSuggestedSelect}
+                          savedTags={savedTags}
                           animationClass={
                             animatingIds.has(idea._id) ? 'idea-card-exit' : ''
                           }
@@ -1121,6 +1142,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
                   onStatusChange={updateIdeaStatus}
                   onClick={(idea) => router.push(`/dashboard/ideas/${idea._id}`)}
                   onDelete={(_id: string) => setIdeaToDelete(idea)}
+                  savedTags={savedTags}
                   animationClass={
                     animatingIds.has(idea._id) ? 'idea-card-enter' : ''
                   }

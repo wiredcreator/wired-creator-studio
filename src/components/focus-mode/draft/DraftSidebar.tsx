@@ -1,8 +1,21 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { INote, IComment } from '@/models/ContentIdea';
+import type { ISavedTag } from '@/models/UserTagLibrary';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
+
+const TAG_COLORS = [
+  { name: 'Red', value: '#EF4444' },
+  { name: 'Orange', value: '#F97316' },
+  { name: 'Yellow', value: '#EAB308' },
+  { name: 'Green', value: '#22C55E' },
+  { name: 'Teal', value: '#14B8A6' },
+  { name: 'Blue', value: '#3B82F6' },
+  { name: 'Purple', value: '#8B5CF6' },
+  { name: 'Pink', value: '#EC4899' },
+];
 
 interface DraftSidebarProps {
   priority: string;
@@ -115,16 +128,68 @@ export default function DraftSidebar({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ cta: true, 'alt-titles': true });
   const [tagInput, setTagInput] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
+  const [savedTags, setSavedTags] = useState<ISavedTag[]>([]);
+  const [colorPickerTag, setColorPickerTag] = useState<string | null>(null);
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const colorPickerRef = useRef<HTMLDivElement>(null);
   const [noteInput, setNoteInput] = useState('');
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [commentInput, setCommentInput] = useState('');
+
+  // Fetch saved tag library on mount
+  useEffect(() => {
+    fetch('/api/tags')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.tags) setSavedTags(data.tags);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Close color picker on outside click
+  useEffect(() => {
+    if (!colorPickerTag) return;
+    const handleClick = (e: MouseEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setColorPickerTag(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [colorPickerTag]);
+
+  const getSavedTagColor = useCallback(
+    (tagName: string): string | null => {
+      const found = savedTags.find((t) => t.name === tagName.toLowerCase());
+      return found ? found.color : null;
+    },
+    [savedTags]
+  );
+
+  const handleSaveTagToLibrary = useCallback(
+    async (tagName: string, color: string) => {
+      try {
+        const res = await fetch('/api/tags', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: tagName, color }),
+        });
+        const data = await res.json();
+        if (data.tags) setSavedTags(data.tags);
+      } catch {
+        // silently fail
+      }
+      setColorPickerTag(null);
+    },
+    []
+  );
 
   const togglePanel = useCallback((id: string) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
-  const handleAddTag = useCallback(() => {
-    const trimmed = tagInput.trim();
+  const handleAddTag = useCallback((name?: string) => {
+    const trimmed = (name || tagInput).trim();
     if (trimmed && !tags.includes(trimmed)) {
       setTags([...tags, trimmed]);
       onMarkChanged();
@@ -213,7 +278,7 @@ export default function DraftSidebar({
           ) : (
           <button
             onClick={() => togglePanel(panel.id)}
-            className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-[var(--color-hover)]"
+            className="flex w-full items-center justify-between px-4 py-3 text-left"
           >
             <div className="flex items-center gap-2">
               <span className="flex-shrink-0">
@@ -298,35 +363,117 @@ export default function DraftSidebar({
 
               {panel.id === 'tags' && (
                 <div>
+                  {/* Existing tags */}
                   <div className="flex flex-wrap gap-1.5 mb-2">
-                    {tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center gap-1 rounded-full bg-[var(--color-accent)] px-2.5 py-0.5 text-xs text-white"
-                      >
-                        {tag}
-                        <button
-                          onClick={() => handleRemoveTag(tag)}
-                          className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                    {tags.map((tag) => {
+                      const savedColor = getSavedTagColor(tag);
+                      const isSaved = !!savedColor;
+                      return (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs relative"
+                          style={
+                            isSaved
+                              ? { backgroundColor: savedColor, color: '#FFFFFF' }
+                              : { backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)' }
+                          }
                         >
-                          &times;
-                        </button>
-                      </span>
-                    ))}
+                          {tag}
+                          {/* Save to library button for unsaved tags */}
+                          {!isSaved && (
+                            <button
+                              onClick={(e) => {
+                                if (colorPickerTag === tag) {
+                                  setColorPickerTag(null);
+                                } else {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setPickerPos({ top: rect.bottom + 4, left: rect.left });
+                                  setColorPickerTag(tag);
+                                }
+                              }}
+                              className="ml-0.5 hover:opacity-80"
+                              title="Save to tag library"
+                              style={{ color: 'var(--color-text-secondary)' }}
+                            >
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+                              </svg>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleRemoveTag(tag)}
+                            className="hover:opacity-80"
+                            style={{ color: isSaved ? 'rgba(255,255,255,0.7)' : 'var(--color-text-secondary)' }}
+                          >
+                            &times;
+                          </button>
+                          {/* Color picker rendered via portal to escape overflow clipping */}
+                        </span>
+                      );
+                    })}
                   </div>
+
+                  {/* Tag input with suggestions */}
                   {showTagInput ? (
-                    <input
-                      data-transparent=""
-                      style={{ backgroundColor: 'transparent' }}
-                      type="text"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); setShowTagInput(false); } if (e.key === 'Escape') setShowTagInput(false); }}
-                      onBlur={() => { if (!tagInput.trim()) setShowTagInput(false); }}
-                      placeholder="Type + Enter to add"
-                      className="w-full bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
-                      autoFocus
-                    />
+                    <div className="relative">
+                      <input
+                        data-transparent=""
+                        style={{ backgroundColor: 'transparent' }}
+                        type="text"
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddTag();
+                            setShowTagInput(false);
+                          }
+                          if (e.key === 'Escape') setShowTagInput(false);
+                        }}
+                        onBlur={(e) => {
+                          // Delay to allow clicking suggestions
+                          const relatedTarget = e.relatedTarget as HTMLElement | null;
+                          if (relatedTarget?.closest('[data-tag-suggestions]')) return;
+                          setTimeout(() => {
+                            if (!tagInput.trim()) setShowTagInput(false);
+                          }, 150);
+                        }}
+                        placeholder="Type + Enter to add"
+                        className="w-full bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none ring-0"
+                        autoFocus
+                      />
+                      {/* Saved tag suggestions dropdown */}
+                      {tagInput.trim() && (() => {
+                        const query = tagInput.trim().toLowerCase();
+                        const suggestions = savedTags.filter(
+                          (st) =>
+                            st.name.includes(query) &&
+                            !tags.some((t) => t.toLowerCase() === st.name)
+                        );
+                        if (suggestions.length === 0) return null;
+                        return (
+                          <div
+                            data-tag-suggestions=""
+                            className="mt-1.5 flex flex-wrap gap-1.5"
+                          >
+                            {suggestions.map((st) => (
+                              <button
+                                key={st.name}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  handleAddTag(st.name);
+                                  setShowTagInput(false);
+                                }}
+                                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs transition-opacity hover:opacity-80"
+                                style={{ backgroundColor: st.color, color: '#FFFFFF' }}
+                              >
+                                {st.name}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   ) : (
                     <button
                       onClick={() => setShowTagInput(true)}
@@ -334,6 +481,36 @@ export default function DraftSidebar({
                     >
                       + Add tag
                     </button>
+                  )}
+                  {/* Color picker portal */}
+                  {colorPickerTag && typeof document !== 'undefined' && createPortal(
+                    <div
+                      ref={colorPickerRef}
+                      className="rounded-lg border border-[var(--color-border)] p-2 shadow-lg"
+                      style={{
+                        position: 'fixed',
+                        top: pickerPos.top,
+                        left: pickerPos.left,
+                        zIndex: 9999,
+                        backgroundColor: 'var(--color-bg-card)',
+                      }}
+                    >
+                      <p className="text-[10px] mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
+                        Pick a color
+                      </p>
+                      <div className="flex gap-1.5">
+                        {TAG_COLORS.map((c) => (
+                          <button
+                            key={c.value}
+                            onClick={() => handleSaveTagToLibrary(colorPickerTag, c.value)}
+                            className="h-5 w-5 rounded-full border border-[var(--color-border)] hover:scale-110 transition-transform"
+                            style={{ backgroundColor: c.value }}
+                            title={c.name}
+                          />
+                        ))}
+                      </div>
+                    </div>,
+                    document.body
                   )}
                 </div>
               )}

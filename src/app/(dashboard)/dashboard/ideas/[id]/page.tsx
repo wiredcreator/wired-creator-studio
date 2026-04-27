@@ -125,7 +125,7 @@ export default function IdeaParkingLotPage() {
     try {
       const res = await fetch(`/api/ideas/${ideaId}`);
       if (!res.ok) {
-        router.push('/dashboard/ideas');
+        router.push('/dashboard/ideas/parking-lot');
         return;
       }
       const data: IdeaData = await res.json();
@@ -146,7 +146,7 @@ export default function IdeaParkingLotPage() {
       setOutline(data.outline || '');
       setOutlineSections(data.outlineSections || []);
     } catch {
-      router.push('/dashboard/ideas');
+      router.push('/dashboard/ideas/parking-lot');
     } finally {
       setIsLoading(false);
     }
@@ -414,7 +414,7 @@ export default function IdeaParkingLotPage() {
       {/* Back button */}
       <button
         type="button"
-        onClick={() => router.push('/dashboard/ideas')}
+        onClick={() => router.push('/dashboard/ideas/parking-lot')}
         className="mb-4 flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

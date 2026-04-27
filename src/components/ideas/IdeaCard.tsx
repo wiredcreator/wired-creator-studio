@@ -39,6 +39,8 @@ interface IdeaCardProps {
   /** Multi-select checkbox mode for suggested cards */
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
+  /** User's saved tag library for color lookup */
+  savedTags?: Array<{ name: string; color: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +122,7 @@ export default function IdeaCard({
   animationClass,
   isSelected,
   onToggleSelect,
+  savedTags,
 }: IdeaCardProps) {
   const { formatDate } = useTimezone();
   const isSuggested = variant === 'suggested';
@@ -235,14 +238,21 @@ export default function IdeaCard({
         {/* Tags row */}
         {idea.tags && idea.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {idea.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center rounded-[var(--radius-full)] border border-[var(--color-border)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--color-text-secondary)]"
-              >
-                {tag}
-              </span>
-            ))}
+            {idea.tags.map((tag) => {
+              const saved = savedTags?.find((s) => s.name === tag.toLowerCase());
+              return (
+                <span
+                  key={tag}
+                  className="inline-flex items-center rounded-[var(--radius-full)] px-2.5 py-0.5 text-[11px] font-medium"
+                  style={saved
+                    ? { backgroundColor: saved.color, color: '#FFFFFF' }
+                    : { border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }
+                  }
+                >
+                  {tag}
+                </span>
+              );
+            })}
           </div>
         )}
 
