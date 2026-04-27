@@ -71,15 +71,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Build initial resource from description if provided
+    const description = body.description || '';
+    const resources = body.resources || (description ? [{
+      type: 'text',
+      source: 'written',
+      name: 'AI-generated concept brief',
+      content: description,
+    }] : []);
+
     const idea = await ContentIdea.create({
       userId: user.id,
       title,
-      description: body.description || '',
+      description,
       status: body.status || 'suggested',
       source,
       trendData: body.trendData,
       contentPillar: body.contentPillar || '',
       tags: body.tags || [],
+      resources,
     });
 
     // Fire-and-forget XP award
