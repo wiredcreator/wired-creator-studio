@@ -72,15 +72,15 @@ export async function POST(request: NextRequest) {
     // Save all generated ideas to MongoDB
     const savedIdeas = await ContentIdea.insertMany(
       generatedIdeas.map((idea) => {
-        // Build initial resource from description + angle so detail page isn't empty
+        // Build initial resource from the AI-generated concept brief
         const resources: Array<{ type: string; source: string; name: string; content: string }> = [];
-        const descriptionContent = [idea.description, idea.angle].filter(Boolean).join('\n\n');
-        if (descriptionContent) {
+        const briefContent = idea.conceptBrief || [idea.description, idea.angle].filter(Boolean).join('\n\n');
+        if (briefContent) {
           resources.push({
             type: 'text',
             source: 'written',
             name: 'AI-generated concept brief',
-            content: descriptionContent,
+            content: briefContent,
           });
         }
 

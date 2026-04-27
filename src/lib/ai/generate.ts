@@ -408,7 +408,7 @@ export async function generateIdeas(
   const response = await withRetry(() =>
     client.messages.create({
       model: CLAUDE_MODEL,
-      max_tokens: 2048,
+      max_tokens: 4096,
       system: ideaSystemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     })

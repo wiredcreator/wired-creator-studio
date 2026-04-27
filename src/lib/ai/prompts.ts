@@ -224,7 +224,8 @@ Respond ONLY with a valid JSON array:
     "title": "Concrete YouTube Title Here",
     "description": "2-3 sentence description of the video concept and why it works.",
     "contentPillar": "The content pillar this maps to",
-    "angle": "What makes this take unique or timely"
+    "angle": "What makes this take unique or timely",
+    "conceptBrief": "A detailed 2-3 paragraph concept brief that a creator can use to start developing this video. Paragraph 1: The core premise and why this topic matters to the target audience right now. What problem does it solve or what curiosity does it tap into? Paragraph 2: The suggested structure or narrative arc. How should the video flow? What are the key beats, examples, or stories to include? Paragraph 3: What makes this video stand out from similar content. The unique hook, the creator's personal angle, and the specific call-to-action or takeaway for viewers."
   }
 ]`;
 

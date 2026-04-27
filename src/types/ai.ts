@@ -31,6 +31,7 @@ export interface GeneratedIdea {
   description: string;
   contentPillar: string;
   angle: string;
+  conceptBrief: string;
 }
 
 /** A section within a generated script. */
