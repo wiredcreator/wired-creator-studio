@@ -26,6 +26,16 @@ if (!global.mongooseCache) {
   global.mongooseCache = cached;
 }
 
+// Models referenced via .populate() must be registered before queries run.
+// In Vercel serverless, each route bundles independently and top-level
+// side-effect imports get tree-shaken. Registering here inside the function
+// that every route calls guarantees schemas exist before any populate.
+function ensureModelsRegistered() {
+  if (!mongoose.models.ContentIdea) require('@/models/ContentIdea');
+  if (!mongoose.models.ToneOfVoiceGuide) require('@/models/ToneOfVoiceGuide');
+  if (!mongoose.models.User) require('@/models/User');
+}
+
 async function dbConnect(): Promise<typeof mongoose> {
   if (!MONGODB_URI) {
     throw new Error(
@@ -34,6 +44,7 @@ async function dbConnect(): Promise<typeof mongoose> {
   }
 
   if (cached.conn) {
+    ensureModelsRegistered();
     return cached.conn;
   }
 
@@ -54,6 +65,7 @@ async function dbConnect(): Promise<typeof mongoose> {
     throw e;
   }
 
+  ensureModelsRegistered();
   return cached.conn;
 }
 

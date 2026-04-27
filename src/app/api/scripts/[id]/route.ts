@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Script from '@/models/Script';
-import ContentIdea from '@/models/ContentIdea';
-// Ensure ContentIdea schema is registered for .populate('ideaId')
-void ContentIdea;
 import { createNotification, notifyAdmins } from '@/lib/notifications';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { validateObjectId } from '@/lib/validation';
