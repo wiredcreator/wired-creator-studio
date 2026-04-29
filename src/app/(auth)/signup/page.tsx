@@ -1,27 +1,16 @@
 'use client';
 
-import { useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
-  );
-}
-
-function LoginForm() {
-  const searchParams = useSearchParams();
+export default function SignupPage() {
   const router = useRouter();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const urlError = searchParams.get('error');
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -29,21 +18,22 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
       });
 
-      if (result?.error) {
-        setError('Invalid email or password.');
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Something went wrong.');
         setLoading(false);
         return;
       }
 
-      const redirectRes = await fetch('/api/auth/post-login-redirect');
-      const { redirectTo } = await redirectRes.json();
-      router.push(redirectTo || '/dashboard');
+      // Redirect to login with success message
+      router.push('/login?signup=success');
     } catch {
       setError('Something went wrong. Please try again.');
       setLoading(false);
@@ -53,50 +43,8 @@ function LoginForm() {
   return (
     <div>
       <h2 style={{ fontSize: 24, fontWeight: 600, color: '#1A1A2E', marginBottom: 32, textAlign: 'center' }}>
-        Sign In
+        Create Account
       </h2>
-
-      {searchParams.get('signup') === 'success' && (
-        <div style={{
-          marginBottom: 20,
-          borderRadius: 12,
-          border: '1px solid rgba(34,139,34,0.2)',
-          backgroundColor: 'rgba(34,139,34,0.05)',
-          padding: '12px 16px',
-          fontSize: 13,
-          color: '#228B22',
-        }}>
-          Account created successfully. Sign in below.
-        </div>
-      )}
-
-      {urlError === 'expired' && (
-        <div style={{
-          marginBottom: 20,
-          borderRadius: 12,
-          border: '1px solid rgba(220,53,53,0.2)',
-          backgroundColor: 'rgba(220,53,53,0.05)',
-          padding: '12px 16px',
-          fontSize: 13,
-          color: '#DC3535',
-        }}>
-          This login link has expired. Please request a new one.
-        </div>
-      )}
-
-      {urlError === 'invalid' && (
-        <div style={{
-          marginBottom: 20,
-          borderRadius: 12,
-          border: '1px solid rgba(220,53,53,0.2)',
-          backgroundColor: 'rgba(220,53,53,0.05)',
-          padding: '12px 16px',
-          fontSize: 13,
-          color: '#DC3535',
-        }}>
-          This login link is invalid. Please request a new one.
-        </div>
-      )}
 
       {error && (
         <div style={{
@@ -113,6 +61,32 @@ function LoginForm() {
       )}
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div>
+          <label htmlFor="name" style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#555770', marginBottom: 6 }}>
+            Full name
+          </label>
+          <input
+            id="name"
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            style={{
+              width: '100%',
+              height: 44,
+              borderRadius: 12,
+              border: '1px solid rgba(0,0,0,0.12)',
+              backgroundColor: '#FFFFFF',
+              padding: '0 14px',
+              fontSize: 14,
+              color: '#1A1A2E',
+              boxSizing: 'border-box',
+              outline: 'none',
+            }}
+          />
+        </div>
+
         <div>
           <label htmlFor="email" style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#555770', marginBottom: 6 }}>
             Email address
@@ -147,9 +121,10 @@ function LoginForm() {
             id="password"
             type="password"
             required
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
+            placeholder="At least 8 characters"
             style={{
               width: '100%',
               height: 44,
@@ -181,13 +156,13 @@ function LoginForm() {
             opacity: loading ? 0.6 : 1,
           }}
         >
-          {loading ? 'Signing in...' : 'Sign in'}
+          {loading ? 'Creating account...' : 'Create account'}
         </button>
       </form>
 
-      <div style={{ textAlign: 'center', marginTop: 20, display: 'flex', justifyContent: 'center', gap: 16 }}>
+      <div style={{ textAlign: 'center', marginTop: 20 }}>
         <Link
-          href="/forgot-password"
+          href="/login"
           style={{
             fontSize: 13,
             fontWeight: 500,
@@ -195,18 +170,7 @@ function LoginForm() {
             textDecoration: 'none',
           }}
         >
-          Forgot password?
-        </Link>
-        <Link
-          href="/signup"
-          style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: '#4A90D9',
-            textDecoration: 'none',
-          }}
-        >
-          Create an account
+          Already have an account? Sign in
         </Link>
       </div>
     </div>

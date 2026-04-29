@@ -17,9 +17,9 @@ export default async function DashboardLayout({
   const session = await auth();
 
   // If not authenticated, the middleware already handles redirect to /login.
-  // This is a safety fallback.
+  // Use signout param so middleware doesn't redirect back (avoids redirect loop).
   if (!session?.user?.id) {
-    redirect('/login');
+    redirect('/login?signout=1');
   }
 
   // Fetch the user from MongoDB to check onboarding status

@@ -20,7 +20,7 @@ export default auth((req) => {
     pathname.startsWith('/side-quests') ||
     pathname.startsWith('/brand-brain') ||
     pathname.startsWith('/brain-dump');
-  const isAuthRoute = pathname === '/login' || pathname === '/verify';
+  const isAuthRoute = pathname === '/login' || pathname === '/verify' || pathname === '/signup';
 
   // Redirect authenticated users away from auth pages (unless forced by signout param)
   if (isAuthRoute && isLoggedIn) {
@@ -52,6 +52,7 @@ export const config = {
     '/dashboard/:path*',
     '/admin/:path*',
     '/login',
+    '/signup',
     '/verify',
     '/onboarding',
     '/onboarding/:path*',
