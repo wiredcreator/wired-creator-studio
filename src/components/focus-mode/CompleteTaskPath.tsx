@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTimezone } from '@/hooks/useTimezone';
+import { dispatchXPUpdate } from '@/lib/xp-events';
 
 interface TaskComment {
   _id: string;
@@ -714,6 +715,7 @@ export default function CompleteTaskPath() {
         setTasks((prev) =>
           prev.map((t) => (t._id === task._id ? { ...t, status: 'completed' } : t))
         );
+        dispatchXPUpdate();
         // If we were viewing this task's detail, go back to list
         if (selectedTask?._id === task._id) {
           setSelectedTask(null);

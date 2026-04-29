@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
+import { dispatchXPUpdate } from '@/lib/xp-events';
 
 type Mode = null | 'voice' | 'write' | 'upload';
 
@@ -329,6 +330,7 @@ export default function BrainDumpFAB() {
       });
       if (!res.ok) throw new Error('Failed to save');
 
+      dispatchXPUpdate();
       setSaved(true);
       setShowRouting(false);
       setTimeout(() => handleClose(), 1500);

@@ -7,6 +7,7 @@ import { useTimezone } from '@/hooks/useTimezone';
 import ModalPortal from '@/components/ModalPortal';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
+import { dispatchXPUpdate } from '@/lib/xp-events';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -366,6 +367,7 @@ export default function ScriptEditor({
         }),
       });
       if (!res.ok) throw new Error('Failed to duplicate');
+      dispatchXPUpdate();
       setDuplicateSuccess(true);
       setTimeout(() => setDuplicateSuccess(false), 3000);
     } catch (err) {

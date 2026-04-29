@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import BrainDumpResults from '@/components/brain-dump/BrainDumpResults';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
+import { dispatchXPUpdate } from '@/lib/xp-events';
 
 interface ExtractedData {
   contentIdeas: {
@@ -191,6 +192,7 @@ export default function BrainDumpPath() {
       }
 
       const data = await res.json();
+      dispatchXPUpdate();
       setExtractedData(data.extracted);
       setTranscript('');
       setTitle('');

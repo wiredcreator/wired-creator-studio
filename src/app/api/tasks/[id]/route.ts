@@ -40,6 +40,9 @@ export async function PUT(
       );
     }
 
+    // Capture previous status before mutation (used for idempotent XP guard)
+    const previousStatus = task.status;
+
     // Apply updates
     if (body.title !== undefined) task.title = body.title;
     if (body.description !== undefined) task.description = body.description;
@@ -112,8 +115,8 @@ export async function PUT(
       });
     }
 
-    // Fire-and-forget XP award when task is completed
-    if (body.status === 'completed') {
+    // Fire-and-forget XP award when task is newly completed (skip if already completed)
+    if (body.status === 'completed' && previousStatus !== 'completed') {
       awardXP(task.userId.toString(), 'complete_task', { taskId: id }).catch((err) =>
         console.error('[XP] Failed to award complete_task XP:', err)
       );

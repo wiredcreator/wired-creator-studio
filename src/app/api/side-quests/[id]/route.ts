@@ -38,6 +38,9 @@ export async function PUT(
       );
     }
 
+    // Snapshot completion state before any mutation (used for XP idempotency guard)
+    const wasAlreadyCompleted = quest.completed === true;
+
     // Add response text
     if (body.response !== undefined) {
       if (typeof body.response !== 'string') {
@@ -63,7 +66,7 @@ export async function PUT(
 
     // Fire-and-forget XP award when side quest is completed.
     // Use the quest's AI-assigned xpReward as the points override.
-    if (body.completed === true) {
+    if (body.completed === true && !wasAlreadyCompleted) {
       const questXP = quest.xpReward ?? undefined;
       awardXP(user.id, 'complete_side_quest', { questId: id }, questXP).catch((err) =>
         console.error('[XP] Failed to award complete_side_quest XP:', err)

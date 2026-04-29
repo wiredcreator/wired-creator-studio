@@ -53,6 +53,46 @@
   --shadow-glow: 0 0 20px rgba(74, 144, 217, 0.15);
 }
 
+/* ── Light Theme (explicit override for nested elements when root is dark) ── */
+[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: #ECEEF3;
+  --color-bg-primary: #ECEEF3;
+  --color-bg-secondary: #E3E5EC;
+  --color-bg-card: #FFFFFF;
+  --color-bg-sidebar: #ECEEF3;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-dark: #ECEEF3;
+
+  --color-text: #1A1A2E;
+  --color-text-primary: #1A1A2E;
+  --color-text-secondary: #555770;
+  --color-text-muted: #8B8D9E;
+  --color-text-inverse: #FFFFFF;
+
+  --color-accent: #4A90D9;
+  --color-accent-hover: #3A7BC8;
+  --color-accent-light: rgba(74, 144, 217, 0.10);
+  --color-accent-subtle: rgba(74, 144, 217, 0.05);
+
+  --color-success: #2EA66E;
+  --color-success-light: rgba(46, 166, 110, 0.10);
+  --color-warning: #D49B1F;
+  --color-warning-light: rgba(212, 155, 31, 0.10);
+  --color-error: #DC3535;
+  --color-error-light: rgba(220, 53, 53, 0.10);
+
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-light: rgba(0, 0, 0, 0.04);
+
+  --color-hover: rgba(0, 0, 0, 0.04);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.10);
+  --shadow-glow: 0 0 20px rgba(74, 144, 217, 0.15);
+}
+
 /* ── Dark Theme ── */
 [data-theme="dark"] {
   --color-bg: #0C0D12;

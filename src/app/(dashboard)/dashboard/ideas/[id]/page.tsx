@@ -8,6 +8,7 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import DraftSidebar from '@/components/focus-mode/draft/DraftSidebar';
 import FindSourcesPanel from '@/components/focus-mode/draft/FindSourcesPanel';
 import type { IConceptAnswers, INote, IComment, IResource, IOutlineSection } from '@/models/ContentIdea';
+import { dispatchXPUpdate } from '@/lib/xp-events';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { useTimezone } from "@/hooks/useTimezone";
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
@@ -381,6 +382,7 @@ export default function IdeaParkingLotPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'scripted' }),
         });
+        dispatchXPUpdate();
         router.push('/dashboard/scripts');
       } else {
         showError('Failed to generate script. Please try again.');
@@ -552,6 +554,7 @@ export default function IdeaParkingLotPage() {
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ status: 'scripted' }),
                     });
+                    dispatchXPUpdate();
                     router.push('/dashboard/scripts');
                   } else {
                     showError('Failed to generate script. Please try again.');

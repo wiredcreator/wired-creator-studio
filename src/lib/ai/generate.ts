@@ -8,7 +8,7 @@ import {
   IDEA_GENERATION_SYSTEM_PROMPT,
   SCRIPT_GENERATION_SYSTEM_PROMPT,
   VOICE_STORMING_PROCESSING_PROMPT,
-  SIDE_QUEST_GENERATION_PROMPT,
+  buildSideQuestGenerationPrompt,
   CONTENT_PILLAR_GENERATION_PROMPT,
   PERSONAL_BASELINE_PROCESSING_PROMPT,
 } from './prompts';
@@ -21,6 +21,7 @@ import type {
   GeneratedSideQuest,
 } from '@/types/ai';
 import dbConnect from '@/lib/db';
+import { getXPConfig } from '@/lib/xp-config';
 import AIDocument from '@/models/AIDocument';
 import type { AIDocumentCategory } from '@/models/AIDocument';
 import BrandBrain from '@/models/BrandBrain';
@@ -746,7 +747,10 @@ export async function generateSideQuests(
 
   const userMessage = contextParts.join('\n\n---\n\n');
 
-  const sideQuestSystemPrompt = await buildSystemPrompt(SIDE_QUEST_GENERATION_PROMPT, 'side_quest_generation', userId);
+  const xpConfig = await getXPConfig();
+  const xpMin = xpConfig.sideQuestMin;
+  const xpMax = xpConfig.sideQuestMax;
+  const sideQuestSystemPrompt = await buildSystemPrompt(buildSideQuestGenerationPrompt(xpMin, xpMax), 'side_quest_generation', userId);
 
   const startMs = Date.now();
   const response = await withRetry(() =>
@@ -787,7 +791,7 @@ export async function generateSideQuests(
       description: (q.description as string).trim(),
       type: q.type as GeneratedSideQuest['type'],
       prompt: (q.prompt as string).trim(),
-      xpReward: Math.min(25, Math.max(5, Number(q.xpReward) || 15)),
+      xpReward: Math.min(xpMax, Math.max(xpMin, Number(q.xpReward) || Math.round((xpMin + xpMax) / 2))),
       estimatedMinutes: Math.min(60, Math.max(2, Number(q.estimatedMinutes) || 10)),
       category: VALID_CATEGORIES.includes(q.category as string)
         ? (q.category as GeneratedSideQuest['category'])

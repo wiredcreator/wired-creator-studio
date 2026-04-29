@@ -1,29 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import NotificationBell from "@/components/NotificationBell";
-
-interface XPData {
-  lifetimeXP: number;
-}
+import { useXP } from "@/hooks/useXP";
 
 export default function DashboardHeader() {
-  const [xp, setXP] = useState<XPData>({ lifetimeXP: 0 });
-
-  useEffect(() => {
-    async function fetchXP() {
-      try {
-        const res = await fetch("/api/xp");
-        if (res.ok) {
-          const data = await res.json();
-          setXP({ lifetimeXP: data.lifetimeXP ?? data.totalXP ?? 0 });
-        }
-      } catch {
-        // silent fail
-      }
-    }
-    fetchXP();
-  }, []);
+  const { xp } = useXP();
 
   return (
     <header

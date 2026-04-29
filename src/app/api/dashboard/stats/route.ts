@@ -21,7 +21,7 @@ export async function GET() {
       Task.countDocuments({ userId }),
       ContentIdea.countDocuments({ userId, status: { $nin: ['suggested', 'rejected'] } }),
       Script.countDocuments({ userId }),
-      SideQuest.countDocuments({ userId }),
+      SideQuest.countDocuments({ userId, completed: true }),
     ]);
 
     return NextResponse.json({

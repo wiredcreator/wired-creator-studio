@@ -3,6 +3,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import ModalPortal from '@/components/ModalPortal';
 import { useTimezone } from '@/hooks/useTimezone';
+import { dispatchXPUpdate } from '@/lib/xp-events';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -246,6 +247,7 @@ function VideoDetailModal({
       });
       if (!res.ok) throw new Error('Failed to save idea');
       setSavedIdx((prev) => new Set(prev).add(idx));
+      dispatchXPUpdate();
     } catch (err) {
       console.error('Failed to save idea:', err);
     } finally {
@@ -1078,6 +1080,7 @@ const ContentScout = forwardRef<ContentScoutHandle, { userId: string }>(function
         prev.filter((idea) => !selectedUniqueIds.has(idea._id || idea.title))
       );
       setSelectedUniqueIds(new Set());
+      dispatchXPUpdate();
     } catch (err) {
       console.error('Failed to bulk save unique ideas:', err);
     } finally {

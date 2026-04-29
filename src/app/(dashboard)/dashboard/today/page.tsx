@@ -6,6 +6,7 @@ import TaskCard, { TaskData } from "@/components/tasks/TaskCard";
 import TaskDetailModal from "@/components/tasks/TaskDetailModal";
 import { useTimezone } from "@/hooks/useTimezone";
 import { getLocalDateISO as getLocalDateISOForTz } from "@/lib/format-date";
+import { dispatchXPUpdate } from "@/lib/xp-events";
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<TaskData[]>([]);
@@ -81,6 +82,9 @@ export default function DashboardPage() {
       setTasks((prev) => prev.map((t) => (t._id === taskId ? updated : t)));
       if (selectedTask && selectedTask._id === taskId) {
         setSelectedTask(updated);
+      }
+      if (newStatus === "completed") {
+        dispatchXPUpdate();
       }
     } catch {
       fetchTasks();

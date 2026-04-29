@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTimezone } from "@/hooks/useTimezone";
 import PageWrapper from '@/components/PageWrapper';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
+import { dispatchXPUpdate } from '@/lib/xp-events';
 
 interface VoiceStormSession {
   _id: string;
@@ -402,6 +403,7 @@ export default function VoiceStormPage() {
         if (newId) {
           // Clear draft since we've saved successfully
           localStorage.removeItem(DRAFT_KEY);
+          dispatchXPUpdate();
           // Process in background, then navigate
           fetch(`/api/voice-storming/${newId}/process`, { method: 'POST' }).catch(() => {});
           router.push(`/dashboard/voice-storm/${newId}`);

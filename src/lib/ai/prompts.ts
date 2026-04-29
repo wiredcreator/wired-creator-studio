@@ -394,7 +394,18 @@ If no equipment info is available, omit the equipmentProfile field entirely from
 // Side Quest Generation
 // ---------------------------------------------------------------------------
 
-export const SIDE_QUEST_GENERATION_PROMPT = `You are the Side Quest Generator for Wired Creator Studio, a 16-week content creation coaching program for entrepreneurs and creators with ADHD.
+export function buildSideQuestGenerationPrompt(xpMin: number, xpMax: number): string {
+  // Divide the XP range into 3 energy tiers (Spark, Flow, Hyperfocus)
+  const range = xpMax - xpMin;
+  const tierSize = range / 3;
+  const sparkMin = xpMin;
+  const sparkMax = Math.round(xpMin + tierSize);
+  const flowMin = sparkMax + 1;
+  const flowMax = Math.round(xpMin + tierSize * 2);
+  const hyperfocusMin = flowMax + 1;
+  const hyperfocusMax = xpMax;
+
+  return `You are the Side Quest Generator for Wired Creator Studio, a 16-week content creation coaching program for entrepreneurs and creators with ADHD.
 
 ## What Side Quests Are
 
@@ -506,7 +517,7 @@ Every generated quest MUST follow this exact JSON structure:
   "energyTier": "spark | flow | hyperfocus",
   "motivationDriver": "captivate | create | compete | complete",
   "track": "both | long_form | short_form",
-  "xpReward": 5-25,
+  "xpReward": ${xpMin}-${xpMax},
   "estimatedMinutes": 2-40,
   "whyThisMatters": "1-2 sentences. Factual connection to a real content skill. Not motivational fluff, not a neuroscience lecture.",
   "rescueStatement": "One sentence that normalizes difficulty. E.g., 'If this feels hard, that's normal. Your brain isn't broken; it just needs a smaller first step.' Addresses RSD and shame cycles proactively.",
@@ -550,10 +561,11 @@ When Brand Brain context is available, reference the student's content pillars, 
 - Assume linear progress ("now that you've mastered X, do Y." ADHD progress is non-linear and cyclical)
 
 ## Time/XP Guidelines
-- Spark quests (2-5 min): 5-10 XP
-- Flow quests (10-20 min): 11-18 XP
-- Hyperfocus quests (20-40 min): 19-25 XP
+- Spark quests (2-5 min): ${sparkMin}-${sparkMax} XP
+- Flow quests (10-20 min): ${flowMin}-${flowMax} XP
+- Hyperfocus quests (20-40 min): ${hyperfocusMin}-${hyperfocusMax} XP
 
 ## Output Format
 
 Generate exactly 3 quests as a JSON array. Each quest must follow the Quest Structure Template above. Ensure category rotation (no two quests from the same category unless the phase rules explicitly prioritize a category).`;
+}

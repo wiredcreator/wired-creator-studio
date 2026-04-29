@@ -8,6 +8,7 @@ import ScriptCard from '@/components/scripts/ScriptCard';
 import ScriptEditor from '@/components/scripts/ScriptEditor';
 import type { ScriptCardData } from '@/components/scripts/ScriptCard';
 import type { ScriptEditorData, ScriptSection } from '@/components/scripts/ScriptEditor';
+import { dispatchXPUpdate } from '@/lib/xp-events';
 import type { ScriptStatus } from '@/models/Script';
 
 // ---------------------------------------------------------------------------
@@ -207,6 +208,7 @@ export default function ScriptsPage() {
       setShowGenerateForm(false);
       setSelectedIdeaId('');
       setSelectedTranscriptId('');
+      dispatchXPUpdate();
 
       // Open the editor immediately
       handleOpenEditor(newScript._id);
@@ -313,6 +315,7 @@ export default function ScriptsPage() {
 
       const newScript = await res.json();
       setScripts((prev) => [newScript, ...prev]);
+      dispatchXPUpdate();
       handleOpenEditor(newScript._id);
     } catch (err) {
       console.error('Failed to regenerate script:', err);

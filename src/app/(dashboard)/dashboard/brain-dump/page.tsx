@@ -6,6 +6,7 @@ import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { useTimezone } from "@/hooks/useTimezone";
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
+import { dispatchXPUpdate } from '@/lib/xp-events';
 
 interface ExtractedData {
   contentIdeas: {
@@ -332,6 +333,7 @@ export default function BrainDumpPage() {
       }
 
       const data = await res.json();
+      dispatchXPUpdate();
       const transcript = text.trim();
       setText('');
       setAttachedFile(null);

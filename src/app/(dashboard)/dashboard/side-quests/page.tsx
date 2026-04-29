@@ -6,6 +6,7 @@ import SideQuestCard from '@/components/side-quests/SideQuestCard';
 import SideQuestXPSidebar from '@/components/side-quests/SideQuestXPSidebar';
 import QuestCompletionCelebration from '@/components/side-quests/QuestCompletionCelebration';
 import type { SideQuestCardData } from '@/components/side-quests/SideQuestCard';
+import { dispatchXPUpdate } from '@/lib/xp-events';
 
 // ---------------------------------------------------------------------------
 // Page Component
@@ -144,6 +145,7 @@ export default function SideQuestsPage() {
       setQuests((prev) =>
         prev.map((q) => (q._id === id ? { ...q, ...updated } : q))
       );
+      dispatchXPUpdate();
     } catch (err) {
       console.error('Failed to complete quest:', err);
       // Revert on failure

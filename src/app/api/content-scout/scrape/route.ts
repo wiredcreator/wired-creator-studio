@@ -11,6 +11,8 @@ import { withRetry } from '@/lib/retry';
 import { trackAIUsage } from '@/lib/ai/usage-tracker';
 import { resolveChannelId, getChannelRSSUrl, getVideoThumbnail } from '@/lib/youtube-utils';
 import { assembleBrandBrainContext } from '@/lib/ai/brand-brain-context';
+import { timezoneToCountryCode } from '@/lib/timezone-country';
+import User from '@/models/User';
 import type { ICachedVideo } from '@/models/YouTubeChannelCache';
 
 const CACHE_DURATION_MS = 12 * 60 * 60 * 1000; // 12 hours
@@ -155,6 +157,83 @@ async function filterOutShorts(videos: ICachedVideo[]): Promise<ICachedVideo[]> 
   return results.filter((v): v is ICachedVideo => v !== null);
 }
 
+// --- YouTube Data API country restriction filter ---
+
+interface YouTubeContentDetails {
+  regionRestriction?: {
+    allowed?: string[];
+    blocked?: string[];
+  };
+}
+
+interface YouTubeVideoItem {
+  id: string;
+  contentDetails: YouTubeContentDetails;
+}
+
+interface YouTubeVideosResponse {
+  items: YouTubeVideoItem[];
+}
+
+/**
+ * Filters out videos that are region-restricted for the given country code.
+ * Only runs if YOUTUBE_DATA_API_KEY env var is set.
+ * On any error, returns the original list (never breaks the pipeline).
+ */
+async function filterCountryRestricted(
+  videos: ICachedVideo[],
+  countryCode: string
+): Promise<ICachedVideo[]> {
+  const apiKey = process.env.YOUTUBE_DATA_API_KEY;
+  if (!apiKey || videos.length === 0 || !countryCode) return videos;
+
+  try {
+    // Batch video IDs (max 50 per API call)
+    const videoIds = videos.map((v) => v.videoId).join(',');
+    const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${apiKey}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      console.error('YouTube Data API error:', res.status, await res.text().catch(() => ''));
+      return videos;
+    }
+
+    const data = (await res.json()) as YouTubeVideosResponse;
+
+    // Build a set of blocked video IDs
+    const blockedIds = new Set<string>();
+
+    for (const item of data.items || []) {
+      const restriction = item.contentDetails?.regionRestriction;
+      if (!restriction) continue; // No restriction, keep video
+
+      if (restriction.blocked && restriction.blocked.includes(countryCode)) {
+        blockedIds.add(item.id);
+      } else if (restriction.allowed && !restriction.allowed.includes(countryCode)) {
+        blockedIds.add(item.id);
+      }
+    }
+
+    if (blockedIds.size > 0) {
+      console.log(`Country filter (${countryCode}): removed ${blockedIds.size} region-restricted video(s)`);
+    }
+
+    return videos.filter((v) => !blockedIds.has(v.videoId));
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.error('YouTube Data API request timed out');
+    } else {
+      console.error('YouTube Data API country filter failed (continuing without filter):', err);
+    }
+    return videos;
+  }
+}
+
 // --- Relevance filter via Claude ---
 
 async function filterRelevantVideos(
@@ -296,12 +375,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Country restriction filter — remove videos unavailable in the user's country
+    let countryFilteredVideos = allVideos;
+    if (process.env.YOUTUBE_DATA_API_KEY) {
+      const userDoc = await User.findById(userId).select('timezone').lean();
+      const countryCode = timezoneToCountryCode(userDoc?.timezone || '');
+      if (countryCode) {
+        countryFilteredVideos = await filterCountryRestricted(allVideos, countryCode);
+      }
+    }
+
     // Relevance filter — remove off-topic videos using Brand Brain niche
     const brandBrain = await BrandBrain.findOne({ userId }).lean();
     const niche = brandBrain?.industryData?.field || '';
     const nicheKeywords = brandBrain?.industryData?.keywords || [];
 
-    const relevantVideos = await filterRelevantVideos(allVideos, niche, nicheKeywords, userId);
+    const relevantVideos = await filterRelevantVideos(countryFilteredVideos, niche, nicheKeywords, userId);
 
     // Sort by publishedAt desc, take top 15
     const sortedVideos = relevantVideos

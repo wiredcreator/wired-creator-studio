@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { onXPUpdate } from "@/lib/xp-events";
 
 interface BreakdownEntry {
   action: string;
@@ -30,23 +31,25 @@ export default function XPBreakdown() {
   const [totalXP, setTotalXP] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchBreakdown() {
-      try {
-        const res = await fetch("/api/xp/breakdown");
-        if (res.ok) {
-          const data = await res.json();
-          setBreakdown(data.breakdown || []);
-          setTotalXP(data.totalXP || 0);
-        }
-      } catch {
-        // Silently fail, show empty state
-      } finally {
-        setLoading(false);
+  const fetchBreakdown = useCallback(async () => {
+    try {
+      const res = await fetch("/api/xp/breakdown");
+      if (res.ok) {
+        const data = await res.json();
+        setBreakdown(data.breakdown || []);
+        setTotalXP(data.totalXP || 0);
       }
+    } catch {
+      // Silently fail, show empty state
+    } finally {
+      setLoading(false);
     }
-    fetchBreakdown();
   }, []);
+
+  useEffect(() => {
+    fetchBreakdown();
+    return onXPUpdate(fetchBreakdown);
+  }, [fetchBreakdown]);
 
   if (loading) {
     return (

@@ -8,6 +8,7 @@ import IdeaDetail from '@/components/ideas/IdeaDetail';
 import IdeaStats from '@/components/ideas/IdeaStats';
 import ContentScout from '@/components/ideas/ContentScout';
 import type { ContentScoutHandle } from '@/components/ideas/ContentScout';
+import { dispatchXPUpdate } from '@/lib/xp-events';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import type { IdeaCardData } from '@/components/ideas/IdeaCard';
 import type { ContentIdeaStatus } from '@/models/ContentIdea';
@@ -307,6 +308,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
       const data = await res.json();
       if (data.ideas) {
         setSuggestedIdeas((prev) => [...data.ideas, ...prev]);
+        dispatchXPUpdate();
       }
     } catch (err) {
       console.error('Failed to generate ideas:', err);
@@ -531,6 +533,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
 
       const newIdea: IdeaCardData = await res.json();
       setIdeas((prev) => [newIdea, ...prev]);
+      dispatchXPUpdate();
 
       // Reset form and go to parking lot to see the new idea
       setManualTitle('');
@@ -621,6 +624,7 @@ export function IdeasPageInner({ initialView = 'entry' }: { initialView?: IdeasV
       });
       if (!res.ok) throw new Error('Failed to create idea');
       const newIdea = await res.json();
+      dispatchXPUpdate();
       router.push(`/dashboard/ideas/${newIdea._id}`);
     } catch (err) {
       console.error('Failed to create new idea:', err);

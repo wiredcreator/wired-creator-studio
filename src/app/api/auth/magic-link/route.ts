@@ -48,15 +48,23 @@ export async function POST(req: NextRequest) {
       const emailSent = await sendLoginLinkEmail(normalizedEmail, existingUser.name, plainToken);
       console.log('[MagicLink] Email sent:', emailSent);
     } else {
-      // New user: require Stripe payment before account creation
-      const stripeResult = await checkPaidCustomer(normalizedEmail);
-      const customerName = stripeResult.customerName || '';
-      const customerId = stripeResult.customerId || '';
-      console.log('[MagicLink] New user signup:', normalizedEmail, '| Stripe:', stripeResult.isPaid ? 'paid' : 'no payment');
+      // New user: check for free signup bypass or require Stripe payment
+      const freeSignups = process.env.ALLOW_FREE_SIGNUPS === 'true';
+      let customerName = '';
+      let customerId = '';
 
-      if (!stripeResult.isPaid) {
-        // No payment found; return same generic message to avoid email enumeration
-        return NextResponse.json({ message: RESPONSE_MESSAGE });
+      if (freeSignups) {
+        console.log('[MagicLink] Free signups enabled, skipping Stripe check for:', normalizedEmail);
+      } else {
+        const stripeResult = await checkPaidCustomer(normalizedEmail);
+        customerName = stripeResult.customerName || '';
+        customerId = stripeResult.customerId || '';
+        console.log('[MagicLink] New user signup:', normalizedEmail, '| Stripe:', stripeResult.isPaid ? 'paid' : 'no payment');
+
+        if (!stripeResult.isPaid) {
+          // No payment found; return same generic message to avoid email enumeration
+          return NextResponse.json({ message: RESPONSE_MESSAGE });
+        }
       }
 
       // Generate token

@@ -5,6 +5,7 @@ import StatCard from "@/components/dashboard/StatCard";
 import XPStreakCard from "@/components/dashboard/XPStreakCard";
 import WeeklyProgress from "@/components/dashboard/WeeklyProgress";
 import XPBreakdown from "@/components/dashboard/XPBreakdown";
+import { useXP } from "@/hooks/useXP";
 
 interface DashboardStats {
   tasks: number;
@@ -14,51 +15,36 @@ interface DashboardStats {
   userName: string;
 }
 
-interface XPData {
-  lifetimeXP: number;
-  currentStreak: number;
-  bestStreak: number;
-}
-
 function getGreeting(): string {
   return "Welcome back";
 }
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [xp, setXP] = useState<XPData>({ lifetimeXP: 0, currentStreak: 0, bestStreak: 0 });
-  const [loading, setLoading] = useState(true);
+  const { xp, loading: xpLoading } = useXP();
+  const [statsLoading, setStatsLoading] = useState(true);
+
   useEffect(() => {
-    async function fetchDashboard() {
-      setLoading(true);
-
-      // Fetch stats and XP in parallel
-      const [statsRes, xpRes] = await Promise.all([
-        fetch("/api/dashboard/stats").catch(() => null),
-        fetch("/api/xp").catch(() => null),
-      ]);
-
-      if (statsRes?.ok) {
-        const data = await statsRes.json();
-        setStats(data);
-      } else {
+    async function fetchStats() {
+      setStatsLoading(true);
+      try {
+        const statsRes = await fetch("/api/dashboard/stats");
+        if (statsRes.ok) {
+          const data = await statsRes.json();
+          setStats(data);
+        } else {
+          setStats({ tasks: 0, ideas: 0, scripts: 0, sideQuests: 0, userName: "there" });
+        }
+      } catch {
         setStats({ tasks: 0, ideas: 0, scripts: 0, sideQuests: 0, userName: "there" });
+      } finally {
+        setStatsLoading(false);
       }
-
-      if (xpRes?.ok) {
-        const data = await xpRes.json();
-        setXP({
-          lifetimeXP: data.lifetimeXP ?? data.totalXP ?? 0,
-          currentStreak: data.currentStreak ?? 0,
-          bestStreak: data.bestStreak ?? 0,
-        });
-      }
-
-      setLoading(false);
     }
-
-    fetchDashboard();
+    fetchStats();
   }, []);
+
+  const loading = statsLoading || xpLoading;
 
   const firstName = stats?.userName?.split(" ")[0] || "there";
 
