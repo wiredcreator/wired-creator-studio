@@ -4,11 +4,14 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Color from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
 import type {
   ToneOfVoiceParameter,
   ToneParameterCategory,
 } from '@/types/ai';
 import VoiceInputWrapper from '@/components/VoiceInputWrapper';
+import ModalPortal from '@/components/ModalPortal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,6 +34,8 @@ interface ToneOfVoiceEditorProps {
   onStatusChange?: (status: GuideStatus) => void;
   /** Whether a regeneration is currently in progress. */
   isRegenerating?: boolean;
+  /** Whether a save is currently in progress. */
+  isSaving?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +72,7 @@ export default function ToneOfVoiceEditor({
   onRegenerate,
   onStatusChange,
   isRegenerating = false,
+  isSaving = false,
 }: ToneOfVoiceEditorProps) {
   const [parameters, setParameters] =
     useState<ToneOfVoiceParameter[]>(initialParameters);
@@ -81,12 +87,18 @@ export default function ToneOfVoiceEditor({
   const [newValue, setNewValue] = useState('');
   const [currentStatus, setCurrentStatus] = useState<GuideStatus>(status);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [colorPickerPos, setColorPickerPos] = useState<{ top: number; left: number } | null>(null);
+  const colorPickerRef = useRef<HTMLDivElement>(null);
+  const colorBtnRef = useRef<HTMLButtonElement>(null);
 
   // TipTap rich text editor for the summary
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit,
+      TextStyle,
+      Color,
       Placeholder.configure({
         placeholder: 'Paste or type your tone of voice guide here. Use the toolbar for formatting.',
       }),
@@ -100,8 +112,30 @@ export default function ToneOfVoiceEditor({
       attributes: {
         class: 'prose prose-sm prose-invert max-w-none focus:outline-none min-h-[120px] px-4 py-3 text-[var(--color-text-primary)]',
       },
+      transformPastedHTML(html: string) {
+        // Strip inline color and background-color styles to prevent
+        // invisible/white text when pasting from external documents
+        return html
+          .replace(/\s*-webkit-text-fill-color\s*:\s*[^;"']+;?/gi, '')
+          .replace(/\s*color\s*:\s*[^;"']+;?/gi, '')
+          .replace(/\s*background-color\s*:\s*[^;"']+;?/gi, '')
+          .replace(/\s*background\s*:\s*[^;"']+;?/gi, '')
+          .replace(/\s*style="\s*"/gi, '');
+      },
     },
   });
+
+  // Close color picker on click outside
+  useEffect(() => {
+    if (!showColorPicker) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setShowColorPicker(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showColorPicker]);
 
   // Sync editor state when parent provides new data (e.g., after regeneration)
   // Use a ref to skip the sync that happens right after a user-initiated save
@@ -241,16 +275,7 @@ export default function ToneOfVoiceEditor({
             )}
           </button>
 
-          {/* Save */}
-          {hasUnsavedChanges && (
-            <button
-              type="button"
-              onClick={handleSave}
-              className="px-4 py-2 text-sm font-medium text-white bg-[var(--color-accent)] rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
-            >
-              Save Changes
-            </button>
-          )}
+          {/* Save is in the editor toolbar */}
         </div>
       </div>
 
@@ -305,6 +330,39 @@ export default function ToneOfVoiceEditor({
               className={`px-2 py-1 rounded text-xs transition-colors ${editor.isActive('orderedList') ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card)]'}`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
+            </button>
+            <div className="w-px h-5 bg-[var(--color-border)] mx-1" />
+            {/* Text Color */}
+            <button
+              ref={colorBtnRef}
+              type="button"
+              onClick={() => {
+                if (showColorPicker) {
+                  setShowColorPicker(false);
+                  setColorPickerPos(null);
+                } else {
+                  const rect = colorBtnRef.current?.getBoundingClientRect();
+                  if (rect) setColorPickerPos({ top: rect.bottom + 6, left: rect.left });
+                  setShowColorPicker(true);
+                }
+              }}
+              className={`px-2 py-1 rounded text-xs font-semibold transition-colors ${editor.isActive('textStyle') ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card)]'}`}
+              title="Text color"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                <path d="M5.5 18h2l1.5-4h6l1.5 4h2L12.5 4h-1L5.5 18zm4.25-6L12 6.5l2.25 5.5h-4.5z" fill="currentColor" />
+                <rect x="3" y="20" width="18" height="2.5" rx="0.5" fill={editor.getAttributes('textStyle').color || 'currentColor'} />
+              </svg>
+            </button>
+            {/* Save — right-aligned in toolbar */}
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`px-3 py-1 text-xs font-medium text-white bg-[var(--color-accent)] rounded-md hover:bg-[var(--color-accent-hover)] disabled:opacity-70 transition-all ${hasUnsavedChanges || isSaving ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            >
+              {isSaving ? 'Saving...' : 'Save'}
             </button>
           </div>
         )}
@@ -518,6 +576,79 @@ export default function ToneOfVoiceEditor({
           </button>
         )}
       </div>
+
+      {/* Color Picker Portal */}
+      {showColorPicker && colorPickerPos && editor && (
+        <ModalPortal>
+          <div className="fixed inset-0 z-50" onClick={() => { setShowColorPicker(false); setColorPickerPos(null); }}>
+            <div
+              ref={colorPickerRef}
+              className="absolute w-56 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-lg p-3"
+              style={{ top: colorPickerPos.top, left: colorPickerPos.left }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Text Color</p>
+              <div className="grid grid-cols-8 gap-1.5">
+                {[
+                  { color: '#ffffff', label: 'White' },
+                  { color: '#d1d5db', label: 'Light gray' },
+                  { color: '#9ca3af', label: 'Gray' },
+                  { color: '#6b7280', label: 'Dark gray' },
+                  { color: '#374151', label: 'Charcoal' },
+                  { color: '#111827', label: 'Near black' },
+                  { color: '#0f172a', label: 'Slate' },
+                  { color: '#000000', label: 'Black' },
+                  { color: '#ef4444', label: 'Red' },
+                  { color: '#f97316', label: 'Orange' },
+                  { color: '#eab308', label: 'Yellow' },
+                  { color: '#22c55e', label: 'Green' },
+                  { color: '#14b8a6', label: 'Teal' },
+                  { color: '#3b82f6', label: 'Blue' },
+                  { color: '#8b5cf6', label: 'Purple' },
+                  { color: '#ec4899', label: 'Pink' },
+                ].map(({ color, label }) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => {
+                      editor.chain().focus().setColor(color).run();
+                      setShowColorPicker(false);
+                      setColorPickerPos(null);
+                    }}
+                    className="w-5 h-5 rounded-full border border-[var(--color-border)] hover:scale-125 transition-transform"
+                    style={{ backgroundColor: color }}
+                    title={label}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mt-3 pt-2 border-t border-[var(--color-border)]">
+                <label className="flex items-center gap-2 cursor-pointer flex-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors">
+                  <input
+                    type="color"
+                    value={editor.getAttributes('textStyle').color || '#ffffff'}
+                    onChange={(e) => {
+                      editor.chain().focus().setColor(e.target.value).run();
+                    }}
+                    className="w-5 h-5 rounded-full cursor-pointer border-0 p-0 bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border [&::-webkit-color-swatch]:border-[var(--color-border)]"
+                  />
+                  Custom
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    editor.chain().focus().unsetColor().run();
+                    setShowColorPicker(false);
+                    setColorPickerPos(null);
+                  }}
+                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
     </div>
   );
 }

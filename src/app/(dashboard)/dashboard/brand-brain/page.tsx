@@ -434,21 +434,14 @@ export default function BrandBrainPage() {
       {/* Loaded state — show overview (and optionally tone editor) */}
       {brandBrain && !loading && !error && (
         <>
-          {/* Saving indicator */}
-          {isSaving && (
-            <div className="mb-4 flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
-              Saving changes...
-            </div>
-          )}
-
           {showToneEditor ? (
             <>
-              {/* Back button */}
-              <button
-                onClick={() => setShowToneEditor(false)}
-                className="mb-6 flex items-center gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-              >
+              {/* Back button + saving indicator */}
+              <div className="mb-6 flex items-center gap-3">
+                <button
+                  onClick={() => setShowToneEditor(false)}
+                  className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                >
                 <svg
                   className="h-4 w-4"
                   fill="none"
@@ -464,6 +457,7 @@ export default function BrandBrainPage() {
                 </svg>
                 Back to Brand Brain
               </button>
+              </div>
 
               <ToneOfVoiceEditor
                 initialParameters={brandBrain.toneOfVoiceGuide?.parameters ?? []}
@@ -473,6 +467,7 @@ export default function BrandBrainPage() {
                 onRegenerate={handleToneRegenerate}
                 onStatusChange={handleToneStatusChange}
                 isRegenerating={isRegenerating}
+                isSaving={isSaving}
               />
             </>
           ) : (

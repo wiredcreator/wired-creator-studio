@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import PageWrapper from "@/components/PageWrapper";
 import ModalPortal from "@/components/ModalPortal";
@@ -120,6 +120,9 @@ export default function AdminStudentsPage() {
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
   const [addSuccess, setAddSuccess] = useState("");
+  const [riskPopoverStudentId, setRiskPopoverStudentId] = useState<string | null>(null);
+  const [riskPopoverPos, setRiskPopoverPos] = useState<{ top: number; left: number; openAbove: boolean } | null>(null);
+  const riskPopoverRef = useRef<HTMLDivElement>(null);
 
   async function fetchData() {
     try {
@@ -145,6 +148,18 @@ export default function AdminStudentsPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Close risk popover on click outside
+  useEffect(() => {
+    if (!riskPopoverStudentId) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (riskPopoverRef.current && !riskPopoverRef.current.contains(e.target as Node)) {
+        setRiskPopoverStudentId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [riskPopoverStudentId]);
 
   async function handleAddStudent(e: React.FormEvent) {
     e.preventDefault();
@@ -378,8 +393,8 @@ export default function AdminStudentsPage() {
         )}
 
         {!loading && filteredStudents.length > 0 && (
-          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)]">
-            <table className="w-full table-fixed">
+          <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)]">
+            <table className="w-full min-w-[900px] table-fixed">
               <colgroup>
                 <col />
                 <col />
@@ -466,12 +481,30 @@ export default function AdminStudentsPage() {
                       </td>
                       {/* Risk */}
                       <td className="px-3 py-4 text-center">
-                        <span
-                          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (riskPopoverStudentId === student._id) {
+                              setRiskPopoverStudentId(null);
+                              setRiskPopoverPos(null);
+                            } else {
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                              const spaceBelow = window.innerHeight - rect.bottom;
+                              const openAbove = spaceBelow < 300;
+                              setRiskPopoverPos({
+                                top: openAbove ? rect.top - 4 : rect.bottom + 4,
+                                left: rect.left + rect.width / 2,
+                                openAbove,
+                              });
+                              setRiskPopoverStudentId(student._id);
+                            }
+                          }}
+                          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity"
                           style={{ backgroundColor: riskColor.bg, color: riskColor.text }}
                         >
                           {RISK_LABELS[risk]}
-                        </span>
+                        </button>
                       </td>
                       {/* Last Activity */}
                       <td className="px-3 py-4 text-right text-xs text-[var(--color-text-muted)]">
@@ -497,6 +530,54 @@ export default function AdminStudentsPage() {
             </table>
           </div>
         )}
+
+        {/* Risk Popover Portal */}
+        {riskPopoverStudentId && riskPopoverPos && (() => {
+          const student = students.find((s) => s._id === riskPopoverStudentId);
+          if (!student) return null;
+          const risk = getRiskLevel(student.riskFlags);
+          const riskColor = RISK_COLORS[risk];
+          return (
+            <ModalPortal>
+              <div className="fixed inset-0 z-50" onClick={() => { setRiskPopoverStudentId(null); setRiskPopoverPos(null); }}>
+                <div
+                  ref={riskPopoverRef}
+                  className="absolute w-72 max-h-[280px] overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-lg p-4 text-left"
+                  style={{
+                    top: riskPopoverPos.openAbove ? undefined : riskPopoverPos.top,
+                    bottom: riskPopoverPos.openAbove ? `${window.innerHeight - riskPopoverPos.top}px` : undefined,
+                    left: riskPopoverPos.left,
+                    transform: 'translateX(-50%)',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">
+                    Risk Factors
+                  </h4>
+                  {student.riskFlags.length === 0 ? (
+                    <p className="text-sm text-[var(--color-text-muted)]">
+                      No risk factors identified. Student appears on track.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {student.riskFlags.map((flag, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-[var(--color-text-secondary)]">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: riskColor.text }} />
+                          {flag}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {student.lastActiveDate === null && (
+                    <p className="mt-2 text-xs text-[var(--color-text-muted)] italic border-t border-[var(--color-border)] pt-2">
+                      Student has never logged in.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </ModalPortal>
+          );
+        })()}
       </div>
     </PageWrapper>
   );
