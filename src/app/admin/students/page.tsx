@@ -511,7 +511,7 @@ export default function AdminStudentsPage() {
                         {formatRelativeDate(student.lastActiveDate, formatDate)}
                       </td>
                       {/* Plan */}
-                      <td className="px-3 py-4 text-right">
+                      <td className="px-3 py-4 text-right whitespace-nowrap">
                         <span className="text-xs font-medium text-[var(--color-accent)]">
                           {planLabel}
                         </span>
