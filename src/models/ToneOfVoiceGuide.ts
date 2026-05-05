@@ -82,7 +82,7 @@ const ToneOfVoiceGuideSchema = new Schema<IToneOfVoiceGuide>(
     status: {
       type: String,
       enum: ['draft', 'review', 'active'],
-      default: 'review',
+      default: 'active',
     },
     generatedFrom: {
       type: GeneratedFromSchema,

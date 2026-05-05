@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
               userId,
               brandBrainId: brandBrain._id,
               parameters: guide.parameters,
-              status: 'review',
+              status: 'active',
               generatedFrom: {
                 questionnaireId: contentDNAId,
                 transcriptIds: [],
@@ -363,7 +363,7 @@ export async function POST(request: NextRequest) {
                 { userId },
                 {
                   parameters: updatedGuide.parameters,
-                  status: 'review',
+                  status: 'active',
                   generatedFrom: {
                     questionnaireId: contentDNAId,
                     transcriptIds: [],

@@ -132,7 +132,7 @@ export async function POST(
         userId: authResult.id,
         brandBrainId,
         parameters: guide.parameters,
-        status: 'review',
+        status: 'active',
         generatedFrom: {
           questionnaireId: body.contentDNAResponseId || undefined,
           transcriptIds: [],
